@@ -1,4 +1,3 @@
-import React from 'react';
 import { jsPDF } from 'jspdf';
 
 function DownloadReport() {
@@ -24,19 +23,11 @@ function DownloadReport() {
   return (
     <div className="card">
       <h2>📄 Download Report</h2>
-      <button
-        onClick={handleDownload}
-        style={{
-          marginTop: '12px',
-          padding: '10px 16px',
-          borderRadius: '6px',
-          border: 'none',
-          background: '#2563eb',
-          color: '#fff',
-          cursor: 'pointer',
-        }}
-      >
-        Download Weather Report
+      <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+        Download the current weather and heat risk data as a PDF report.
+      </p>
+      <button className="download-btn" onClick={handleDownload}>
+        ⬇️ Download Weather Report
       </button>
     </div>
   );

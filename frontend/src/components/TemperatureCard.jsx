@@ -1,10 +1,22 @@
-import React from 'react';
+import React from "react";
 
-function TemperatureCard() {
+function TemperatureCard({ temperature, weatherDescription, errorMessage }) {
+  const displayValue = errorMessage
+    ? "Unable to fetch weather data"
+    : temperature === "Loading..."
+      ? "Loading..."
+      : `${temperature ?? 39}°C`;
+
   return (
-    <div className="card">
-      <h2>🌡️ Current Temperature</h2>
-      <p>39°C</p>
+    <div className="weather-card temperature-card">
+      <div className="card-icon">🌡️</div>
+      <div className="card-content">
+        <h3>Temperature</h3>
+        <p className="card-value">{displayValue}</p>
+        {weatherDescription && !errorMessage ? (
+          <p style={{ marginTop: "0.35rem", opacity: 0.8 }}>{weatherDescription}</p>
+        ) : null}
+      </div>
     </div>
   );
 }

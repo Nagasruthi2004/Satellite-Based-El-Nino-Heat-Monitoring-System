@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 function SearchLocation() {
   const [city, setCity] = useState('');
@@ -6,7 +6,6 @@ function SearchLocation() {
 
   const handleSearch = () => {
     if (!city.trim()) return;
-
     setWeather({
       city: city.trim(),
       temperature: '38°C',
@@ -16,45 +15,46 @@ function SearchLocation() {
     });
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
   return (
     <div className="card">
       <h2>🔍 Search Location</h2>
-      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+      <div className="search-box">
         <input
           type="text"
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          placeholder="Enter city name"
-          style={{
-            flex: '1',
-            minWidth: '180px',
-            padding: '10px',
-            borderRadius: '6px',
-            border: '1px solid #cbd5e1',
-          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Enter city name..."
         />
-        <button
-          onClick={handleSearch}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '6px',
-            border: 'none',
-            background: '#2563eb',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
-          Search
-        </button>
+        <button className="search-btn" onClick={handleSearch}>Search</button>
       </div>
 
       {weather && (
-        <div style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
-          <p><strong>City:</strong> {weather.city}</p>
-          <p><strong>Temperature:</strong> {weather.temperature}</p>
-          <p><strong>Humidity:</strong> {weather.humidity}</p>
-          <p><strong>Rainfall:</strong> {weather.rainfall}</p>
-          <p><strong>Wind Speed:</strong> {weather.windSpeed}</p>
+        <div className="search-result">
+          <div className="search-result-item">
+            <div className="sr-label">City</div>
+            <div className="sr-value">{weather.city}</div>
+          </div>
+          <div className="search-result-item">
+            <div className="sr-label">Temperature</div>
+            <div className="sr-value">{weather.temperature}</div>
+          </div>
+          <div className="search-result-item">
+            <div className="sr-label">Humidity</div>
+            <div className="sr-value">{weather.humidity}</div>
+          </div>
+          <div className="search-result-item">
+            <div className="sr-label">Rainfall</div>
+            <div className="sr-value">{weather.rainfall}</div>
+          </div>
+          <div className="search-result-item">
+            <div className="sr-label">Wind Speed</div>
+            <div className="sr-value">{weather.windSpeed}</div>
+          </div>
         </div>
       )}
     </div>
