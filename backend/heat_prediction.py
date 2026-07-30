@@ -1,88 +1,76 @@
 """
 Heat Risk Prediction module - Machine Learning model for heat risk classification
 Uses Random Forest algorithm to predict heat risk levels
-Ready for real-world dataset integration
+Training data loaded from dataset/heat_risk_dataset.csv
 """
 
+import os
 import numpy as np
+import pandas as pd
+import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
+FEATURES   = ["temperature", "humidity", "rainfall", "wind_speed"]
+TARGET     = "heat_risk"
+DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "dataset", "heat_risk_dataset.csv")
+MODEL_PATH   = os.path.join(os.path.dirname(__file__), "..", "models", "heat_risk_model.pkl")
+
 
 class HeatRiskPredictor:
     """Machine Learning model for predicting heat risk levels"""
+
     
     def __init__(self):
         """Initialize the model and label encoder"""
         self.model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
         self.label_encoder = LabelEncoder()
         self.is_trained = False
+
+    def load_model(self):
+        """Load trained model from models/heat_risk_model.pkl."""
+        bundle = joblib.load(MODEL_PATH)
+        self.model = bundle["model"]
+        self.label_encoder = bundle["label_encoder"]
+        self.is_trained = True
+        print("✅ Model loaded from", os.path.normpath(MODEL_PATH))
+
+    def save_model(self):
+        """Save trained model to models/heat_risk_model.pkl."""
+        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+        joblib.dump({"model": self.model, "label_encoder": self.label_encoder}, MODEL_PATH)
+        print("💾 Model saved to", os.path.normpath(MODEL_PATH))
         
-    def create_sample_dataset(self):
-        """
-        Create a sample dataset for training
-        Features: Temperature, Humidity, Rainfall, Wind Speed
-        Target: Heat Risk Level (Low, Medium, High)
-        """
-        # Sample data: [Temperature (°C), Humidity (%), Rainfall (mm), Wind Speed (km/h)]
-        X = np.array([
-            [25, 60, 50, 10],
-            [28, 55, 40, 12],
-            [32, 50, 20, 8],
-            [35, 45, 10, 5],
-            [38, 40, 5, 3],
-            [42, 35, 0, 2],
-            [45, 30, 0, 1],
-            [26, 62, 48, 11],
-            [29, 58, 35, 10],
-            [33, 48, 15, 6],
-            [36, 42, 8, 4],
-            [39, 38, 3, 2],
-            [43, 32, 0, 1],
-            [46, 28, 0, 0],
-            [27, 65, 52, 13],
-            [30, 60, 30, 9],
-            [34, 52, 12, 7],
-            [37, 44, 6, 4],
-            [40, 36, 2, 2],
-            [44, 31, 0, 1],
-            [24, 70, 55, 14],
-            [31, 56, 25, 8],
-        ])
-        
-        # Target: Heat Risk Levels
-        y = np.array([
-            "Low", "Low", "Medium", "Medium", "High", "High", "Critical",
-            "Low", "Low", "Medium", "High", "High", "Critical", "Critical",
-            "Low", "Medium", "Medium", "High", "High", "Critical",
-            "Low", "Medium"
-        ])
-        
+    def load_dataset(self):
+        """Load features and target from dataset/heat_risk_dataset.csv."""
+        df = pd.read_csv(DATASET_PATH)
+        X = df[FEATURES].values.astype(np.float32)
+        y = df[TARGET].values
         return X, y
-    
+
     def train(self):
         """
-        Train the Random Forest model on sample data
+        Train the Random Forest model using dataset/heat_risk_dataset.csv
         """
         print("📊 Training Heat Risk Prediction Model...")
-        
-        # Create sample dataset
-        X_train, y_train = self.create_sample_dataset()
-        
-        # Encode labels (Low=0, Medium=1, High=2, Critical=3)
+
+        # Load dataset from CSV
+        X_train, y_train = self.load_dataset()
+
+        # Encode labels (Critical=0, High=1, Low=2, Medium=3)
         y_encoded = self.label_encoder.fit_transform(y_train)
-        
+
         # Train the model
         self.model.fit(X_train, y_encoded)
         self.is_trained = True
-        
+
         # Display training metrics
         y_pred = self.model.predict(X_train)
         accuracy = accuracy_score(y_encoded, y_pred)
         print(f"✅ Model Trained! Accuracy: {accuracy:.2%}")
-        
+
         return accuracy
     
     def predict_heat_risk(self, temperature, humidity, rainfall, wind_speed):
@@ -99,8 +87,8 @@ class HeatRiskPredictor:
             str: Predicted heat risk level (Low, Medium, High, Critical)
         """
         if not self.is_trained:
-            print("⚠️ Model not trained. Training now...")
-            self.train()
+            print("⚠️ Model not ready. Initializing...")
+            initialize_model()
         
         # Prepare features for prediction
         features = np.array([[temperature, humidity, rainfall, wind_speed]])
@@ -166,10 +154,15 @@ heat_predictor = HeatRiskPredictor()
 
 
 def initialize_model():
-    """Initialize and train the model"""
+    """Load model from disk if available, otherwise train and save it."""
     global heat_predictor
     if not heat_predictor.is_trained:
-        heat_predictor.train()
+        if os.path.exists(MODEL_PATH):
+            heat_predictor.load_model()
+        else:
+            print("⚠️ Model file not found. Training a new model...")
+            heat_predictor.train()
+            heat_predictor.save_model()
 
 
 def predict_heat_risk(temperature, humidity, rainfall, wind_speed):
