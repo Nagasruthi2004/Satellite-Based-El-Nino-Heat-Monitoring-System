@@ -1,3 +1,4 @@
+
 import { jsPDF } from 'jspdf';
 
 function DownloadReport({ weather }) {

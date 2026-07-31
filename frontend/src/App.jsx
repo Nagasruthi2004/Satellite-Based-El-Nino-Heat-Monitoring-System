@@ -1,3 +1,4 @@
+import EmergencyDashboard from "./components/EmergencyDashboard";
 import HeatRecommendation from "./components/HeatRecommendation";
 import "./App.css";
 import { useState, useEffect } from "react";
@@ -255,6 +256,12 @@ function App() {
             <EmergencyContacts />
           </div>
         </section>
+
+        {/* ── EMERGENCY DASHBOARD ── */}
+<section className="section">
+  <h2 className="section-title">🚑 Emergency Dashboard</h2>
+  <EmergencyDashboard />
+</section>
 
         {/* ── DOWNLOAD REPORT ── */}
         <section className="section">
