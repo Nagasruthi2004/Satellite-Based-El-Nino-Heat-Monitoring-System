@@ -26,6 +26,11 @@ import PreventiveMeasures from "./components/PreventiveMeasures";
 import SearchLocation from "./components/SearchLocation";
 import DownloadReport from "./components/DownloadReport";
 import EmergencyContacts from "./components/EmergencyContacts";
+import NearbyHospitals from "./components/NearbyHospitals";
+import HeatForecast from "./components/HeatForecast";
+import DetectLocation from "./components/DetectLocation";
+import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import AIChatbot from "./components/AIChatbot";
 import Footer from "./components/Footer";
 
 function App() {
@@ -139,6 +144,11 @@ function App() {
               onCityError={setWeatherError}
               onFillForm={setPredictionForm}
             />
+            <DetectLocation
+              onCityWeather={setWeather}
+              onCityError={setWeatherError}
+              onFillForm={setPredictionForm}
+            />
           </div>
         </div>
       </section>
@@ -189,19 +199,19 @@ function App() {
               <div className="input-grid">
                 <label className="prediction-field">
                   <span>Temperature (°C)</span>
-                  <input type="number" name="temperature" value={predictionForm.temperature} onChange={handleInputChange} min="-50" max="60" step="0.1" />
+                  <input type="number" name="temperature" value={predictionForm.temperature} onChange={handleInputChange} min="-50" max="60" step="any" />
                 </label>
                 <label className="prediction-field">
                   <span>Humidity (%)</span>
-                  <input type="number" name="humidity" value={predictionForm.humidity} onChange={handleInputChange} min="0" max="100" step="0.1" />
+                  <input type="number" name="humidity" value={predictionForm.humidity} onChange={handleInputChange} min="0" max="100" step="any" />
                 </label>
                 <label className="prediction-field">
                   <span>Rainfall (mm)</span>
-                  <input type="number" name="rainfall" value={predictionForm.rainfall} onChange={handleInputChange} min="0" step="0.1" />
+                  <input type="number" name="rainfall" value={predictionForm.rainfall} onChange={handleInputChange} min="0" step="any" />
                 </label>
                 <label className="prediction-field">
                   <span>Wind Speed (km/h)</span>
-                  <input type="number" name="wind_speed" value={predictionForm.wind_speed} onChange={handleInputChange} min="0" step="0.1" />
+                  <input type="number" name="wind_speed" value={predictionForm.wind_speed} onChange={handleInputChange} min="0" step="any" />
                 </label>
               </div>
 
@@ -245,6 +255,21 @@ function App() {
           </div>
         </section>
 
+        {/* ── AI 7-DAY HEAT FORECAST ── */}
+        <section className="section">
+          <HeatForecast weather={weather} />
+        </section>
+
+        {/* ── ANALYTICS DASHBOARD ── */}
+        <section className="section">
+          <AnalyticsDashboard weather={weather} />
+        </section>
+
+        {/* ── AI HEATWAVE ASSISTANT ── */}
+        <section className="section">
+          <AIChatbot weather={weather} />
+        </section>
+
         {/* ── COMPARE CITIES ── */}
         <section className="section">
           <h2 className="section-title">🏙️ Compare Cities</h2>
@@ -258,6 +283,12 @@ function App() {
             <PreventiveMeasures />
             <EmergencyContacts />
           </div>
+        </section>
+
+        {/* ── NEARBY HOSPITALS ── */}
+        <section className="section">
+          <h2 className="section-title">🏥 Nearby Hospitals</h2>
+          <NearbyHospitals weather={weather} />
         </section>
 
         {/* ── FAVOURITE CITIES ── */}
@@ -275,7 +306,7 @@ function App() {
 {/* ── HEATWAVE NEWS ── */}
 <section className="section">
   <h2 className="section-title">📰 Heatwave News</h2>
-  <HeatwaveNews />
+  <HeatwaveNews weather={weather} />
 </section>
 
 {/* ── EMAIL ALERT ── */}
