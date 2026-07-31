@@ -1,50 +1,85 @@
+import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-const data = [
-  { day: 'Day 1', temperature: 39 },
-  { day: 'Day 2', temperature: 40 },
-  { day: 'Day 3', temperature: 41 },
-  { day: 'Day 4', temperature: 42 },
-  { day: 'Day 5', temperature: 41 },
-  { day: 'Day 6', temperature: 40 },
-  { day: 'Day 7', temperature: 39 },
-];
+function PredictionGraph({ weather }) {
+  const [data, setData]       = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
 
-function PredictionGraph() {
+  const city = weather?.city || 'Coimbatore';
+
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    fetch(`http://127.0.0.1:5000/forecast?city=${encodeURIComponent(city)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error);
+        setData(json.forecast);
+      })
+      .catch((err) => setError(err.message || 'Unable to load forecast.'))
+      .finally(() => setLoading(false));
+  }, [city]);
+
+  const temps      = data.map((d) => d.temperature);
+  const minTemp    = temps.length ? Math.floor(Math.min(...temps)) - 2 : 20;
+  const maxTemp    = temps.length ? Math.ceil(Math.max(...temps))  + 2 : 45;
+  const alertLevel = Math.round((minTemp + maxTemp) / 2);
+
   return (
     <div className="card">
-      <h2>📈 7-Day Temperature Forecast</h2>
-      <div className="graph-container">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
-            <YAxis
-              domain={[36, 44]}
-              tickFormatter={(v) => `${v}°C`}
-              tick={{ fontSize: 12, fill: '#6b7280' }}
-              width={52}
-            />
-            <Tooltip
-              formatter={(value) => [`${value}°C`, 'Temperature']}
-              contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
-            />
-            <ReferenceLine y={40} stroke="#f97316" strokeDasharray="4 4" label={{ value: 'Alert', fill: '#f97316', fontSize: 11 }} />
-            <Line
-              type="monotone"
-              dataKey="temperature"
-              stroke="#ef4444"
-              strokeWidth={2.5}
-              dot={{ r: 4, fill: '#ef4444', strokeWidth: 0 }}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="graph-legend">
-        <span className="graph-legend-dot"></span>
-        <span>Predicted Temperature (°C)</span>
-      </div>
+      <h2>📈 5-Day Temperature Forecast — {city}</h2>
+
+      {loading && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '12px' }}>
+          Loading forecast…
+        </p>
+      )}
+
+      {error && (
+        <div className="prediction-error" style={{ marginBottom: '12px' }}>{error}</div>
+      )}
+
+      {!loading && !error && data.length > 0 && (
+        <>
+          <div className="graph-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <YAxis
+                  domain={[minTemp, maxTemp]}
+                  tickFormatter={(v) => `${v}°C`}
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  width={52}
+                />
+                <Tooltip
+                  formatter={(value) => [`${value}°C`, 'Temperature']}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                />
+                <ReferenceLine
+                  y={alertLevel}
+                  stroke="#f97316"
+                  strokeDasharray="4 4"
+                  label={{ value: 'Alert', fill: '#f97316', fontSize: 11 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="temperature"
+                  stroke="#ef4444"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: '#ef4444', strokeWidth: 0 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="graph-legend">
+            <span className="graph-legend-dot"></span>
+            <span>Predicted Temperature (°C)</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

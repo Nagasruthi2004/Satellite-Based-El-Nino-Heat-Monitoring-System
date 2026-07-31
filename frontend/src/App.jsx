@@ -1,3 +1,4 @@
+import HeatRecommendation from "./components/HeatRecommendation";
 import "./App.css";
 import { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
@@ -14,6 +15,7 @@ import SatelliteSourceCard from "./components/SatelliteSourceCard";
 import AlertRecommendationCard from "./components/AlertRecommendationCard";
 import SatellitePanel from "./components/SatellitePanel";
 import HeatMap from "./components/HeatMap";
+import CompareCities from "./components/CompareCities";
 import PredictionGraph from "./components/PredictionGraph";
 import HeatAlert from "./components/HeatAlert";
 import PreventiveMeasures from "./components/PreventiveMeasures";
@@ -218,6 +220,9 @@ function App() {
                 <p>{predictionResult.prediction.explanation}</p>
               </div>
             ) : null}
+            {predictionResult ? (
+  <HeatRecommendation risk={predictionResult.prediction.heat_risk} />
+) : null}
           </div>
         </section>
 
@@ -231,9 +236,15 @@ function App() {
         <section className="section">
           <h2 className="section-title">📈 Analytics</h2>
           <div className="two-col">
-            <HeatMap />
-            <PredictionGraph />
+            <HeatMap weather={weather} />
+            <PredictionGraph weather={weather} />
           </div>
+        </section>
+
+        {/* ── COMPARE CITIES ── */}
+        <section className="section">
+          <h2 className="section-title">🏙️ Compare Cities</h2>
+          <CompareCities />
         </section>
 
         {/* ── PREVENTIVE MEASURES + EMERGENCY CONTACTS side by side ── */}
