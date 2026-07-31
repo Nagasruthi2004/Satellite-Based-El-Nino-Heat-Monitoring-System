@@ -1,3 +1,6 @@
+import EmailAlert from "./components/EmailAlert";
+import HeatwaveNews from "./components/HeatwaveNews";
+import FavouriteCities from "./components/FavouriteCities";
 import EmergencyDashboard from "./components/EmergencyDashboard";
 import HeatRecommendation from "./components/HeatRecommendation";
 import "./App.css";
@@ -257,10 +260,29 @@ function App() {
           </div>
         </section>
 
-        {/* ── EMERGENCY DASHBOARD ── */}
+        {/* ── FAVOURITE CITIES ── */}
 <section className="section">
-  <h2 className="section-title">🚑 Emergency Dashboard</h2>
-  <EmergencyDashboard />
+  <h2 className="section-title">⭐ Favourite Cities</h2>
+
+  <FavouriteCities
+    currentCity={weather?.city}
+    onSelectCity={(city) => {
+      alert(`Selected City: ${city}\n\nNext step we'll make this automatically load weather.`);
+    }}
+  />
+</section>
+
+{/* ── HEATWAVE NEWS ── */}
+<section className="section">
+  <h2 className="section-title">📰 Heatwave News</h2>
+  <HeatwaveNews />
+</section>
+
+{/* ── EMAIL ALERT ── */}
+<section className="section">
+  <h2 className="section-title">📧 Email Alerts</h2>
+
+  <EmailAlert weather={weather} />
 </section>
 
         {/* ── DOWNLOAD REPORT ── */}
