@@ -4,18 +4,17 @@ models/train_model.py
 Trains a Random Forest heat risk classifier and saves it to:
     models/heat_risk_model.pkl
 
-Features : [temperature (C), humidity (%), rainfall (mm), wind_speed (km/h)]
-Labels   : Low | Medium | High | Critical
+Features : temperature, humidity, rainfall, wind_speed
+Target   : heat_risk  (Low | Medium | High | Critical)
+Dataset  : dataset/heat_risk_dataset.csv
 
-Run from the models/ folder:
-    python train_model.py
-
-Or from the project root:
+Run from the project root:
     python models/train_model.py
 """
 
 import os
 import numpy as np
+import pandas as pd
 import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -23,59 +22,23 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
 
+FEATURES = ["temperature", "humidity", "rainfall", "wind_speed"]
+TARGET   = "heat_risk"
+
+# Resolve dataset path relative to this file (models/../dataset/...)
+DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "dataset", "heat_risk_dataset.csv")
+
+
 # ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
 
-def build_dataset():
-    """
-    200-sample synthetic dataset.
-    Mirrors the label boundaries used in backend/heat_prediction.py.
-    """
-    rng = np.random.default_rng(42)
-    rows, labels = [], []
-
-    # Low risk (50 samples): cool, humid, rainy
-    for _ in range(50):
-        rows.append([
-            rng.uniform(20, 29.9),
-            rng.uniform(55, 85),
-            rng.uniform(20, 80),
-            rng.uniform(8, 20),
-        ])
-        labels.append("Low")
-
-    # Medium risk (60 samples): warm, moderate humidity
-    for _ in range(60):
-        rows.append([
-            rng.uniform(30, 35.9),
-            rng.uniform(40, 60),
-            rng.uniform(5, 25),
-            rng.uniform(4, 12),
-        ])
-        labels.append("Medium")
-
-    # High risk (50 samples): hot, low humidity, little rain
-    for _ in range(50):
-        rows.append([
-            rng.uniform(36, 40.9),
-            rng.uniform(25, 45),
-            rng.uniform(0, 8),
-            rng.uniform(1, 6),
-        ])
-        labels.append("High")
-
-    # Critical risk (40 samples): extreme heat, very dry
-    for _ in range(40):
-        rows.append([
-            rng.uniform(41, 48),
-            rng.uniform(10, 34),
-            rng.uniform(0, 4),
-            rng.uniform(0, 3),
-        ])
-        labels.append("Critical")
-
-    return np.array(rows, dtype=np.float32), np.array(labels)
+def load_dataset():
+    """Load features and target from dataset/heat_risk_dataset.csv."""
+    df = pd.read_csv(DATASET_PATH)
+    X = df[FEATURES].values.astype(np.float32)
+    y = df[TARGET].values
+    return X, y
 
 
 # ---------------------------------------------------------------------------
@@ -87,8 +50,9 @@ def train():
     print("  Heat Risk Prediction — Model Training")
     print("=" * 60)
 
-    X, y = build_dataset()
+    X, y = load_dataset()
     print(f"\n  Dataset  : {X.shape[0]} samples, {X.shape[1]} features")
+    print(f"  Source   : {os.path.normpath(DATASET_PATH)}")
     print(f"  Classes  : {np.unique(y).tolist()}")
 
     # Encode labels
@@ -119,10 +83,10 @@ def train():
         y_test, model.predict(X_test), target_names=le.classes_
     ))
 
-    # Save — resolve path relative to this file so it works from any cwd
+    # Save
     output_path = os.path.join(os.path.dirname(__file__), "heat_risk_model.pkl")
     joblib.dump({"model": model, "label_encoder": le}, output_path)
-    print(f"  Saved -> {output_path}")
+    print(f"  Saved -> {os.path.normpath(output_path)}")
     print("=" * 60)
 
 

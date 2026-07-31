@@ -42,16 +42,11 @@ function App() {
     const fetchWeatherData = async () => {
       try {
         const response = await fetch("http://127.0.0.1:5000/weather");
-        console.log("✅ Weather Fetch succeeded. Status:", response.status);
-        if (!response.ok) {
-          throw new Error("Failed to fetch weather data");
-        }
+        if (!response.ok) throw new Error("Failed to fetch weather data");
         const data = await response.json();
-        console.log("Weather Response:", data);
         setWeather(data);
         setWeatherError("");
       } catch (error) {
-        console.error("❌ Error fetching weather data:", error);
         setWeather(null);
         setWeatherError("Unable to fetch weather data");
       } finally {
@@ -62,16 +57,11 @@ function App() {
     const fetchSatelliteData = async () => {
       try {
         const response = await fetch("http://127.0.0.1:5000/satellite");
-        console.log("✅ Satellite Fetch succeeded. Status:", response.status);
-        if (!response.ok) {
-          throw new Error("Failed to fetch satellite data");
-        }
+        if (!response.ok) throw new Error("Failed to fetch satellite data");
         const data = await response.json();
-        console.log("Satellite Response:", data);
         setSatellite(data);
         setSatelliteError("");
       } catch (error) {
-        console.error("❌ Error fetching satellite data:", error);
         setSatellite(null);
         setSatelliteError("Unable to fetch satellite data");
       }
@@ -106,21 +96,14 @@ function App() {
 
       const response = await fetch("http://127.0.0.1:5000/predict", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to get a prediction from the backend.");
-      }
-
+      if (!response.ok) throw new Error(data.error || "Unable to get a prediction from the backend.");
       setPredictionResult(data);
     } catch (error) {
-      console.error("❌ Prediction request failed:", error);
       setPredictionError(error.message || "The backend is unavailable. Start the Flask server and try again.");
     } finally {
       setPredictionLoading(false);
@@ -133,89 +116,140 @@ function App() {
     <>
       <Navbar />
 
-      <div className="App">
-        <h1 className="page-title">Satellite-Based El Niño Heat Monitoring System</h1>
-        <p className="page-subtitle">AI-Powered Heat Prediction and Early Warning System</p>
-
-        <section className="prediction-panel card">
-          <div className="prediction-panel-header">
-            <div>
-              <p className="eyebrow">Live forecasting</p>
-              <h2>Predict Heat Risk</h2>
-            </div>
-            <div className="prediction-badge">Flask API • Local</div>
+      {/* ── HERO ── */}
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-text">
+            <span className="hero-eyebrow">🛰️ Satellite-Powered Intelligence</span>
+            <h1 className="hero-title">El Niño Heat Monitoring System</h1>
+            <p className="hero-subtitle">
+              Real-time urban heat tracking using satellite imagery, weather data,
+              and AI-powered risk prediction.
+            </p>
           </div>
+          <div className="hero-search">
+            <SearchLocation
+              onCityWeather={setWeather}
+              onCityError={setWeatherError}
+              onFillForm={setPredictionForm}
+            />
+          </div>
+        </div>
+      </section>
 
-          <form className="prediction-form" onSubmit={handlePredict}>
-            <div className="input-grid">
-              <label className="prediction-field">
-                <span>Temperature (°C)</span>
-                <input type="number" name="temperature" value={predictionForm.temperature} onChange={handleInputChange} min="-50" max="60" step="0.1" />
-              </label>
-              <label className="prediction-field">
-                <span>Humidity (%)</span>
-                <input type="number" name="humidity" value={predictionForm.humidity} onChange={handleInputChange} min="0" max="100" step="0.1" />
-              </label>
-              <label className="prediction-field">
-                <span>Rainfall (mm)</span>
-                <input type="number" name="rainfall" value={predictionForm.rainfall} onChange={handleInputChange} min="0" step="0.1" />
-              </label>
-              <label className="prediction-field">
-                <span>Wind Speed (km/h)</span>
-                <input type="number" name="wind_speed" value={predictionForm.wind_speed} onChange={handleInputChange} min="0" step="0.1" />
-              </label>
+      <div className="App">
+
+        {/* ── DASHBOARD ── */}
+        <section className="section">
+          <h2 className="section-title">📊 Live Weather Dashboard</h2>
+          {(weatherError || satelliteError) && (
+            <div className="prediction-error" style={{ marginBottom: "16px" }}>
+              {weatherError || satelliteError}
             </div>
-
-            <button className="predict-button" type="submit" disabled={predictionLoading}>
-              {predictionLoading ? "Predicting..." : "Predict Heat Risk"}
-            </button>
-          </form>
-
-          {predictionError ? <div className="prediction-error">{predictionError}</div> : null}
-
-          {predictionResult ? (
-            <div className={`prediction-result ${riskClass}`}>
-              <div className="result-top">
-                <div>
-                  <p className="result-label">Heat Risk</p>
-                  <h3>{predictionResult.prediction.heat_risk}</h3>
-                </div>
-                <div className="confidence-pill">{predictionResult.prediction.confidence}% confidence</div>
-              </div>
-              <p>{predictionResult.prediction.explanation}</p>
-            </div>
-          ) : null}
+          )}
+          <div className="dashboard">
+            <TemperatureCard
+              temperature={loading ? "Loading..." : weather?.temperature}
+              weatherDescription={weather?.weather_description || weather?.description}
+              errorMessage={weatherError}
+            />
+            <ElNinoCard elNinoStatus={loading ? "Loading..." : weather?.el_nino_status} />
+            <HumidityCard humidity={loading ? "Loading..." : weather?.humidity} errorMessage={weatherError} />
+            <RainfallCard rainfall={loading ? "Loading..." : weather?.rainfall} />
+            <WindSpeedCard windSpeed={loading ? "Loading..." : weather?.wind_speed} errorMessage={weatherError} />
+            <HeatRiskCard heatRisk={loading ? "Loading..." : weather?.heat_risk} />
+            <HeatAlert />
+            <LSTCard lst={loading ? "Loading..." : satellite?.land_surface_temperature} />
+            <HeatIntensityCard heatIntensity={loading ? "Loading..." : satellite?.heat_intensity_level} />
+            <ThermalAnomalyCard thermalAnomaly={loading ? "Loading..." : satellite?.thermal_anomaly} />
+            <SatelliteSourceCard satelliteSource={loading ? "Loading..." : satellite?.satellite_source} />
+            <AlertRecommendationCard recommendation={loading ? "Loading..." : satellite?.recommendation} />
+          </div>
         </section>
 
-        <div className="dashboard">
-          {satelliteError ? <div className="prediction-error">{satelliteError}</div> : null}
+        {/* ── HEAT RISK PREDICTION ── */}
+        <section className="section">
+          <h2 className="section-title">🤖 Heat Risk Prediction</h2>
+          <div className="prediction-panel">
+            <div className="prediction-panel-header">
+              <div>
+                <p className="eyebrow">Live forecasting</p>
+                <h2>Predict Heat Risk</h2>
+              </div>
+              <div className="prediction-badge">Flask API • ML Model</div>
+            </div>
 
-          <TemperatureCard
-            temperature={loading ? "Loading..." : weather?.temperature}
-            weatherDescription={weather?.weather_description || weather?.description}
-            errorMessage={weatherError}
-          />
-          <ElNinoCard elNinoStatus={loading ? "Loading..." : weather?.el_nino_status} />
-          <HumidityCard humidity={loading ? "Loading..." : weather?.humidity} errorMessage={weatherError} />
-          <RainfallCard rainfall={loading ? "Loading..." : weather?.rainfall} />
-          <WindSpeedCard windSpeed={loading ? "Loading..." : weather?.wind_speed} errorMessage={weatherError} />
-          <HeatRiskCard heatRisk={loading ? "Loading..." : weather?.heat_risk} />
+            <form className="prediction-form" onSubmit={handlePredict}>
+              <div className="input-grid">
+                <label className="prediction-field">
+                  <span>Temperature (°C)</span>
+                  <input type="number" name="temperature" value={predictionForm.temperature} onChange={handleInputChange} min="-50" max="60" step="0.1" />
+                </label>
+                <label className="prediction-field">
+                  <span>Humidity (%)</span>
+                  <input type="number" name="humidity" value={predictionForm.humidity} onChange={handleInputChange} min="0" max="100" step="0.1" />
+                </label>
+                <label className="prediction-field">
+                  <span>Rainfall (mm)</span>
+                  <input type="number" name="rainfall" value={predictionForm.rainfall} onChange={handleInputChange} min="0" step="0.1" />
+                </label>
+                <label className="prediction-field">
+                  <span>Wind Speed (km/h)</span>
+                  <input type="number" name="wind_speed" value={predictionForm.wind_speed} onChange={handleInputChange} min="0" step="0.1" />
+                </label>
+              </div>
 
-          <LSTCard lst={loading ? "Loading..." : satellite?.land_surface_temperature} />
-          <HeatIntensityCard heatIntensity={loading ? "Loading..." : satellite?.heat_intensity_level} />
-          <ThermalAnomalyCard thermalAnomaly={loading ? "Loading..." : satellite?.thermal_anomaly} />
-          <SatelliteSourceCard satelliteSource={loading ? "Loading..." : satellite?.satellite_source} />
-          <AlertRecommendationCard recommendation={loading ? "Loading..." : satellite?.recommendation} />
-        </div>
+              <button className="predict-button" type="submit" disabled={predictionLoading}>
+                {predictionLoading ? "Predicting..." : "Predict Heat Risk"}
+              </button>
+            </form>
 
-        <SatellitePanel />
-        <HeatMap />
-        <PredictionGraph />
-        <HeatAlert />
-        <PreventiveMeasures />
-        <SearchLocation />
-        <DownloadReport />
-        <EmergencyContacts />
+            {predictionError ? <div className="prediction-error">{predictionError}</div> : null}
+
+            {predictionResult ? (
+              <div className={`prediction-result ${riskClass}`}>
+                <div className="result-top">
+                  <div>
+                    <p className="result-label">Heat Risk</p>
+                    <h3>{predictionResult.prediction.heat_risk}</h3>
+                  </div>
+                  <div className="confidence-pill">{predictionResult.prediction.confidence}% confidence</div>
+                </div>
+                <p>{predictionResult.prediction.explanation}</p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        {/* ── SATELLITE MONITORING ── */}
+        <section className="section">
+          <h2 className="section-title">🛰️ Satellite Monitoring</h2>
+          <SatellitePanel />
+        </section>
+
+        {/* ── HEAT MAP + PREDICTION GRAPH side by side ── */}
+        <section className="section">
+          <h2 className="section-title">📈 Analytics</h2>
+          <div className="two-col">
+            <HeatMap />
+            <PredictionGraph />
+          </div>
+        </section>
+
+        {/* ── PREVENTIVE MEASURES + EMERGENCY CONTACTS side by side ── */}
+        <section className="section">
+          <h2 className="section-title">🛡️ Safety & Emergency</h2>
+          <div className="two-col">
+            <PreventiveMeasures />
+            <EmergencyContacts />
+          </div>
+        </section>
+
+        {/* ── DOWNLOAD REPORT ── */}
+        <section className="section">
+          <DownloadReport weather={weather} />
+        </section>
+
       </div>
 
       <Footer />

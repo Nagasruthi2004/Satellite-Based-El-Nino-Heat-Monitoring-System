@@ -3,11 +3,19 @@ Flask backend server for weather, satellite, and heat prediction data
 Provides weather, satellite monitoring, and ML-based heat prediction endpoints
 """
 
+import logging
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from weather import fetch_weather
 from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
+
+# Configure logging so weather.py logger output is visible in the Flask console
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Create Flask application
 app = Flask(__name__)
@@ -23,17 +31,35 @@ CORS(
 @app.route("/weather", methods=["GET"])
 def get_weather():
     """
-    Endpoint to fetch weather data for Coimbatore
-    Returns: JSON response with temperature, humidity, etc.
+    Endpoint to fetch weather data for a given city.
+    Query parameter: city (default: Coimbatore)
+    Returns: JSON response with live weather + ML heat risk prediction.
     """
-    weather_data = fetch_weather(city="Coimbatore")
-    
-    if weather_data:
-        return jsonify(weather_data), 200
-    else:
-        return jsonify({
-            "error": "Failed to fetch weather data"
-        }), 500
+    city = request.args.get("city", "Coimbatore").strip()
+    logger.info("/weather called | city=%s", city)
+    weather_data = fetch_weather(city)
+
+    if weather_data is None:
+        logger.error("/weather failed | city=%s | fetch_weather returned None", city)
+        return jsonify({"error": "Unable to fetch weather", "city": city}), 500
+
+    # Replace rule-based heat_risk with ML prediction
+    ml_result = predict_heat_risk(
+        temperature=weather_data["temperature"],
+        humidity=weather_data["humidity"],
+        rainfall=weather_data["rainfall"],
+        wind_speed=weather_data["wind_speed"]
+    )
+    explanation = get_prediction_explanation(ml_result)
+
+    weather_data["heat_risk"]            = ml_result["predicted_risk"]
+    weather_data["heat_risk_confidence"] = round(ml_result["confidence"], 2)
+    weather_data["heat_risk_explanation"] = explanation
+
+    response = jsonify(weather_data)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    return response, 200
 
 
 @app.route("/satellite", methods=["GET"])
