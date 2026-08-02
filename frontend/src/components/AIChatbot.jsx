@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const RISK_WATER = { Low: "2–3L", Medium: "3–4L", High: "4–5L", Critical: "5–6L" };
 const RISK_OUTSIDE = {
@@ -112,7 +112,6 @@ export default function AIChatbot({ weather }) {
 
   const [messages, setMessages] = useState([greeting]);
   const [input, setInput]       = useState("");
-  const bottomRef               = useRef(null);
 
   // Reset greeting when city changes
   useEffect(() => {
@@ -123,11 +122,6 @@ export default function AIChatbot({ weather }) {
         : "Search for a city to get started."} Ask me anything about heat safety!`,
     }]);
   }, [weather?.city]);
-
-  // Auto-scroll
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const send = () => {
     const trimmed = input.trim();
@@ -159,7 +153,6 @@ export default function AIChatbot({ weather }) {
             {msg.role === "user" && <span className="chatbot-avatar">🧑</span>}
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
       <div className="chatbot-input-row">

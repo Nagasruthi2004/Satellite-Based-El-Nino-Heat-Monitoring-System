@@ -1,4 +1,4 @@
-function Navbar() {
+function Navbar({ theme, onToggleTheme }) {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
@@ -14,6 +14,15 @@ function Navbar() {
           <span className="live-dot" />
           Live
         </span>
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={onToggleTheme}
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        >
+          <span aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
+        </button>
       </div>
     </nav>
   );

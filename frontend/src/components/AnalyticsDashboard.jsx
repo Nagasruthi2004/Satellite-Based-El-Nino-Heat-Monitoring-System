@@ -5,10 +5,10 @@ import {
 } from "recharts";
 
 const RISK_COLORS = {
-  Low:      "#16a34a",
-  Medium:   "#d97706",
-  High:     "#dc2626",
-  Critical: "#7f1d1d",
+  Low:      "var(--success)",
+  Medium:   "var(--warning)",
+  High:     "var(--danger)",
+  Critical: "var(--risk-critical)",
 };
 
 function round1(n) { return Math.round(n * 10) / 10; }
@@ -107,12 +107,12 @@ export default function AnalyticsDashboard({ weather }) {
           <p className="analytics-chart-title">🌡️ Temperature Trend (7 Days)</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} />
               <YAxis domain={[tempMin, tempMax]} tick={{ fontSize: 11 }} unit="°C" />
               <Tooltip formatter={(v) => [`${v}°C`, "Temp"]} />
-              <Line type="monotone" dataKey="temp" stroke="#ef4444" strokeWidth={2.5}
-                dot={{ r: 4, fill: "#ef4444" }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="temp" stroke="var(--chart-temperature)" strokeWidth={2.5}
+                dot={{ r: 4, fill: "var(--chart-temperature)" }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -122,11 +122,11 @@ export default function AnalyticsDashboard({ weather }) {
           <p className="analytics-chart-title">💧 Humidity Trend (7 Days)</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} />
               <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
               <Tooltip formatter={(v) => [`${v}%`, "Humidity"]} />
-              <Bar dataKey="humidity" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="humidity" fill="var(--chart-humidity)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -139,7 +139,7 @@ export default function AnalyticsDashboard({ weather }) {
               <Pie data={pieData} dataKey="value" nameKey="name"
                 cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
                 {pieData.map((entry) => (
-                  <Cell key={entry.name} fill={RISK_COLORS[entry.name] || "#94a3b8"} />
+                  <Cell key={entry.name} fill={RISK_COLORS[entry.name] || "var(--chart-label)"} />
                 ))}
               </Pie>
               <Tooltip />

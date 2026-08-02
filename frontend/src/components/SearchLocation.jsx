@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-function SearchLocation({ onCityWeather, onCityError, onFillForm }) {
+function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm }) {
   const [city, setCity] = useState('');
   const [weather, setWeather] = useState(null);
   const [error, setError] = useState('');
@@ -24,6 +24,7 @@ function SearchLocation({ onCityWeather, onCityError, onFillForm }) {
 
       setWeather(data);
       onCityWeather(data);
+      onCitySelected?.(trimmed);
       onCityError('');
       onFillForm({
         temperature: String(data.temperature),

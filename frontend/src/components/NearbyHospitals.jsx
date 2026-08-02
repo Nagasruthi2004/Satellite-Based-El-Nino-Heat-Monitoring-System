@@ -25,7 +25,7 @@ async function queryWithFallback(query) {
   throw new Error('Nearby hospital service is temporarily unavailable.');
 }
 
-function NearbyHospitals({ weather }) {
+function NearbyHospitals({ weather, onAvailabilityChange }) {
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
@@ -35,7 +35,10 @@ function NearbyHospitals({ weather }) {
   const city = weather?.city;
 
   useEffect(() => {
-    if (lat == null || lon == null) return;
+    if (lat == null || lon == null) {
+      onAvailabilityChange?.(false);
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -44,8 +47,15 @@ function NearbyHospitals({ weather }) {
     const query = `[out:json][timeout:25];node["amenity"="hospital"](around:5000,${lat},${lon});out body;`;
 
     queryWithFallback(query)
-      .then((data) => setHospitals(data.elements || []))
-      .catch((err) => setError(err.message))
+      .then((data) => {
+        const foundHospitals = data.elements || [];
+        setHospitals(foundHospitals);
+        onAvailabilityChange?.(foundHospitals.length > 0);
+      })
+      .catch((err) => {
+        setError(err.message);
+        onAvailabilityChange?.(false);
+      })
       .finally(() => setLoading(false));
   }, [lat, lon]);
 

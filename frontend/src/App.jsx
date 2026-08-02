@@ -1,3 +1,6 @@
+import SatelliteTimeMachine from "./components/SatelliteTimeMachine";
+import ElNinoAnalyzer from "./components/ElNinoAnalyzer";
+import SatelliteChangeDetector from "./components/SatelliteChangeDetector";
 import EmailAlert from "./components/EmailAlert";
 import HeatwaveNews from "./components/HeatwaveNews";
 import FavouriteCities from "./components/FavouriteCities";
@@ -17,7 +20,7 @@ import HeatIntensityCard from "./components/HeatIntensityCard";
 import ThermalAnomalyCard from "./components/ThermalAnomalyCard";
 import SatelliteSourceCard from "./components/SatelliteSourceCard";
 import AlertRecommendationCard from "./components/AlertRecommendationCard";
-import SatellitePanel from "./components/SatellitePanel";
+import SatelliteMonitoring from "./components/SatelliteMonitoring";
 import HeatMap from "./components/HeatMap";
 import CompareCities from "./components/CompareCities";
 import PredictionGraph from "./components/PredictionGraph";
@@ -25,16 +28,27 @@ import HeatAlert from "./components/HeatAlert";
 import PreventiveMeasures from "./components/PreventiveMeasures";
 import SearchLocation from "./components/SearchLocation";
 import DownloadReport from "./components/DownloadReport";
+import ResearchReport from "./components/ResearchReport";
 import EmergencyContacts from "./components/EmergencyContacts";
 import NearbyHospitals from "./components/NearbyHospitals";
 import HeatForecast from "./components/HeatForecast";
 import DetectLocation from "./components/DetectLocation";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import FutureCitySimulator from "./components/FutureCitySimulator";
+import HeatwaveEscapeRoute from "./components/HeatwaveEscapeRoute";
+import HeatPreparednessScore from "./components/HeatPreparednessScore";
+import HeatHotspotRanking from "./components/HeatHotspotRanking";
 import AIChatbot from "./components/AIChatbot";
 import Footer from "./components/Footer";
 
+const getSystemTheme = () => window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+const getStoredTheme = () => localStorage.getItem("el-nino-theme");
+
 function App() {
+  const [theme, setTheme] = useState(() => getStoredTheme() || getSystemTheme());
+  const [hasSelectedTheme, setHasSelectedTheme] = useState(() => Boolean(getStoredTheme()));
   const [weather, setWeather] = useState(null);
+  const [selectedCity, setSelectedCity] = useState("");
   const [satellite, setSatellite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [weatherError, setWeatherError] = useState("");
@@ -48,6 +62,25 @@ function App() {
   const [predictionResult, setPredictionResult] = useState(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionError, setPredictionError] = useState("");
+  const [simulatorValues, setSimulatorValues] = useState({ treeCover: 50, waterBodies: 50 });
+  const [hospitalsAvailable, setHospitalsAvailable] = useState(false);
+  const [forecast, setForecast] = useState([]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    if (hasSelectedTheme) localStorage.setItem("el-nino-theme", theme);
+  }, [hasSelectedTheme, theme]);
+
+  useEffect(() => {
+    if (hasSelectedTheme) return undefined;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncTheme = (event) => setTheme(event.matches ? "dark" : "light");
+    mediaQuery.addEventListener("change", syncTheme);
+    return () => mediaQuery.removeEventListener("change", syncTheme);
+  }, [hasSelectedTheme]);
 
   useEffect(() => {
     const fetchWeatherData = async () => {
@@ -125,7 +158,13 @@ function App() {
 
   return (
     <>
-      <Navbar />
+      <Navbar
+        theme={theme}
+        onToggleTheme={() => {
+          setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark");
+          setHasSelectedTheme(true);
+        }}
+      />
 
       {/* ── HERO ── */}
       <section className="hero">
@@ -141,11 +180,13 @@ function App() {
           <div className="hero-search">
             <SearchLocation
               onCityWeather={setWeather}
+              onCitySelected={setSelectedCity}
               onCityError={setWeatherError}
               onFillForm={setPredictionForm}
             />
             <DetectLocation
               onCityWeather={setWeather}
+              onCitySelected={setSelectedCity}
               onCityError={setWeatherError}
               onFillForm={setPredictionForm}
             />
@@ -243,7 +284,7 @@ function App() {
         {/* ── SATELLITE MONITORING ── */}
         <section className="section">
           <h2 className="section-title">🛰️ Satellite Monitoring</h2>
-          <SatellitePanel />
+          <SatelliteMonitoring city={weather?.city} />
         </section>
 
         {/* ── HEAT MAP + PREDICTION GRAPH side by side ── */}
@@ -257,12 +298,35 @@ function App() {
 
         {/* ── AI 7-DAY HEAT FORECAST ── */}
         <section className="section">
-          <HeatForecast weather={weather} />
+          <HeatForecast weather={weather} onForecastChange={setForecast} />
         </section>
 
         {/* ── ANALYTICS DASHBOARD ── */}
         <section className="section">
           <AnalyticsDashboard weather={weather} />
+        </section>
+
+        {/* FUTURE CITY HEAT SIMULATOR */}
+        <section className="section">
+          <FutureCitySimulator currentTemperature={weather?.temperature} onValuesChange={setSimulatorValues} />
+          <HeatwaveEscapeRoute city={selectedCity || weather?.city} />
+          <HeatPreparednessScore
+            heatRisk={predictionResult?.prediction?.heat_risk || weather?.heat_risk}
+            hospitalsAvailable={hospitalsAvailable}
+            simulatorValues={simulatorValues}
+            forecast={forecast}
+          />
+          <HeatHotspotRanking city={weather?.city} currentTemperature={weather?.temperature} />
+        </section>
+
+        <section className="section">
+  <h2 className="section-title">🛰 Satellite Time Machine</h2>
+  <SatelliteTimeMachine />
+  <SatelliteChangeDetector city={weather?.city} />
+</section>
+
+        <section className="section">
+          <ElNinoAnalyzer weather={weather} predictionResult={predictionResult} />
         </section>
 
         {/* ── AI HEATWAVE ASSISTANT ── */}
@@ -288,7 +352,7 @@ function App() {
         {/* ── NEARBY HOSPITALS ── */}
         <section className="section">
           <h2 className="section-title">🏥 Nearby Hospitals</h2>
-          <NearbyHospitals weather={weather} />
+          <NearbyHospitals weather={weather} onAvailabilityChange={setHospitalsAvailable} />
         </section>
 
         {/* ── FAVOURITE CITIES ── */}
@@ -319,6 +383,13 @@ function App() {
         {/* ── DOWNLOAD REPORT ── */}
         <section className="section">
           <DownloadReport weather={weather} />
+          <ResearchReport
+            weather={weather}
+            predictionResult={predictionResult}
+            forecast={forecast}
+            hospitalsAvailable={hospitalsAvailable}
+            simulatorValues={simulatorValues}
+          />
         </section>
 
       </div>

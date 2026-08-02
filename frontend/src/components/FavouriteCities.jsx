@@ -57,7 +57,7 @@ function FavouriteCities({ currentCity, onSelectCity }) {
 
             <button
               className="predict-button"
-              style={{ background: "#dc2626" }}
+              style={{ background: "var(--danger)", color: "var(--on-primary)" }}
               onClick={() => removeFavorite(city)}
             >
               ❌

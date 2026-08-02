@@ -80,6 +80,8 @@ def fetch_weather(city="Coimbatore", retries=3):
                 ),
                 "heat_risk": heat_risk,
                 "el_nino_status": "Monitoring",
+                "lat": data.get("coord", {}).get("lat"),
+                "lon": data.get("coord", {}).get("lon"),
             }
 
         except requests.exceptions.RequestException as error:

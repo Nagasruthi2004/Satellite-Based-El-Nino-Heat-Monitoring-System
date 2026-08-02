@@ -45,7 +45,7 @@ function PredictionGraph({ weather }) {
           <div className="graph-container">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <YAxis
                   domain={[minTemp, maxTemp]}
@@ -55,18 +55,18 @@ function PredictionGraph({ weather }) {
                 />
                 <Tooltip
                   formatter={(value) => [`${value}°C`, 'Temperature']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                  contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '8px', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '13px' }}
                 />
                 <ReferenceLine
                   y={alertLevel}
-                  stroke="#f97316"
+                  stroke="var(--chart-alert)"
                   strokeDasharray="4 4"
                   label={{ value: 'Alert', fill: '#f97316', fontSize: 11 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="temperature"
-                  stroke="#ef4444"
+                  stroke="var(--chart-temperature)"
                   strokeWidth={2.5}
                   dot={{ r: 4, fill: '#ef4444', strokeWidth: 0 }}
                   activeDot={{ r: 6 }}

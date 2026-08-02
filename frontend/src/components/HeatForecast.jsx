@@ -18,28 +18,36 @@ const CONDITION_EMOJI = {
 };
 
 const RISK_STYLE = {
-  High:     { bg: "#fef2f2", color: "#dc2626" },
-  Medium:   { bg: "#fffbeb", color: "#d97706" },
-  Low:      { bg: "#f0fdf4", color: "#16a34a" },
-  Critical: { bg: "#fdf2f8", color: "#7f1d1d" },
+  High:     { bg: "var(--danger-surface)", color: "var(--danger)" },
+  Medium:   { bg: "var(--warning-surface)", color: "var(--warning)" },
+  Low:      { bg: "var(--success-surface)", color: "var(--success)" },
+  Critical: { bg: "var(--danger-surface)", color: "var(--risk-critical)" },
 };
 
-export default function HeatForecast({ weather }) {
+export default function HeatForecast({ weather, onForecastChange }) {
   const [forecast, setForecast] = useState([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
   useEffect(() => {
-    if (!weather?.city) return;
+    if (!weather?.city) {
+      onForecastChange?.([]);
+      return;
+    }
     setLoading(true);
     setError("");
     fetch(`http://127.0.0.1:5000/heatforecast?city=${encodeURIComponent(weather.city)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
-        setForecast(data.forecast || []);
+        const nextForecast = data.forecast || [];
+        setForecast(nextForecast);
+        onForecastChange?.(nextForecast);
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        setError(e.message);
+        onForecastChange?.([]);
+      })
       .finally(() => setLoading(false));
   }, [weather?.city]);
 
@@ -105,16 +113,16 @@ export default function HeatForecast({ weather }) {
           <div className="graph-container" style={{ marginTop: "24px" }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={temps} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                 <YAxis domain={[yMin, yMax]} tick={{ fontSize: 12 }} unit="°C" />
                 <Tooltip formatter={(v) => [`${v}°C`, "Temp"]} />
                 <Line
                   type="monotone"
                   dataKey="temp"
-                  stroke="#ef4444"
+                  stroke="var(--chart-temperature)"
                   strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#ef4444" }}
+                  dot={{ r: 4, fill: "var(--chart-temperature)" }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>

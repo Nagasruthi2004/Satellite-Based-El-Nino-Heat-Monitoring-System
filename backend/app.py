@@ -2,7 +2,7 @@
 Flask backend server for weather, satellite, and heat prediction data
 Provides weather, satellite monitoring, and ML-based heat prediction endpoints
 """
-
+from research_generator import generate_research
 import logging
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -88,6 +88,171 @@ def get_satellite():
         return jsonify({
             "error": f"Failed to fetch satellite data: {str(error)}"
         }), 500
+
+
+@app.route("/forecast", methods=["GET"])
+def get_forecast():
+    """
+    Returns a 5-day daily average temperature forecast for a city.
+    Calls the OpenWeather 5-day/3-hour forecast API and averages readings per day.
+    Query parameter: city (default: Coimbatore)
+    """
+    import os, requests
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+
+    city = request.args.get("city", "Coimbatore").strip()
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+
+    if not api_key:
+        return jsonify({"error": "OPENWEATHER_API_KEY not configured"}), 500
+
+    try:
+        resp = requests.get(
+            "https://api.openweathermap.org/data/2.5/forecast",
+            params={"q": city, "appid": api_key, "units": "metric"},
+            timeout=10,
+        )
+        if resp.status_code == 404:
+            return jsonify({"error": "City not found"}), 404
+        resp.raise_for_status()
+        entries = resp.json().get("list", [])
+    except requests.exceptions.RequestException as err:
+        logger.error("Forecast fetch failed | city=%s | error=%s", city, err)
+        return jsonify({"error": "Unable to fetch forecast"}), 500
+
+    # Group 3-hour readings by date and average the temperature
+    from collections import defaultdict
+    daily = defaultdict(list)
+    for entry in entries:
+        date = entry["dt_txt"].split(" ")[0]   # "YYYY-MM-DD"
+        daily[date].append(entry["main"]["temp"])
+
+    forecast = [
+        {"day": f"Day {i + 1}", "temperature": round(sum(temps) / len(temps), 1)}
+        for i, (_, temps) in enumerate(sorted(daily.items())[:5])
+    ]
+
+    return jsonify({"city": city, "forecast": forecast}), 200
+
+
+@app.route("/heatforecast", methods=["GET"])
+def get_heat_forecast():
+    """
+    Returns a 7-day AI heat risk forecast for a city.
+    Days 1-5 use real OpenWeather forecast temps; days 6-7 are extrapolated.
+    Each day's heat risk is predicted by the ML model.
+    """
+    import os, requests
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+
+    city = request.args.get("city", "Coimbatore").strip()
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+
+    if not api_key:
+        return jsonify({"error": "OPENWEATHER_API_KEY not configured"}), 500
+
+    try:
+        resp = requests.get(
+            "https://api.openweathermap.org/data/2.5/forecast",
+            params={"q": city, "appid": api_key, "units": "metric"},
+            timeout=10,
+        )
+        if resp.status_code == 404:
+            return jsonify({"error": "City not found"}), 404
+        resp.raise_for_status()
+        raw = resp.json()
+    except requests.exceptions.RequestException as err:
+        logger.error("HeatForecast fetch failed | city=%s | error=%s", city, err)
+        return jsonify({"error": "Unable to fetch forecast"}), 500
+
+    from collections import defaultdict
+    from datetime import datetime, timedelta
+
+    # Group all 3-hour slots by date
+    slots = defaultdict(list)
+    for entry in raw.get("list", []):
+        date = entry["dt_txt"].split(" ")[0]
+        slots[date].append(entry)
+
+    def avg(lst): return sum(lst) / len(lst) if lst else 0
+
+    def pick_slot(entries):
+        """Return the noon slot, or the one closest to 12:00."""
+        for e in entries:
+            if "12:00:00" in e["dt_txt"]:
+                return e
+        return min(entries, key=lambda e: abs(int(e["dt_txt"][11:13]) - 12))
+
+    sorted_dates = sorted(slots.keys())[:5]
+    days_data = []
+    for d in sorted_dates:
+        rep = pick_slot(slots[d])
+        days_data.append({
+            "date":      d,
+            "temp":      round(rep["main"]["temp"], 1),
+            "humidity":  round(avg([e["main"]["humidity"] for e in slots[d]]), 1),
+            "wind":      round(avg([e["wind"]["speed"] * 3.6 for e in slots[d]]), 1),
+            "rainfall":  round(avg([e.get("rain", {}).get("3h", 0) for e in slots[d]]), 1),
+            "condition": rep["weather"][0]["main"],
+        })
+
+    # Linear trend over all 5 days for extrapolation
+    n = len(days_data)
+    if n >= 2:
+        xs = list(range(n))
+        ys = [d["temp"] for d in days_data]
+        x_mean = sum(xs) / n
+        y_mean = sum(ys) / n
+        slope = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys)) / \
+                sum((x - x_mean) ** 2 for x in xs)
+    else:
+        slope = 0
+
+    last_date = datetime.strptime(days_data[-1]["date"], "%Y-%m-%d") if days_data else datetime.today()
+    for i in range(1, 3):
+        extra_temp = round(days_data[-1]["temp"] + slope * i, 1)
+        extra_hum  = max(0, min(100, round(days_data[-1]["humidity"] + (days_data[-1]["humidity"] - days_data[0]["humidity"]) / max(n - 1, 1) * i, 1)))
+        extra_wind = round(max(0, days_data[-1]["wind"] + (days_data[-1]["wind"] - days_data[0]["wind"]) / max(n - 1, 1) * i), 1)
+        if extra_temp >= 35:
+            cond = "Clear"
+        elif extra_temp >= 25:
+            cond = "Partly Cloudy"
+        else:
+            cond = "Cloudy"
+        days_data.append({
+            "date":      (last_date + timedelta(days=i)).strftime("%Y-%m-%d"),
+            "temp":      extra_temp,
+            "humidity":  extra_hum,
+            "wind":      extra_wind,
+            "rainfall":  0,
+            "condition": cond,
+            "predicted": True,
+        })
+
+    forecast = []
+    for i, d in enumerate(days_data[:7]):
+        ml = predict_heat_risk(
+            temperature=d["temp"],
+            humidity=d["humidity"],
+            rainfall=d["rainfall"],
+            wind_speed=d["wind"],
+        )
+        forecast.append({
+            "day":         f"Day {i + 1}",
+            "date":        d["date"],
+            "temperature": d["temp"],
+            "humidity":    d["humidity"],
+            "wind_speed":  d["wind"],
+            "rainfall":    d["rainfall"],
+            "condition":   d["condition"],
+            "predicted":   d.get("predicted", False),
+            "heat_risk":   ml["predicted_risk"],
+            "confidence":  round(ml["confidence"], 1),
+        })
+
+    return jsonify({"city": city, "forecast": forecast}), 200
 
 
 @app.route("/predict", methods=["GET", "POST"])
@@ -188,6 +353,23 @@ def home():
         }
     }), 200
 
+@app.route("/research", methods=["POST"])
+def research():
+
+    data = request.json
+
+    result = generate_research(
+        data["city"],
+        data["temperature"],
+        data["humidity"],
+        data["rainfall"],
+        data["wind_speed"],
+        data["heat_risk"]
+    )
+
+    return jsonify({
+        "research": result
+    })
 
 if __name__ == "__main__":
     # Run Flask server on localhost:5000

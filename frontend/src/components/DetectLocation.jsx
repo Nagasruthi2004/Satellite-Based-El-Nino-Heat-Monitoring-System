@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function DetectLocation({ onCityWeather, onCityError, onFillForm }) {
+export default function DetectLocation({ onCityWeather, onCitySelected, onCityError, onFillForm }) {
   const [loading, setLoading] = useState(false);
 
   const detect = () => {
@@ -35,6 +35,7 @@ export default function DetectLocation({ onCityWeather, onCityError, onFillForm 
           if (!wxResp.ok) throw new Error(wxData.error || "Unable to fetch weather.");
 
           onCityWeather(wxData);
+          onCitySelected?.(wxData.city || "");
           onFillForm({
             temperature: String(wxData.temperature ?? ""),
             humidity:    String(wxData.humidity    ?? ""),
