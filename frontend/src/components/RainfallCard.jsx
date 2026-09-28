@@ -6,7 +6,7 @@ function RainfallCard({ rainfall }) {
       <div className="card-icon">🌧️</div>
       <div className="card-content">
         <h3>Rainfall</h3>
-        <p className="card-value">{rainfall === "Loading..." ? "Loading..." : `${rainfall ?? 12} mm`}</p>
+        <p className="card-value">{rainfall === "Loading..." ? "Loading..." : rainfall == null ? "Not available" : `${rainfall} mm`}</p>
       </div>
     </div>
   );

@@ -11,33 +11,60 @@ const RISK_COLORS = {
   Critical: "var(--risk-critical)",
 };
 
+function normalizeRisk(risk) {
+  const normalized = String(risk ?? "").trim().toLowerCase();
+  if (normalized === "critical" || normalized === "extreme") return "Critical";
+  if (normalized === "high") return "High";
+  if (normalized === "medium") return "Medium";
+  if (normalized === "low") return "Low";
+  return null;
+}
+
 function round1(n) { return Math.round(n * 10) / 10; }
 function avg(arr)  { return arr.length ? round1(arr.reduce((a, b) => a + b, 0) / arr.length) : 0; }
 
-export default function AnalyticsDashboard({ weather }) {
+export default function AnalyticsDashboard({ weather, currentHeatRisk }) {
   const [forecast, setForecast] = useState([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
   useEffect(() => {
-    if (!weather?.city) return;
-    setLoading(true);
+    const city = weather?.city?.trim();
+    setForecast([]);
     setError("");
-    fetch(`http://127.0.0.1:5000/heatforecast?city=${encodeURIComponent(weather.city)}`)
+    if (!city) return undefined;
+
+    const controller = new AbortController();
+    let active = true;
+    setLoading(true);
+    fetch(`http://127.0.0.1:5000/heatforecast?city=${encodeURIComponent(city)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
+        if (!active) return;
         setForecast(data.forecast || []);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e) => {
+        if (active && e.name !== "AbortError") setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [weather?.city]);
 
   if (!weather?.city) {
     return (
       <div className="card">
         <h2 className="section-title">📊 Analytics Dashboard</h2>
-        <p className="hospitals-hint">Search for a city to see analytics.</p>
+        <p className="status-hint">Search for a city to see analytics.</p>
       </div>
     );
   }
@@ -45,7 +72,7 @@ export default function AnalyticsDashboard({ weather }) {
   if (loading) return (
     <div className="card">
       <h2 className="section-title">📊 Analytics Dashboard</h2>
-      <p className="hospitals-hint">Loading analytics…</p>
+      <p className="status-hint">Loading analytics…</p>
     </div>
   );
 
@@ -72,7 +99,8 @@ export default function AnalyticsDashboard({ weather }) {
 
   // Pie chart: count heat risk occurrences
   const riskCount = {};
-  forecast.forEach((d) => { riskCount[d.heat_risk] = (riskCount[d.heat_risk] || 0) + 1; });
+  const currentRisk = normalizeRisk(currentHeatRisk?.level);
+  if (currentRisk) riskCount[currentRisk] = 1;
   const pieData = Object.entries(riskCount).map(([name, value]) => ({ name, value }));
 
   const chartData = forecast.map((d) => ({

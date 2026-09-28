@@ -9,6 +9,12 @@ function HeatRecommendation({ risk }) {
       "Use sunscreen and cap",
       "Heatstroke Risk: High"
     ],
+    Critical: [
+      "Stay indoors and avoid non-essential outdoor activity",
+      "Drink water regularly and use air conditioning or a fan",
+      "Check on vulnerable residents and seek medical help for heatstroke symptoms",
+      "Heatstroke Risk: Critical"
+    ],
     Medium: [
       "Drink enough water",
       "Avoid long outdoor exposure",

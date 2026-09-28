@@ -2,7 +2,7 @@ import React from "react";
 
 function HumidityCard({ humidity, errorMessage }) {
   const displayValue = errorMessage
-    ? "Unable to fetch weather data"
+    ? "Unable to fetch weather data for this location."
     : humidity === "Loading..."
       ? "Loading..."
       : `${humidity ?? 58}%`;

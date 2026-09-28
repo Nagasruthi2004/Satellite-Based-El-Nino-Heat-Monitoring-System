@@ -18,13 +18,15 @@ BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 logger = logging.getLogger(__name__)
 
 
-def fetch_weather(city="Coimbatore", retries=3):
+def fetch_weather(city="Coimbatore", lat=None, lon=None, retries=3):
     """
-    Fetch current weather data for a given city using OpenWeather API.
+    Fetch current weather data for a given city or (lat, lon) coordinates using OpenWeather API.
     Retries up to `retries` times on transient network errors.
 
     Args:
         city (str): City name (default: "Coimbatore")
+        lat (float, optional): Latitude coordinate
+        lon (float, optional): Longitude coordinate
         retries (int): Max retry attempts on transient failures (default: 3)
 
     Returns:
@@ -36,40 +38,40 @@ def fetch_weather(city="Coimbatore", retries=3):
         logger.error("OPENWEATHER_API_KEY is missing or empty — check your .env file")
         return None
 
-    params = {"q": city, "appid": api_key, "units": "metric"}
+    if lat is not None and lon is not None:
+        params = {"lat": lat, "lon": lon, "appid": api_key, "units": "metric"}
+        logger.info("Requesting weather by coordinates | lat=%s | lon=%s | url=%s", lat, lon, BASE_URL)
+    else:
+        params = {"q": city, "appid": api_key, "units": "metric"}
+        logger.info("Requesting weather by city | city=%s | url=%s", city, BASE_URL)
+
     url = BASE_URL
-    logger.info("Requesting weather | city=%s | url=%s", city, url)
 
     last_error = None
+    timeout_retried = False
     for attempt in range(1, retries + 1):
         try:
             response = requests.get(url, params=params, timeout=10)
-            logger.info("OpenWeather response | city=%s | status=%d | attempt=%d",
-                        city, response.status_code, attempt)
+            logger.info("OpenWeather response | params=%s | status=%d | attempt=%d",
+                        params.get("q") or f"lat={lat},lon={lon}", response.status_code, attempt)
 
             if response.status_code == 404:
-                logger.warning("City not found: %s", city)
+                logger.warning("Weather not found for: %s", params.get("q") or f"{lat},{lon}")
                 return None
 
             response.raise_for_status()
 
             data = response.json()
 
-            temperature = data.get("main", {}).get("temp") or 0
+            temperature = data.get("main", {}).get("temp")
             rain_data = data.get("rain")
             rainfall = 0
             if isinstance(rain_data, dict):
                 rainfall = rain_data.get("1h", rain_data.get("3h", 0))
 
-            if temperature < 30:
-                heat_risk = "Low"
-            elif temperature < 36:
-                heat_risk = "Medium"
-            else:
-                heat_risk = "High"
-
+            resolved_name = data.get("name") or city or "Selected Location"
             return {
-                "city": data.get("name", city),
+                "city": resolved_name,
                 "temperature": temperature,
                 "humidity": data.get("main", {}).get("humidity"),
                 "wind_speed": data.get("wind", {}).get("speed"),
@@ -78,12 +80,18 @@ def fetch_weather(city="Coimbatore", retries=3):
                     data.get("weather", [{}])[0].get("description")
                     or data.get("weather", [{}])[0].get("main")
                 ),
-                "heat_risk": heat_risk,
                 "el_nino_status": "Monitoring",
-                "lat": data.get("coord", {}).get("lat"),
-                "lon": data.get("coord", {}).get("lon"),
+                "lat": data.get("coord", {}).get("lat", lat),
+                "lon": data.get("coord", {}).get("lon", lon),
             }
 
+        except requests.exceptions.Timeout as error:
+            last_error = error
+            if timeout_retried:
+                logger.warning("Timeout retry exhausted for city=%s", city)
+                break
+            timeout_retried = True
+            logger.warning("Temporary timeout; retrying once for city=%s", city)
         except requests.exceptions.RequestException as error:
             last_error = error
             logger.warning("Attempt %d/%d failed for city=%s | error=%s",

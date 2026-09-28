@@ -6,35 +6,27 @@ load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+
 def generate_research(city, temp, humidity, rainfall, wind, risk):
-
     prompt = f"""
-Generate an IEEE-style research abstract.
+Create a concise, professional AI Climate Report for the Satellite-Based El Niño Heat Monitoring System.
 
-Title:
-Satellite-Based El Niño Heat Monitoring System
-
-City: {city}
-
+Selected Location: {city}
 Temperature: {temp}°C
-
 Humidity: {humidity}%
-
 Rainfall: {rainfall} mm
-
 Wind Speed: {wind} m/s
-
 Heat Risk: {risk}
 
-Generate:
+Use clear, practical language and include these sections:
+1. Current Weather Summary
+2. Heat Risk Analysis
+3. El Niño Analysis
+4. Climate Insights
+5. Safety Recommendations
+6. Conclusion
 
-1. Title
-2. Abstract
-3. Keywords
-4. Conclusion
-5. Government Policy Recommendation
-
-Limit to 500 words.
+Keep the response under 500 words.
 """
 
     response = client.models.generate_content(

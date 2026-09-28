@@ -1,11 +1,14 @@
 import React from "react";
+import { formatWindSpeedKmh } from "../utils/wind";
 
 function WindSpeedCard({ windSpeed, errorMessage }) {
   const displayValue = errorMessage
-    ? "Unable to fetch weather data"
+    ? "Unable to fetch weather data for this location."
     : windSpeed === "Loading..."
       ? "Loading..."
-      : `${windSpeed ?? 14} km/h`;
+      : windSpeed == null
+        ? "—"
+        : `${formatWindSpeedKmh(windSpeed)} km/h`;
 
   return (
     <div className="weather-card windspeed-card">

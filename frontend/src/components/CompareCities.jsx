@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { formatWindSpeedKmh } from '../utils/wind';
 
 const ROWS = [
   { label: 'Temperature',        key: 'temperature',          unit: '°C' },
   { label: 'Humidity',           key: 'humidity',             unit: '%'  },
   { label: 'Rainfall',           key: 'rainfall',             unit: ' mm'},
-  { label: 'Wind Speed',         key: 'wind_speed',           unit: ' m/s'},
+  { label: 'Wind Speed',         key: 'wind_speed',           unit: ' km/h'},
   { label: 'Weather Condition',  key: 'weather_description',  unit: ''   },
   { label: 'Heat Risk',          key: 'heat_risk',            unit: ''   },
   { label: 'Heat Risk Confidence', key: 'heat_risk_confidence', unit: '%'},
@@ -143,12 +144,12 @@ function CompareCities() {
                     <td className={hl.a}>
                       {isRisk
                         ? <span className={riskClass(valA)}>{valA ?? '—'}</span>
-                        : `${valA ?? '—'}${valA != null ? unit : ''}`}
+                        : `${key === 'wind_speed' ? formatWindSpeedKmh(valA) : valA ?? '—'}${valA != null ? unit : ''}`}
                     </td>
                     <td className={hl.b}>
                       {isRisk
                         ? <span className={riskClass(valB)}>{valB ?? '—'}</span>
-                        : `${valB ?? '—'}${valB != null ? unit : ''}`}
+                        : `${key === 'wind_speed' ? formatWindSpeedKmh(valB) : valB ?? '—'}${valB != null ? unit : ''}`}
                     </td>
                   </tr>
                 );

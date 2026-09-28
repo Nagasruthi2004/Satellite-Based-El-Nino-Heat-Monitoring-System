@@ -6,7 +6,7 @@ function ThermalAnomalyCard({ thermalAnomaly }) {
     if (typeof anomaly === "boolean") {
       return anomaly ? "🚨 Detected" : "✅ Normal";
     }
-    return String(anomaly);
+    return anomaly || "Not available";
   };
 
   return (

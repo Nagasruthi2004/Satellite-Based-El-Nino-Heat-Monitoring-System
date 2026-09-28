@@ -17,7 +17,7 @@ function preparednessScore(risk) {
   return 88;
 }
 
-export default function ElNinoAnalyzer({ weather, predictionResult }) {
+export default function ElNinoAnalyzer({ weather, predictionResult, currentHeatRisk }) {
   const [selectedYear, setSelectedYear] = useState(2024);
   const data = useMemo(() => oniData[selectedYear] || [], [selectedYear]);
   const summary = useMemo(() => {
@@ -27,7 +27,7 @@ export default function ElNinoAnalyzer({ weather, predictionResult }) {
     const average = values.reduce((total, value) => total + value, 0) / values.length;
     return { maximum, minimum, average, highest: data.find(({ oni }) => oni === maximum), lowest: data.find(({ oni }) => oni === minimum) };
   }, [data]);
-  const heatRisk = predictionResult?.prediction?.heat_risk || weather?.heat_risk || "Not available";
+  const heatRisk = currentHeatRisk?.level || "Not available";
   const temperature = Number(weather?.temperature);
   const hasTemperature = Number.isFinite(temperature);
   const referencePeak = 2.2;

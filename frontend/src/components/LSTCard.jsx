@@ -6,7 +6,7 @@ function LSTCard({ lst }) {
       <div className="card-icon">🛰️</div>
       <div className="card-content">
         <h3>Land Surface Temperature</h3>
-        <p className="card-value">{lst === "Loading..." ? "Loading..." : `${lst ?? 42.5}°C`}</p>
+        <p className="card-value">{lst === "Loading..." ? "Loading..." : Number.isFinite(Number(lst)) ? `${Number(lst).toFixed(1)}°C` : "Not available"}</p>
       </div>
     </div>
   );

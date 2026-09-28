@@ -2,13 +2,19 @@
 Flask backend server for weather, satellite, and heat prediction data
 Provides weather, satellite monitoring, and ML-based heat prediction endpoints
 """
-from research_generator import generate_research
+try:
+    from research_generator import generate_research
+except ImportError:
+    generate_research = None
+
 import logging
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from weather import fetch_weather
 from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
+from heat_risk import classify_current_heat_risk, classify_forecast_heat_risk
+from email_service import send_heat_alert_subscription_email, is_valid_email
 
 # Configure logging so weather.py logger output is visible in the Flask console
 logging.basicConfig(
@@ -16,6 +22,12 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+REGION_ONLY_SEARCHES = {
+    "india", "tamil nadu", "andhra pradesh", "karnataka", "kerala",
+    "telangana", "maharashtra", "punjab", "rajasthan",
+    "united states", "united kingdom", "australia", "canada",
+}
 
 # Create Flask application
 app = Flask(__name__)
@@ -35,24 +47,83 @@ def get_weather():
     Query parameter: city (default: Coimbatore)
     Returns: JSON response with live weather + ML heat risk prediction.
     """
-    city = request.args.get("city", "Coimbatore").strip()
-    logger.info("/weather called | city=%s", city)
-    weather_data = fetch_weather(city)
+    requested_city = request.args.get("city", "").strip()
+    if requested_city and requested_city.casefold() in REGION_ONLY_SEARCHES:
+        return jsonify({"error": "Please enter a city name."}), 400
+
+    raw_candidates = request.args.getlist("city_candidates")
+    if requested_city:
+        raw_candidates = [requested_city] + raw_candidates
+    elif not raw_candidates and (request.args.get("latitude") is None or request.args.get("longitude") is None):
+        raw_candidates = ["Coimbatore"]
+
+    invalid_names = {"unavailable", "null", "undefined"}
+    candidates = list(dict.fromkeys(
+        candidate.strip()
+        for candidate in raw_candidates
+        if candidate
+        and candidate.strip()
+        and candidate.strip().lower() not in invalid_names
+        and not candidate.strip().lower().startswith("ward ")
+    ))
+    logger.info(
+        "/weather called | latitude=%s | longitude=%s | detailed_location=%s | candidates=%s",
+        request.args.get("latitude"),
+        request.args.get("longitude"),
+        request.args.get("detailed_location"),
+        candidates,
+    )
+    latitude = request.args.get("latitude")
+    longitude = request.args.get("longitude")
+
+    if not candidates and (latitude is None or longitude is None):
+        return jsonify({"error": "A valid city or town is required"}), 400
+
+    city = candidates[0] if candidates else "Selected Location"
+    weather_data = None
+    for candidate in candidates:
+        weather_data = fetch_weather(candidate)
+        if weather_data is not None:
+            city = candidate
+            logger.info("Resolved weather city used | city=%s", city)
+            break
+
+    if weather_data is None and latitude is not None and longitude is not None:
+        try:
+            weather_data = fetch_weather(lat=float(latitude), lon=float(longitude))
+            if weather_data is not None:
+                city = weather_data.get("city") or city
+                logger.info("Resolved weather coordinate used | lat=%s | lon=%s | city=%s", latitude, longitude, city)
+        except (ValueError, TypeError) as coord_err:
+            logger.warning("Coordinate weather fallback failed: %s", coord_err)
 
     if weather_data is None:
         logger.error("/weather failed | city=%s | fetch_weather returned None", city)
         return jsonify({"error": "Unable to fetch weather", "city": city}), 500
 
-    # Replace rule-based heat_risk with ML prediction
+    current_heat_risk = classify_current_heat_risk(
+        temperature=weather_data.get("temperature"),
+        humidity=weather_data.get("humidity"),
+        rainfall=weather_data.get("rainfall"),
+        wind_speed=weather_data.get("wind_speed"),
+    )
+    if current_heat_risk is None:
+        return jsonify({"error": "Current heat risk unavailable"}), 503
+
     ml_result = predict_heat_risk(
         temperature=weather_data["temperature"],
         humidity=weather_data["humidity"],
         rainfall=weather_data["rainfall"],
-        wind_speed=weather_data["wind_speed"]
+        wind_speed=weather_data["wind_speed"] * 3.6
     )
-    explanation = get_prediction_explanation(ml_result)
+    explanation = get_prediction_explanation({
+        "predicted_risk": current_heat_risk["level"],
+        "confidence": ml_result["confidence"],
+    })
 
-    weather_data["heat_risk"]            = ml_result["predicted_risk"]
+    weather_data["heat_risk"]            = current_heat_risk["level"]
+    weather_data["heat_risk_score"]      = current_heat_risk["score"]
+    weather_data["current_heat_risk"]    = current_heat_risk
     weather_data["heat_risk_confidence"] = round(ml_result["confidence"], 2)
     weather_data["heat_risk_explanation"] = explanation
 
@@ -69,8 +140,16 @@ def get_satellite():
     Returns: JSON response with LST, heat intensity, thermal anomalies, etc.
     """
     try:
-        satellite_data = get_satellite_data(location="Coimbatore")
-        alert_data = get_satellite_alert(location="Coimbatore")
+        city = request.args.get("city", "Coimbatore").strip() or "Coimbatore"
+        environment = {
+            "temperature": request.args.get("temperature"),
+            "humidity": request.args.get("humidity"),
+            "rainfall": request.args.get("rainfall"),
+            "wind_speed": request.args.get("wind_speed"),
+            "heat_risk": request.args.get("heat_risk"),
+        }
+        satellite_data = get_satellite_data(location=city, **environment)
+        alert_data = get_satellite_alert(location=city, **environment)
         
         return jsonify({
             "location": satellite_data["location"],
@@ -88,52 +167,6 @@ def get_satellite():
         return jsonify({
             "error": f"Failed to fetch satellite data: {str(error)}"
         }), 500
-
-
-@app.route("/forecast", methods=["GET"])
-def get_forecast():
-    """
-    Returns a 5-day daily average temperature forecast for a city.
-    Calls the OpenWeather 5-day/3-hour forecast API and averages readings per day.
-    Query parameter: city (default: Coimbatore)
-    """
-    import os, requests
-    from dotenv import load_dotenv
-    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
-
-    city = request.args.get("city", "Coimbatore").strip()
-    api_key = os.getenv("OPENWEATHER_API_KEY")
-
-    if not api_key:
-        return jsonify({"error": "OPENWEATHER_API_KEY not configured"}), 500
-
-    try:
-        resp = requests.get(
-            "https://api.openweathermap.org/data/2.5/forecast",
-            params={"q": city, "appid": api_key, "units": "metric"},
-            timeout=10,
-        )
-        if resp.status_code == 404:
-            return jsonify({"error": "City not found"}), 404
-        resp.raise_for_status()
-        entries = resp.json().get("list", [])
-    except requests.exceptions.RequestException as err:
-        logger.error("Forecast fetch failed | city=%s | error=%s", city, err)
-        return jsonify({"error": "Unable to fetch forecast"}), 500
-
-    # Group 3-hour readings by date and average the temperature
-    from collections import defaultdict
-    daily = defaultdict(list)
-    for entry in entries:
-        date = entry["dt_txt"].split(" ")[0]   # "YYYY-MM-DD"
-        daily[date].append(entry["main"]["temp"])
-
-    forecast = [
-        {"day": f"Day {i + 1}", "temperature": round(sum(temps) / len(temps), 1)}
-        for i, (_, temps) in enumerate(sorted(daily.items())[:5])
-    ]
-
-    return jsonify({"city": city, "forecast": forecast}), 200
 
 
 @app.route("/heatforecast", methods=["GET"])
@@ -233,6 +266,13 @@ def get_heat_forecast():
 
     forecast = []
     for i, d in enumerate(days_data[:7]):
+        forecast_inputs = {
+            "temperature": d["temp"],
+            "humidity": d["humidity"],
+            "rainfall": d["rainfall"],
+            "wind_speed": d["wind"],
+        }
+        forecast_risk = classify_forecast_heat_risk(forecast_inputs)
         ml = predict_heat_risk(
             temperature=d["temp"],
             humidity=d["humidity"],
@@ -248,7 +288,8 @@ def get_heat_forecast():
             "rainfall":    d["rainfall"],
             "condition":   d["condition"],
             "predicted":   d.get("predicted", False),
-            "heat_risk":   ml["predicted_risk"],
+            "heat_risk":   forecast_risk["level"] if forecast_risk else None,
+            "heat_risk_score": forecast_risk["score"] if forecast_risk else None,
             "confidence":  round(ml["confidence"], 1),
         })
 
@@ -289,6 +330,18 @@ def predict():
             humidity = request.args.get("humidity", type=float)
             rainfall = request.args.get("rainfall", type=float)
             wind_speed = request.args.get("wind_speed", type=float)
+
+        try:
+            temperature = float(temperature)
+            humidity = float(humidity)
+            rainfall = float(rainfall)
+            wind_speed = float(wind_speed)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Heat risk prediction unavailable"}), 400
+
+        import math
+        if not all(math.isfinite(value) for value in (temperature, humidity, rainfall, wind_speed)):
+            return jsonify({"error": "Heat risk prediction unavailable"}), 400
         
         # Validate input parameters
         if temperature is None or humidity is None or rainfall is None or wind_speed is None:
@@ -355,21 +408,64 @@ def home():
 
 @app.route("/research", methods=["POST"])
 def research():
-
-    data = request.json
-
+    if generate_research is None:
+        return jsonify({"error": "AI Research generator service is unavailable."}), 503
+    data = request.json or {}
     result = generate_research(
-        data["city"],
-        data["temperature"],
-        data["humidity"],
-        data["rainfall"],
-        data["wind_speed"],
-        data["heat_risk"]
+        data.get("city", "Coimbatore"),
+        data.get("temperature", 0),
+        data.get("humidity", 0),
+        data.get("rainfall", 0),
+        data.get("wind_speed", 0),
+        data.get("heat_risk", "Low")
     )
+    return jsonify({"research": result})
 
-    return jsonify({
-        "research": result
-    })
+
+@app.route("/subscribe", methods=["POST"])
+@app.route("/subscribe-alert", methods=["POST"])
+def subscribe_alert():
+    """
+    Endpoint to register an email address for heat alerts.
+    Sends a real confirmation email using SMTP (Gmail).
+    Accepts JSON body:
+        {
+            "email": "user@example.com",
+            "city": "Coimbatore"
+        }
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip()
+        city = (data.get("city") or "Coimbatore").strip() or "Coimbatore"
+
+        if not email:
+            return jsonify({"error": "Email address is required."}), 400
+
+        if not is_valid_email(email):
+            return jsonify({"error": "Please enter a valid email address."}), 400
+
+        logger.info("Processing heat alert subscription | email=%s | city=%s", email, city)
+        success, message = send_heat_alert_subscription_email(to_email=email, city=city)
+
+        if not success:
+            logger.error("Failed to send subscription email to %s: %s", email, message)
+            return jsonify({
+                "error": "Unable to send email. Please try again.",
+                "details": message
+            }), 500
+
+        return jsonify({
+            "status": "success",
+            "message": "Email Alert Registered Successfully",
+            "email": email,
+            "city": city
+        }), 200
+
+    except Exception as exc:
+        logger.error("Unexpected error in /subscribe: %s", exc)
+        return jsonify({"error": "Unable to send email. Please try again."}), 500
+
 
 if __name__ == "__main__":
     # Run Flask server on localhost:5000

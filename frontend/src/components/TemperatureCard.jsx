@@ -2,7 +2,7 @@ import React from "react";
 
 function TemperatureCard({ temperature, weatherDescription, errorMessage }) {
   const displayValue = errorMessage
-    ? "Unable to fetch weather data"
+    ? "Unable to fetch weather data for this location."
     : temperature === "Loading..."
       ? "Loading..."
       : `${temperature ?? 39}°C`;

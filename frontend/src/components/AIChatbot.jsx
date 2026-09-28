@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatWindSpeedKmh } from "../utils/wind";
 
 const RISK_WATER = { Low: "2–3L", Medium: "3–4L", High: "4–5L", Critical: "5–6L" };
 const RISK_OUTSIDE = {
@@ -14,13 +15,13 @@ const RISK_PRECAUTIONS = {
   Critical: ["Do NOT go outside", "Drink 5–6L of water", "Call emergency services if feeling unwell", "Close blinds to block heat", "Check on vulnerable people nearby"],
 };
 
-function getResponse(input, weather) {
+function getResponse(input, weather, currentHeatRisk) {
   const q     = input.toLowerCase().trim();
-  const risk  = weather?.heat_risk   || "Unknown";
+  const risk  = currentHeatRisk?.level || "Unknown";
   const temp  = weather?.temperature ?? "N/A";
   const city  = weather?.city        || "your city";
   const hum   = weather?.humidity    ?? "N/A";
-  const wind  = weather?.wind_speed  ?? "N/A";
+  const wind  = weather?.wind_speed;
   const rain  = weather?.rainfall    ?? "N/A";
   const nino  = weather?.el_nino_status || "Unknown";
 
@@ -39,7 +40,7 @@ function getResponse(input, weather) {
 
   // Tomorrow / forecast
   if (/tomorrow|forecast|next day|will it/.test(q)) {
-    return `📅 Based on current conditions in ${city}, today's heat risk is ${risk} at ${temp}°C. Check the AI 7-Day Heat Forecast section above for a full day-by-day breakdown including tomorrow's prediction.`;
+    return `📅 Based on current conditions in ${city}, today's heat risk is ${risk} at ${temp}°C. Check the available forecast and current weather details for more context.`;
   }
 
   // Precautions / tips / protect
@@ -66,7 +67,8 @@ function getResponse(input, weather) {
 
   // Wind
   if (/wind/.test(q)) {
-    return `💨 Wind speed in ${city} is currently ${wind} km/h. ${Number(wind) > 20 ? "There's a decent breeze which can help cool you down." : "Low wind means less natural cooling — stay in the shade."}`;
+    const windKmh = formatWindSpeedKmh(wind);
+    return `💨 Wind speed in ${city} is currently ${windKmh} km/h. ${Number(windKmh) > 20 ? "There's a decent breeze which can help cool you down." : "Low wind means less natural cooling — stay in the shade."}`;
   }
 
   // Rainfall
@@ -98,9 +100,9 @@ function getResponse(input, weather) {
   return `🤖 I can help with heat safety in ${city} (${temp}°C, ${risk} risk). Try asking:\n• "Is it safe to go outside?"\n• "What precautions should I take?"\n• "How much water should I drink?"\n• "What does High Heat Risk mean?"`;
 }
 
-export default function AIChatbot({ weather }) {
+export default function AIChatbot({ weather, currentHeatRisk }) {
   const city = weather?.city || "your city";
-  const risk = weather?.heat_risk || "Unknown";
+  const risk = currentHeatRisk?.level || "Unknown";
   const temp = weather?.temperature ?? "N/A";
 
   const greeting = {
@@ -121,13 +123,13 @@ export default function AIChatbot({ weather }) {
         ? `Current conditions in ${city}: ${temp}°C with ${risk} heat risk.`
         : "Search for a city to get started."} Ask me anything about heat safety!`,
     }]);
-  }, [weather?.city]);
+  }, [weather?.city, currentHeatRisk?.level]);
 
   const send = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
     const userMsg = { role: "user", text: trimmed };
-    const aiMsg   = { role: "ai",  text: getResponse(trimmed, weather) };
+    const aiMsg   = { role: "ai",  text: getResponse(trimmed, weather, currentHeatRisk) };
     setMessages((prev) => [...prev, userMsg, aiMsg]);
     setInput("");
   };
@@ -137,7 +139,7 @@ export default function AIChatbot({ weather }) {
   return (
     <div className="card">
       <h2 className="section-title">🤖 AI Heatwave Assistant</h2>
-      <p className="hospitals-hint" style={{ marginBottom: "16px" }}>
+      <p className="status-hint" style={{ marginBottom: "16px" }}>
         Ask about heat safety, precautions, hydration, or today's risk level.
       </p>
 

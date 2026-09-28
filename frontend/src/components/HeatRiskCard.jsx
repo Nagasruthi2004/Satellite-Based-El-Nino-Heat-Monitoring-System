@@ -1,8 +1,9 @@
 import React from "react";
 
 function HeatRiskCard({ heatRisk }) {
+  const riskLevel = typeof heatRisk === "object" ? heatRisk?.level : heatRisk;
   const getHeatRiskClass = (risk) => {
-    if (!risk) return "high-risk";
+    if (!risk || risk === "Not available") return "";
     const riskLower = risk.toLowerCase();
     if (riskLower.includes("low")) return "low-risk";
     if (riskLower.includes("medium")) return "medium-risk";
@@ -15,8 +16,8 @@ function HeatRiskCard({ heatRisk }) {
       <div className="card-icon">🔥</div>
       <div className="card-content">
         <h3>Heat Risk Level</h3>
-        <p className={`card-value ${heatRisk === "Loading..." ? "" : getHeatRiskClass(heatRisk)}`}>
-          {heatRisk === "Loading..." ? "Loading..." : heatRisk ?? "High"}
+        <p className={`card-value ${riskLevel === "Loading..." ? "" : getHeatRiskClass(riskLevel)}`}>
+          {riskLevel === "Loading..." ? "Loading..." : riskLevel ?? "Not available"}
         </p>
       </div>
     </div>

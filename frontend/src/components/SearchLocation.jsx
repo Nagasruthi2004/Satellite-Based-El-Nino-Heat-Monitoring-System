@@ -1,6 +1,27 @@
 import { useState } from 'react';
+import { formatWindSpeedKmh } from '../utils/wind';
 
-function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm }) {
+const REGION_ONLY_SEARCHES = new Set([
+  'india',
+  'tamil nadu',
+  'andhra pradesh',
+  'karnataka',
+  'kerala',
+  'telangana',
+  'maharashtra',
+  'punjab',
+  'rajasthan',
+  'united states',
+  'united kingdom',
+  'australia',
+  'canada',
+]);
+
+const REGION_COORDINATES = {
+  india: { label: 'India', lat: 20.5937, lon: 78.9629 },
+};
+
+function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm, onLocationSearch, currentHeatRisk, fetchWeatherForCity }) {
   const [city, setCity] = useState('');
   const [weather, setWeather] = useState(null);
   const [error, setError] = useState('');
@@ -14,13 +35,29 @@ function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm
     setError('');
     setWeather(null);
 
-    try {
-      const response = await fetch(`http://127.0.0.1:5000/weather?city=${encodeURIComponent(trimmed)}`);
-      const data = await response.json();
+    const normalizedSearch = trimmed.toLowerCase();
+    const regionCoordinates = REGION_COORDINATES[normalizedSearch];
+    if (regionCoordinates) {
+      onCityWeather(null);
+      onCityError('');
+      onLocationSearch?.(regionCoordinates);
+      setLoading(false);
+      return;
+    }
 
-      if (!response.ok) {
-        throw new Error(data.error || 'City not found.');
-      }
+    if (REGION_ONLY_SEARCHES.has(normalizedSearch)) {
+      const message = 'Please enter a city name.';
+      setError(message);
+      onCityWeather(null);
+      onCityError(message);
+      onLocationSearch?.(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      onLocationSearch?.(null);
+      const data = await fetchWeatherForCity(trimmed);
 
       setWeather(data);
       onCityWeather(data);
@@ -30,10 +67,10 @@ function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm
         temperature: String(data.temperature),
         humidity: String(data.humidity),
         rainfall: String(data.rainfall),
-        wind_speed: String(data.wind_speed),
+        wind_speed: formatWindSpeedKmh(data.wind_speed),
       });
     } catch (err) {
-      const message = err.message || 'Unable to fetch weather for this city.';
+      const message = 'Unable to fetch weather data for this location.';
       setError(message);
       onCityError(message);
     } finally {
@@ -88,11 +125,11 @@ function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm
           </div>
           <div className="search-result-item">
             <div className="sr-label">Wind Speed</div>
-            <div className="sr-value">{weather.wind_speed} m/s</div>
+            <div className="sr-value">{formatWindSpeedKmh(weather.wind_speed)} km/h</div>
           </div>
           <div className="search-result-item">
             <div className="sr-label">Heat Risk</div>
-            <div className="sr-value">{weather.heat_risk}</div>
+            <div className="sr-value">{currentHeatRisk?.level || 'Not available'}</div>
           </div>
           <div className="search-result-item">
             <div className="sr-label">Condition</div>

@@ -16,32 +16,29 @@ function getStatus(score) {
 
 export default function HeatPreparednessScore({
   heatRisk,
-  hospitalsAvailable = false,
   simulatorValues = {},
-  forecast = [],
 }) {
   const treeCover = Number(simulatorValues.treeCover) || 0;
   const waterBodies = Number(simulatorValues.waterBodies) || 0;
-  const normalizedRisk = String(heatRisk || "Low").toLowerCase();
+  const riskLevel = typeof heatRisk === "object" ? heatRisk?.level : heatRisk;
+  const normalizedRisk = String(riskLevel || "").toLowerCase();
   const riskDeduction = RISK_DEDUCTIONS[normalizedRisk] ?? 0;
-  const hospitalPoints = hospitalsAvailable ? 10 : -15;
+  const communitySupportPoints = -15;
   const treePoints = coverPoints(treeCover);
   const waterPoints = coverPoints(waterBodies);
-  const score = clamp(100 - riskDeduction + hospitalPoints + treePoints + waterPoints);
+  const score = clamp(100 - riskDeduction + communitySupportPoints + treePoints + waterPoints);
   const status = getStatus(score);
-  const highForecastDays = forecast.filter((day) => String(day.heat_risk).toLowerCase() === "high").length;
-
   const recommendations = [];
   if (treeCover <= 30) recommendations.push("Increase tree cover to create more shade and reduce urban heat.");
   if (waterBodies <= 30) recommendations.push("Improve water availability through water bodies and cooling infrastructure.");
-  if (!hospitalsAvailable) recommendations.push("Improve access to nearby hospitals and emergency heat-response services.");
-  if (highForecastDays > 0 || normalizedRisk === "high") recommendations.push("Monitor future heatwave trends and activate heat alerts for vulnerable residents.");
+  recommendations.push("Strengthen community heat-response planning for vulnerable residents.");
+  if (normalizedRisk === "high") recommendations.push("Monitor heatwave trends and activate heat alerts for vulnerable residents.");
   if (recommendations.length === 0) recommendations.push("Maintain current cooling measures and continue monitoring future heatwave trends.");
 
   const breakdown = [
     { label: "Starting score", value: "+100", tone: "positive" },
-    { label: `Current heat risk: ${heatRisk || "Low"}`, value: `-${riskDeduction}`, tone: "negative" },
-    { label: `Nearby hospitals: ${hospitalsAvailable ? "Available" : "Unavailable"}`, value: `${hospitalPoints >= 0 ? "+" : ""}${hospitalPoints}`, tone: hospitalPoints >= 0 ? "positive" : "negative" },
+    { label: `Current heat risk: ${riskLevel || "Not available"}`, value: `-${riskDeduction}`, tone: "negative" },
+    { label: "Community support readiness", value: `${communitySupportPoints}`, tone: "negative" },
     { label: `Tree cover: ${treeCover}%`, value: `+${treePoints}`, tone: "positive" },
     { label: `Water bodies: ${waterBodies}%`, value: `+${waterPoints}`, tone: "positive" },
   ];
@@ -81,7 +78,6 @@ export default function HeatPreparednessScore({
           <ul>
             {recommendations.map((recommendation) => <li key={recommendation}>{recommendation}</li>)}
           </ul>
-          {forecast.length > 0 && <p className="preparedness-forecast-note">7-day forecast: {highForecastDays} high-risk day{highForecastDays === 1 ? "" : "s"} detected.</p>}
         </div>
       </div>
     </div>

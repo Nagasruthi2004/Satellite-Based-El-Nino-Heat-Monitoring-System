@@ -1,4 +1,4 @@
-function Navbar({ theme, onToggleTheme }) {
+function Navbar({ theme, liveLocation, onToggleTheme }) {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
@@ -10,10 +10,13 @@ function Navbar({ theme, onToggleTheme }) {
         </div>
       </div>
       <div className="navbar-right">
-        <span className="navbar-badge">
+        <div className="navbar-badge live-location-badge">
           <span className="live-dot" />
-          Live
-        </span>
+          <div>
+            <span className="live-label">Live Location</span>
+            <span className="live-location-value">{liveLocation || "Live"}</span>
+          </div>
+        </div>
         <button
           className="theme-toggle"
           type="button"
