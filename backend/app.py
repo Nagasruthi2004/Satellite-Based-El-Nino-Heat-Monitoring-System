@@ -7,7 +7,9 @@ try:
 except ImportError:
     generate_research = None
 
+import os
 import logging
+import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from weather import fetch_weather
@@ -15,6 +17,7 @@ from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
 from heat_risk import classify_current_heat_risk, classify_forecast_heat_risk
 from email_service import send_heat_alert_subscription_email, is_valid_email
+from elnino_news import fetch_elnino_news
 
 # Configure logging so weather.py logger output is visible in the Flask console
 logging.basicConfig(
@@ -35,7 +38,13 @@ app = Flask(__name__)
 # Enable CORS for the Vite and local frontend origins
 CORS(
     app,
-    resources={r"/*": {"origins": ["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"]}},
+    resources={r"/*": {"origins": [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:5174",
+        "http://localhost:3000",
+    ]}},
     supports_credentials=True,
 )
 
@@ -402,7 +411,8 @@ def home():
         "endpoints": {
             "/weather": "GET - Returns current weather data",
             "/satellite": "GET - Returns satellite heat monitoring data",
-            "/predict": "GET/POST - ML-based heat risk prediction"
+            "/predict": "GET/POST - ML-based heat risk prediction",
+            "/elnino-news": "GET - Returns real-world El Niño and ENSO news with category filter"
         }
     }), 200
 
@@ -465,6 +475,72 @@ def subscribe_alert():
     except Exception as exc:
         logger.error("Unexpected error in /subscribe: %s", exc)
         return jsonify({"error": "Unable to send email. Please try again."}), 500
+
+
+@app.route("/elnino-news", methods=["GET"])
+def get_elnino_news():
+    """
+    Endpoint to fetch real, recent El Niño and ENSO news.
+    Query parameters:
+        category: 'all' | 'india' | 'global' | 'climate' | 'impacts' (default: 'all')
+        refresh: 'true' | 'false' (forces fresh fetch, bypassing cache)
+    """
+    try:
+        category = request.args.get("category", "all").strip().lower()
+        refresh_arg = request.args.get("refresh", "").strip().lower()
+        force_refresh = refresh_arg in ("true", "1", "yes")
+
+        logger.info("Fetching El Niño news | category=%s | force_refresh=%s", category, force_refresh)
+        news_data = fetch_elnino_news(category=category, force_refresh=force_refresh)
+        return jsonify(news_data), 200
+    except Exception as exc:
+        logger.error("Failed to fetch El Niño news: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Unable to fetch latest El Niño news. Please try again later.",
+            "details": str(exc),
+            "articles": []
+        }), 500
+
+
+@app.route("/world-heatmap", methods=["GET"])
+def get_world_heatmap():
+    """
+    Endpoint to retrieve real World Heat Map Land Surface Temperature (LST) data
+    derived from validated NASA MODIS Terra MOD11A2.061 satellite observations.
+    Returns: JSON containing location, country, latitude, longitude, year, lst_celsius, heat_risk.
+    """
+    try:
+        csv_path = os.path.join(
+            os.path.dirname(__file__), "..", "dataset", "world_heat_map_dataset.csv"
+        )
+        if not os.path.exists(csv_path):
+            logger.error("World heatmap dataset file not found at: %s", csv_path)
+            return jsonify({
+                "status": "error",
+                "error": "World Heat Map dataset file not found",
+                "data": []
+            }), 404
+
+        df = pd.read_csv(csv_path)
+        records = df.to_dict(orient="records")
+        logger.info("Serving %d real World Heat Map records from %s", len(records), csv_path)
+
+        return jsonify({
+            "status": "success",
+            "count": len(records),
+            "source": "NASA MODIS Terra MOD11A2.061",
+            "data": records
+        }), 200
+
+    except Exception as exc:
+        logger.error("Failed to load world heatmap dataset: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to load world heatmap dataset",
+            "details": str(exc),
+            "data": []
+        }), 500
 
 
 if __name__ == "__main__":

@@ -5,3 +5,4 @@ requests==2.34.2
 scikit-learn==1.9.0
 joblib==1.5.3
 numpy==2.5.1
+earthengine-api>=1.0.0

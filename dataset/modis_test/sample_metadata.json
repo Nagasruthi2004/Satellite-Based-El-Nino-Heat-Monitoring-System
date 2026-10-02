@@ -1,0 +1,108 @@
+{
+  "dataset": "MODIS/Terra Land Surface Temperature/Emissivity 8-Day L3 Global 1km SIN Grid V061",
+  "product_short_name": "MOD11A2",
+  "version": "061",
+  "platform": "Terra",
+  "instrument": "MODIS",
+  "granule_id": "MOD11A2.A2026225.h25v07.061.2026234035622",
+  "date_range": {
+    "start": "2026-08-13T00:00:00Z",
+    "end": "2026-08-20T23:59:59Z",
+    "composite": "8-day composite (Day of Year 225-232)"
+  },
+  "geographic_area": {
+    "modis_tile": "h25v07",
+    "region_description": "Southern and Central India (Tamil Nadu, Karnataka, Andhra Pradesh, Telangana, Maharashtra)",
+    "bounding_box_wgs84": {
+      "min_longitude": 71.08,
+      "min_latitude": 10.0,
+      "max_longitude": 85.13,
+      "max_latitude": 20.0
+    }
+  },
+  "source_urls": {
+    "source_geotiff_cog": "https://modiseuwest.blob.core.windows.net/modis-061-cogs/MOD11A2/25/07/2026225/MOD11A2.A2026225.h25v07.061.2026234035622_LST_Day_1km.tif",
+    "source_hdf": "https://modiseuwest.blob.core.windows.net/modis-061/MOD11A2/25/07/2026225/MOD11A2.A2026225.h25v07.061.2026234035622.hdf",
+    "planetary_computer_stac": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-11A2-061",
+    "nasa_cmr": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=MOD11A2&version=061"
+  },
+  "downloaded_files": [
+    {
+      "file_name": "MOD11A2.A2026225.h25v07.061.2026234035622.hdf",
+      "file_path": "C:\\Users\\nagas\\Satellite-Based-El-Nino-Heat-Monitoring-System\\dataset\\modis_test\\MOD11A2.A2026225.h25v07.061.2026234035622.hdf",
+      "file_size_bytes": 3136768,
+      "format": "Hierarchical Data Format (HDF-EOS)"
+    },
+    {
+      "file_name": "MOD11A2.A2026225.h25v07.061.2026234035622_LST_Day_1km.tif",
+      "file_path": "C:\\Users\\nagas\\Satellite-Based-El-Nino-Heat-Monitoring-System\\dataset\\modis_test\\MOD11A2.A2026225.h25v07.061.2026234035622_LST_Day_1km.tif",
+      "file_size_bytes": 527367,
+      "format": "Cloud-Optimized GeoTIFF (16-bit Grayscale uint16)",
+      "band": "LST_Day_1km",
+      "dimensions": [
+        1200,
+        1200
+      ]
+    }
+  ],
+  "lst_conversion": {
+    "raw_band": "LST_Day_1km",
+    "scale_factor": 0.02,
+    "formula_kelvin": "LST_Kelvin = raw_dn * 0.02",
+    "formula_celsius": "LST_Celsius = (raw_dn * 0.02) - 273.15",
+    "valid_raw_range": "7500 to 65535",
+    "fill_value": 0
+  },
+  "granule_statistics": {
+    "total_pixels": 1440000,
+    "valid_observed_pixels": 243780,
+    "raw_dn_min": 13725,
+    "raw_dn_max": 15669,
+    "raw_dn_mean": 15083.09,
+    "lst_celsius_min": 1.35,
+    "lst_celsius_max": 40.23,
+    "lst_celsius_mean": 28.51
+  },
+  "sample_extracted_observations": [
+    {
+      "pixel_grid_row": 0,
+      "pixel_grid_col": 138,
+      "raw_dn": 14956,
+      "lst_kelvin": 299.12,
+      "lst_celsius": 25.97,
+      "heat_risk": "Low"
+    },
+    {
+      "pixel_grid_row": 266,
+      "pixel_grid_col": 502,
+      "raw_dn": 14951,
+      "lst_kelvin": 299.02,
+      "lst_celsius": 25.87,
+      "heat_risk": "Low"
+    },
+    {
+      "pixel_grid_row": 783,
+      "pixel_grid_col": 910,
+      "raw_dn": 14978,
+      "lst_kelvin": 299.56,
+      "lst_celsius": 26.41,
+      "heat_risk": "Low"
+    },
+    {
+      "pixel_grid_row": 949,
+      "pixel_grid_col": 934,
+      "raw_dn": 15253,
+      "lst_kelvin": 305.06,
+      "lst_celsius": 31.91,
+      "heat_risk": "Medium"
+    },
+    {
+      "pixel_grid_row": 1072,
+      "pixel_grid_col": 648,
+      "raw_dn": 15131,
+      "lst_kelvin": 302.62,
+      "lst_celsius": 29.47,
+      "heat_risk": "Low"
+    }
+  ]
+}

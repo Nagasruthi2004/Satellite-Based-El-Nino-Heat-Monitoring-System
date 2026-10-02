@@ -4,6 +4,8 @@ import SatelliteChangeDetector from "./components/SatelliteChangeDetector";
 import EmailAlert from "./components/EmailAlert";
 import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
+import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
+import WorldHeatMap from "./components/WorldHeatMap";
 import "./App.css";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "./components/Navbar";
@@ -38,6 +40,7 @@ const getStoredTheme = () => localStorage.getItem("el-nino-theme");
 
 const DASHBOARD_PAGES = [
   { id: "live", label: "Live Weather", icon: "📊" },
+  { id: "world-heatmap", label: "World Heat Map", icon: "🌍" },
   { id: "analytics", label: "Analytics", icon: "📈" },
   { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
   { id: "preparedness", label: "Preparedness Score", icon: "🛡️" },
@@ -48,6 +51,7 @@ const DASHBOARD_PAGES = [
   { id: "time-machine", label: "Satellite Time Machine", icon: "🛰️" },
   { id: "change-detector", label: "Satellite Change Detector", icon: "🪐" },
   { id: "elnino", label: "El Niño Analyzer", icon: "🌊" },
+  { id: "elnino-news", label: "El Niño News Monitor", icon: "📰" },
   { id: "email-alerts", label: "Email Heat Alerts", icon: "📧" },
   { id: "favourites", label: "Favourite Cities", icon: "⭐" },
 ];
@@ -596,6 +600,13 @@ function App() {
         </section>
         </>}
 
+        {/* ── WORLD HEAT MAP (NASA MODIS TERRA LST) ── */}
+        {activePage === "world-heatmap" && (
+          <section className="section">
+            <WorldHeatMap />
+          </section>
+        )}
+
         {/* ── HEAT MAP + PREDICTION GRAPH side by side ── */}
         {activePage === "analytics" && <>
         <section className="section">
@@ -687,6 +698,11 @@ function App() {
   <h2 className="section-title">📧 Email Alerts</h2>
 
   <EmailAlert weather={weather} />
+</section>}
+
+{/* ── EL NIÑO NEWS MONITOR ── */}
+{activePage === "elnino-news" && <section className="section">
+  <ElNinoNewsMonitor />
 </section>}
 
       </div>
