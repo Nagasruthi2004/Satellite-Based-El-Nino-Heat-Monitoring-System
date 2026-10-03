@@ -1,4 +1,4 @@
-import React from "react";
+
 
 function TemperatureCard({ temperature, weatherDescription, errorMessage }) {
   const displayValue = errorMessage

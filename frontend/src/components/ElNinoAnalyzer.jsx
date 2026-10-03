@@ -17,7 +17,7 @@ function preparednessScore(risk) {
   return 88;
 }
 
-export default function ElNinoAnalyzer({ weather, predictionResult, currentHeatRisk }) {
+export default function ElNinoAnalyzer({ weather, currentHeatRisk }) {
   const [selectedYear, setSelectedYear] = useState(2024);
   const data = useMemo(() => oniData[selectedYear] || [], [selectedYear]);
   const summary = useMemo(() => {

@@ -21,7 +21,6 @@ import ThermalAnomalyCard from "./components/ThermalAnomalyCard";
 import HeatMap from "./components/HeatMap";
 import CompareCities from "./components/CompareCities";
 import HeatAlert from "./components/HeatAlert";
-import SearchLocation from "./components/SearchLocation";
 import AIClimateReport from "./components/AIClimateReport";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import FutureCitySimulator from "./components/FutureCitySimulator";
@@ -35,6 +34,8 @@ import HeatAnalysis from "./components/HeatAnalysis";
 import Heat2026Prediction from "./components/Heat2026Prediction";
 import ElNinoAnalysis from "./components/ElNinoAnalysis";
 import EmergencyLocation from "./components/EmergencyLocation";
+import HomeDashboard from "./components/HomeDashboard";
+import HeatwaveEscapeRoute from "./components/HeatwaveEscapeRoute";
 import Footer from "./components/Footer";
 import DashboardNavigation from "./components/DashboardNavigation";
 import { calculateElNinoImpact, getLatestOniData } from "./data/oniData";
@@ -45,36 +46,69 @@ import { getHeatRiskExplanation } from "./utils/heatRisk";
 const getSystemTheme = () => window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 const getStoredTheme = () => localStorage.getItem("el-nino-theme");
 
-const DASHBOARD_PAGES = [
-  { id: "live", label: "Live Weather", icon: "📊" },
-  { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
-  { id: "disaster-info", label: "Disaster Information", icon: "🚨" },
-  { id: "emergency-location", label: "Emergency & Nearby Help", icon: "🆘" },
-  { id: "india-lst", label: "India Heat Map (LST)", icon: "🗺️" },
-  { id: "heat-analysis", label: "Heat Analysis", icon: "📊" },
-  { id: "heat-2026", label: "2026 Heat Prediction", icon: "🔮" },
-  { id: "enso-analysis", label: "El Niño & ENSO Analysis", icon: "🌊" },
-  { id: "world-heatmap", label: "World Heat Map", icon: "🌍" },
-  { id: "analytics", label: "Analytics", icon: "📈" },
-  { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
-  { id: "preparedness", label: "Preparedness Score", icon: "🛡️" },
-  { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
-  { id: "climate-report", label: "AI Climate Report", icon: "📄" },
-  { id: "compare", label: "Compare Cities", icon: "⚖️" },
-  { id: "assistant", label: "AI Assistant", icon: "🤖" },
-  { id: "time-machine", label: "Satellite Time Machine", icon: "🛰️" },
-  { id: "change-detector", label: "Satellite Change Detector", icon: "🪐" },
-  { id: "elnino", label: "El Niño Analyzer", icon: "🌊" },
-  { id: "elnino-news", label: "El Niño News Monitor", icon: "📰" },
-  { id: "email-alerts", label: "Email Heat Alerts", icon: "📧" },
-  { id: "favourites", label: "Favourite Cities", icon: "⭐" },
+const NAVIGATION_GROUPS = [
+  {
+    title: "OVERVIEW",
+    items: [
+      { id: "home", label: "Home", icon: "🏠" },
+      { id: "live", label: "Live Weather", icon: "📊" },
+      { id: "india-lst", label: "India Heat Map", icon: "🗺️" },
+      { id: "world-heatmap", label: "World Heat Map", icon: "🌍" },
+    ],
+  },
+  {
+    title: "ANALYSIS",
+    items: [
+      { id: "heat-analysis", label: "Heat Analysis", icon: "📈" },
+      { id: "enso-analysis", label: "El Niño & ENSO Analysis", icon: "🌊" },
+      { id: "elnino", label: "Historical El Niño Cycle", icon: "🔄" },
+      { id: "heat-2026", label: "2026 Heat Prediction", icon: "🔮" },
+      { id: "elnino-news", label: "El Niño News Monitor", icon: "📰" },
+    ],
+  },
+  {
+    title: "AI & HEAT TOOLS",
+    items: [
+      { id: "analytics", label: "Heat Risk Prediction", icon: "🎯" },
+      { id: "assistant", label: "AI Heatwave Assistant", icon: "🤖" },
+      { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
+      { id: "preparedness", label: "Heat Preparedness Score", icon: "🛡️" },
+      { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
+      { id: "escape-route", label: "Heatwave Escape Route", icon: "🧭" },
+      { id: "climate-report", label: "AI Climate Report", icon: "📄" },
+      { id: "compare", label: "Compare Cities", icon: "⚖️" },
+      { id: "favourites", label: "Favourite Cities", icon: "⭐" },
+    ],
+  },
+  {
+    title: "SAFETY",
+    items: [
+      { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
+      { id: "disaster-info", label: "Disaster Information", icon: "🚨" },
+      { id: "email-alerts", label: "Email Heat Alerts", icon: "📧" },
+      { id: "emergency-location", label: "Emergency & Nearby Help", icon: "🆘" },
+    ],
+  },
+  {
+    title: "SATELLITE",
+    items: [
+      { id: "satellite-monitor", label: "Satellite Monitoring", icon: "🛰️" },
+      { id: "change-detector", label: "Satellite Change Detection", icon: "🪐" },
+      { id: "time-machine", label: "Satellite Time Machine", icon: "⏱️" },
+    ],
+  },
 ];
+
+const DASHBOARD_PAGES = NAVIGATION_GROUPS.flatMap((group) => group.items);
 
 const getPageFromHash = () => {
   const page = window.location.hash.replace(/^#/, "");
+  if (!page || page === "home") return "home";
   if (page === "elnino-analysis" || page === "enso-analysis") return "enso-analysis";
   if (page === "emergency-location" || page === "emergency-help") return "emergency-location";
-  return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "live";
+  if (page === "satellite" || page === "satellite-monitor") return "satellite-monitor";
+  if (page === "escape" || page === "escape-route") return "escape-route";
+  return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "home";
 };
 
 function App() {
@@ -85,7 +119,6 @@ function App() {
   const [weather, setWeather] = useState(null);
   const [satelliteCity, setSatelliteCity] = useState("");
   const [mapLocation, setMapLocation] = useState(null);
-  const [detectedCity, setDetectedCity] = useState("");
   const [liveLocation, setLiveLocation] = useState("Coimbatore, Tamil Nadu, India");
   const [satellite, setSatellite] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -236,7 +269,6 @@ function App() {
       const displayLocation = locationLabel || (primaryCity ? `${primaryCity} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)` : `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`);
 
       if (primaryCity) {
-        setDetectedCity(primaryCity);
         setSatelliteCity(primaryCity);
       }
 
@@ -266,22 +298,36 @@ function App() {
   }, [fetchWeatherForCity]);
 
   useEffect(() => {
-    recenterToUserLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let isMounted = true;
+    const initLocation = async () => {
+      await Promise.resolve();
+      if (isMounted) {
+        recenterToUserLocation();
+      }
+    };
+    initLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, [recenterToUserLocation]);
 
   useEffect(() => {
-    if (!weather?.city) {
-      setSatellite(null);
-      setSatelliteError("");
-      return undefined;
-    }
-
+    let isMounted = true;
     const controller = new AbortController();
+
     const fetchSatelliteData = async () => {
+      await Promise.resolve();
+      if (!isMounted) return;
+
+      if (!weather?.city) {
+        setSatellite(null);
+        setSatelliteError("");
+        return;
+      }
+
       const fallback = getDeterministicSatelliteFallback(weather.city, weather);
       try {
-        if (fallback) setSatellite(fallback);
+        if (fallback && isMounted) setSatellite(fallback);
         const params = new URLSearchParams({
           city: weather.city,
           temperature: weather.temperature ?? "",
@@ -295,10 +341,12 @@ function App() {
         });
         if (!response.ok) throw new Error("Failed to fetch satellite data");
         const data = await response.json();
-        setSatellite(data);
-        setSatelliteError("");
+        if (isMounted) {
+          setSatellite(data);
+          setSatelliteError("");
+        }
       } catch (error) {
-        if (error.name === "AbortError") return;
+        if (error.name === "AbortError" || !isMounted) return;
         if (fallback) {
           setSatellite(fallback);
           setSatelliteError("");
@@ -310,8 +358,11 @@ function App() {
     };
 
     fetchSatelliteData();
-    return () => controller.abort();
-  }, [weather?.city]);
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [weather]);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -336,26 +387,31 @@ function App() {
   };
 
   useEffect(() => {
-    const payload = getPredictionPayload(weather);
-    setPredictionResult(null);
-    setPredictionError("");
-
-    if (!weather?.city) return undefined;
-
-    setPredictionForm({
-      temperature: String(payload?.temperature ?? ""),
-      humidity: String(payload?.humidity ?? ""),
-      rainfall: String(payload?.rainfall ?? ""),
-      wind_speed: String(payload?.wind_speed ?? ""),
-    });
-
-    if (!payload) {
-      setPredictionError("Heat risk prediction unavailable");
-      return undefined;
-    }
-
+    let isMounted = true;
     const controller = new AbortController();
+
     const fetchPrediction = async () => {
+      await Promise.resolve();
+      if (!isMounted) return;
+
+      const payload = getPredictionPayload(weather);
+      setPredictionResult(null);
+      setPredictionError("");
+
+      if (!weather?.city) return;
+
+      setPredictionForm({
+        temperature: String(payload?.temperature ?? ""),
+        humidity: String(payload?.humidity ?? ""),
+        rainfall: String(payload?.rainfall ?? ""),
+        wind_speed: String(payload?.wind_speed ?? ""),
+      });
+
+      if (!payload) {
+        setPredictionError("Heat risk prediction unavailable");
+        return;
+      }
+
       try {
         const response = await fetch("http://127.0.0.1:5000/predict", {
           method: "POST",
@@ -365,15 +421,22 @@ function App() {
         });
         const data = await response.json();
         if (!response.ok || !data?.prediction?.heat_risk) throw new Error("Prediction unavailable");
-        setPredictionResult(data);
+        if (isMounted) {
+          setPredictionResult(data);
+        }
       } catch (error) {
-        if (error.name !== "AbortError") setPredictionError("Heat risk prediction unavailable");
+        if (error.name !== "AbortError" && isMounted) {
+          setPredictionError("Heat risk prediction unavailable");
+        }
       }
     };
 
     fetchPrediction();
-    return () => controller.abort();
-  }, [weather?.city, weather?.temperature, weather?.humidity, weather?.rainfall, weather?.wind_speed]);
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [weather]);
 
   const handlePredict = async (event) => {
     event.preventDefault();
@@ -422,8 +485,18 @@ function App() {
 
       {/* ── HERO ── */}
       <div className="dashboard-shell">
-        <DashboardNavigation activePage={activePage} onNavigate={navigateToPage} items={DASHBOARD_PAGES} />
+        <DashboardNavigation activePage={activePage} onNavigate={navigateToPage} groups={NAVIGATION_GROUPS} items={DASHBOARD_PAGES} />
         <main className="dashboard-page-content" ref={pageContentRef}>
+        {activePage === "home" && (
+          <section className="section" style={{ marginTop: "0.5rem" }}>
+            <HomeDashboard
+              weather={weather}
+              currentHeatRisk={currentHeatRisk}
+              loading={loading}
+              onNavigate={navigateToPage}
+            />
+          </section>
+        )}
       {activePage === "live" && <section className="hero">
         <div className="hero-inner">
           <div className="hero-text">
@@ -713,6 +786,78 @@ function App() {
         {activePage === "hotspots" && <section className="section">
           <HeatHotspotRanking city={weather?.city} currentTemperature={weather?.temperature} />
         </section>}
+
+        {/* ── HEATWAVE ESCAPE ROUTE ── */}
+        {activePage === "escape-route" && (
+          <section className="section">
+            <HeatwaveEscapeRoute
+              currentCity={weather?.city || "Coimbatore"}
+              currentTemperature={weather?.temperature}
+              currentHeatRisk={currentHeatRisk}
+            />
+          </section>
+        )}
+
+        {/* ── SATELLITE MONITORING ── */}
+        {activePage === "satellite-monitor" && (
+          <section className="section">
+            <div className="section-header-compact" style={{ marginBottom: "20px" }}>
+              <h2 className="section-title">🛰️ Satellite Thermal & LST Telemetry</h2>
+              <p className="section-subtitle" style={{ color: "var(--text-muted)", fontSize: "14px", marginTop: "4px" }}>
+                Orbital Land Surface Temperature (LST), thermal anomaly detection, and heat intensity telemetry derived from satellite observations.
+              </p>
+            </div>
+            {(weatherError || satelliteError) && (
+              <div className="prediction-error" style={{ marginBottom: "16px" }}>
+                {weatherError || satelliteError}
+              </div>
+            )}
+            <div className="dashboard" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+              <LSTCard lst={loading ? "Loading..." : satellite?.land_surface_temperature} />
+              <HeatIntensityCard heatIntensity={loading ? "Loading..." : satellite?.heat_intensity_level} />
+              <ThermalAnomalyCard thermalAnomaly={loading ? "Loading..." : satellite?.thermal_anomaly} />
+              <HeatAlert
+                heatRisk={loading ? "Loading..." : currentHeatRisk}
+                temperature={weather?.temperature}
+                landSurfaceTemperature={satellite?.land_surface_temperature}
+                thermalAnomaly={satellite?.thermal_anomaly}
+              />
+            </div>
+            <div className="card" style={{ marginTop: "24px" }}>
+              <h3 style={{ marginTop: 0 }}>🛰️ Scientific Data Telemetry</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6" }}>
+                Thermal infrared channels observe radiative skin temperature (Land Surface Temperature).
+                Note that LST represents surface skin temperature and differs systematically from 2-meter ambient air temperature.
+              </p>
+              <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="predict-button"
+                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
+                  onClick={() => navigateToPage("change-detector")}
+                >
+                  🪐 Satellite Change Detection
+                </button>
+                <button
+                  type="button"
+                  className="predict-button"
+                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
+                  onClick={() => navigateToPage("time-machine")}
+                >
+                  ⏱️ Satellite Time Machine
+                </button>
+                <button
+                  type="button"
+                  className="predict-button"
+                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
+                  onClick={() => navigateToPage("india-lst")}
+                >
+                  🗺️ India LST Heat Map (2020–2025)
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {activePage === "time-machine" && <section className="section">
           <h2 className="section-title">🛰 Satellite Time Machine</h2>

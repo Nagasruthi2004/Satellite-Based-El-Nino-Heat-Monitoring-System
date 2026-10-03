@@ -233,9 +233,18 @@ function HeatMap({
 
   // Sync coords when external weather updates if not actively hovering
   useEffect(() => {
-    if (weather?.lat != null && weather?.lon != null && !isHovering && !isDebouncing) {
-      setHoverCoords({ lat: weather.lat, lon: weather.lon });
-    }
+    let isMounted = true;
+    const syncCoords = async () => {
+      await Promise.resolve();
+      if (!isMounted) return;
+      if (weather?.lat != null && weather?.lon != null && !isHovering && !isDebouncing) {
+        setHoverCoords({ lat: weather.lat, lon: weather.lon });
+      }
+    };
+    syncCoords();
+    return () => {
+      isMounted = false;
+    };
   }, [weather?.lat, weather?.lon, isHovering, isDebouncing]);
 
   const handleHoverMove = useCallback((lat, lon) => {

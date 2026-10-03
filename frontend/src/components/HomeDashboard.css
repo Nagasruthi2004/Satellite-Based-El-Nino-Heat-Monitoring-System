@@ -1,0 +1,389 @@
+/* ==========================================================================
+   HOME DASHBOARD - EXECUTIVE SYSTEM OVERVIEW
+   Satellite-Based El Niño Heat Monitoring System
+   ========================================================================== */
+
+.home-dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: 100%;
+  animation: fadeInHome 0.3s ease-in-out;
+}
+
+@keyframes fadeInHome {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── HERO BANNER ── */
+.home-hero-card {
+  background: linear-gradient(135deg, #0d47a1 0%, #1565c0 55%, #1976d2 100%);
+  color: #ffffff;
+  border-radius: var(--radius, 16px);
+  padding: 32px 36px;
+  box-shadow: 0 8px 24px rgba(13, 71, 161, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.home-hero-card::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.home-hero-content {
+  flex: 1 1 450px;
+  z-index: 1;
+}
+
+.home-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.home-hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 10px 0;
+  color: #ffffff;
+}
+
+.home-hero-subtitle {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.92;
+  margin: 0;
+  max-width: 680px;
+}
+
+.home-hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 1;
+}
+
+.btn-hero-primary {
+  background: #ffffff;
+  color: #0d47a1;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.btn-hero-primary:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.btn-hero-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-hero-secondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+/* ── EXECUTIVE SUMMARY METRICS GRID ── */
+.home-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 20px;
+}
+
+.summary-card {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 16px);
+  padding: 22px;
+  box-shadow: var(--shadow, 0 4px 16px rgba(0, 0, 0, 0.05));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.summary-card-title-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-card-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.summary-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text, #1f2937);
+  margin: 0;
+}
+
+.summary-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.summary-badge.risk-low { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.summary-badge.risk-medium { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.summary-badge.risk-high { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+.summary-badge.risk-critical { background: rgba(153, 27, 27, 0.15); color: #7f1d1d; }
+
+.summary-badge.neutral { background: #eff6ff; color: #1e40af; }
+.summary-badge.model { background: #f3e8ff; color: #7e22ce; }
+.summary-badge.verified { background: #f0fdf4; color: #15803d; }
+
+.summary-main-val {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 0 0;
+}
+
+.summary-number {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text, #111827);
+  line-height: 1.1;
+}
+
+.summary-unit {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+}
+
+.summary-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted, #4b5563);
+  margin: 0;
+}
+
+.summary-meta-note {
+  font-size: 11px;
+  color: var(--text-light, #9ca3af);
+  margin-top: 4px;
+}
+
+.btn-card-nav {
+  background: var(--surface-alt, #f8fafc);
+  color: var(--primary, #1565c0);
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+
+.btn-card-nav:hover {
+  background: var(--primary-light, #dbeafe);
+  border-color: var(--primary, #1565c0);
+  color: var(--primary-dark, #0d47a1);
+}
+
+/* ── QUICK ACTION EMERGENCY & DISASTER BAR ── */
+.home-quick-actions-bar {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 16px);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: var(--shadow, 0 4px 16px rgba(0, 0, 0, 0.05));
+}
+
+.quick-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.quick-bar-icon {
+  font-size: 26px;
+}
+
+.quick-bar-text strong {
+  display: block;
+  font-size: 15px;
+  color: var(--text, #111827);
+  margin-bottom: 2px;
+}
+
+.quick-bar-text p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+.quick-bar-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-quick-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.btn-quick-danger:hover {
+  background: #b91c1c;
+}
+
+.btn-quick-warning {
+  background: #f59e0b;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.btn-quick-warning:hover {
+  background: #d97706;
+}
+
+/* ── DARK THEME OVERRIDES ── */
+:root[data-theme="dark"] .summary-card,
+:root[data-theme="dark"] .home-quick-actions-bar {
+  background: var(--card, #111c2e);
+  border-color: var(--border, #29415f);
+}
+
+:root[data-theme="dark"] .btn-card-nav {
+  background: var(--secondary, #17243a);
+  border-color: var(--border, #29415f);
+  color: var(--primary, #60a5fa);
+}
+
+:root[data-theme="dark"] .btn-card-nav:hover {
+  background: #1e3a5f;
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .summary-desc {
+  color: var(--text-muted, #a9bbd2);
+}
+
+/* ── RESPONSIVE ADAPTATIONS ── */
+@media (max-width: 768px) {
+  .home-hero-card {
+    padding: 24px 20px;
+  }
+  .home-hero-title {
+    font-size: 22px;
+  }
+  .home-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .home-quick-actions-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .quick-bar-buttons {
+    width: 100%;
+  }
+  .btn-quick-danger,
+  .btn-quick-warning {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}

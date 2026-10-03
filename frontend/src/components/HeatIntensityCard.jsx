@@ -1,4 +1,4 @@
-import React from "react";
+
 
 function HeatIntensityCard({ heatIntensity }) {
   const getHeatIntensityClass = (intensity) => {

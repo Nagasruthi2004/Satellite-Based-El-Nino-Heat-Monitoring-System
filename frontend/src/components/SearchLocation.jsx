@@ -69,7 +69,7 @@ function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm
         rainfall: String(data.rainfall),
         wind_speed: formatWindSpeedKmh(data.wind_speed),
       });
-    } catch (err) {
+    } catch {
       const message = 'Unable to fetch weather data for this location.';
       setError(message);
       onCityError(message);

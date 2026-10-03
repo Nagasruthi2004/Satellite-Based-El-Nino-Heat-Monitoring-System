@@ -324,7 +324,23 @@ button { font-weight: var(--weight-medium); }
   text-transform: uppercase;
 }
 
-.dashboard-page-nav { display: grid; gap: 4px; }
+.dashboard-page-nav { display: grid; gap: 8px; }
+
+.nav-group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.nav-group-section:last-child {
+  margin-bottom: 0;
+}
+
+.nav-group-items {
+  display: grid;
+  gap: 2px;
+}
 
 .dashboard-nav-item {
   align-items: center;

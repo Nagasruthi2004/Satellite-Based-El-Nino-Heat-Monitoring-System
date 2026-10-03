@@ -1,4 +1,4 @@
-import React from "react";
+
 
 function ElNinoCard({ elNinoStatus, oni, strength, influence, impactScore }) {
   return (

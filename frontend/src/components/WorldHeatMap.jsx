@@ -53,7 +53,6 @@ export default function WorldHeatMap() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [hoveredLocation, setHoveredLocation] = useState(null);
   const [filterRisk, setFilterRisk] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [targetCoords, setTargetCoords] = useState(null);
@@ -314,8 +313,6 @@ export default function WorldHeatMap() {
                     }}
                     eventHandlers={{
                       click: () => handleSelectLocation(item),
-                      mouseover: () => setHoveredLocation(item),
-                      mouseout: () => setHoveredLocation(null),
                     }}
                   >
                     {/* Hover Requirement: Location, LST in °C, Heat Risk */}

@@ -1,4 +1,4 @@
-import React from "react";
+
 import { formatWindSpeedKmh } from "../utils/wind";
 
 function WindSpeedCard({ windSpeed, errorMessage }) {

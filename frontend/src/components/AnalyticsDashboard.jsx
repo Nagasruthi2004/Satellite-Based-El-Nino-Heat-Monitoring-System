@@ -29,30 +29,40 @@ export default function AnalyticsDashboard({ weather, currentHeatRisk }) {
   const [error, setError]       = useState("");
 
   useEffect(() => {
-    const city = weather?.city?.trim();
-    setForecast([]);
-    setError("");
-    if (!city) return undefined;
-
-    const controller = new AbortController();
     let active = true;
-    setLoading(true);
-    fetch(`http://127.0.0.1:5000/heatforecast?city=${encodeURIComponent(city)}`, {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((r) => r.json())
-      .then((data) => {
+    const controller = new AbortController();
+
+    const loadForecast = async () => {
+      await Promise.resolve();
+      if (!active) return;
+
+      const city = weather?.city?.trim();
+      setForecast([]);
+      setError("");
+      if (!city) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const r = await fetch(`http://127.0.0.1:5000/heatforecast?city=${encodeURIComponent(city)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = await r.json();
         if (data.error) throw new Error(data.error);
-        if (!active) return;
-        setForecast(data.forecast || []);
-      })
-      .catch((e) => {
+        if (active) {
+          setForecast(data.forecast || []);
+        }
+      } catch (e) {
         if (active && e.name !== "AbortError") setError(e.message);
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    };
+
+    loadForecast();
 
     return () => {
       active = false;

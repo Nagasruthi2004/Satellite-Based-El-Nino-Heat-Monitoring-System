@@ -1,4 +1,4 @@
-import React from "react";
+
 
 function HeatRiskCard({ heatRisk }) {
   const riskLevel = typeof heatRisk === "object" ? heatRisk?.level : heatRisk;

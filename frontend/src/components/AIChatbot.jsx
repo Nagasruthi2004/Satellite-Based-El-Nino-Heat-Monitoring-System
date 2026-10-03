@@ -117,13 +117,22 @@ export default function AIChatbot({ weather, currentHeatRisk }) {
 
   // Reset greeting when city changes
   useEffect(() => {
-    setMessages([{
-      role: "ai",
-      text: `👋 Hi! I'm your AI Heatwave Assistant. ${weather
-        ? `Current conditions in ${city}: ${temp}°C with ${risk} heat risk.`
-        : "Search for a city to get started."} Ask me anything about heat safety!`,
-    }]);
-  }, [weather?.city, currentHeatRisk?.level]);
+    let isMounted = true;
+    const resetGreeting = async () => {
+      await Promise.resolve();
+      if (!isMounted) return;
+      setMessages([{
+        role: "ai",
+        text: `👋 Hi! I'm your AI Heatwave Assistant. ${weather
+          ? `Current conditions in ${city}: ${temp}°C with ${risk} heat risk.`
+          : "Search for a city to get started."} Ask me anything about heat safety!`,
+      }]);
+    };
+    resetGreeting();
+    return () => {
+      isMounted = false;
+    };
+  }, [city, risk, temp, weather]);
 
   const send = () => {
     const trimmed = input.trim();

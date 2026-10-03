@@ -48,7 +48,7 @@ function EmailAlert({ weather }) {
         setStatus("error");
         setStatusMessage("Unable to send email. Please try again.");
       }
-    } catch (error) {
+    } catch {
       setStatus("error");
       setStatusMessage("Unable to send email. Please try again.");
     } finally {

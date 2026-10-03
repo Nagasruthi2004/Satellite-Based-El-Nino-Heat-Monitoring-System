@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 function FavouriteCities({ currentCity, onSelectCity }) {
-  const [favorites, setFavorites] = useState([]);
-
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("favoriteCities")) || [];
-    setFavorites(saved);
-  }, []);
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("favoriteCities")) || [];
+    } catch {
+      return [];
+    }
+  });
 
   const addFavorite = () => {
     if (!currentCity) return;

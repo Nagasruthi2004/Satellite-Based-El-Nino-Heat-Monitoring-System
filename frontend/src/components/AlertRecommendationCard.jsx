@@ -1,5 +1,3 @@
-import React from "react";
-
 function AlertRecommendationCard({ recommendation }) {
   return (
     <div className="weather-card alert-recommendation-card">

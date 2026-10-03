@@ -102,9 +102,17 @@ export default function IndiaLSTMap() {
           </div>
           <h2 className="india-lst-title">India Land Surface Temperature (2020–2025)</h2>
           <p className="india-lst-subtitle">
-            Historical MODIS Land Surface Temperature (LST) observations across 34 Indian States & Union Territories.
+            Historical MODIS Land Surface Temperature (LST) observations across 34 Indian States &amp; Union Territories.
             Select any year from 2020 to 2025 to visualize verified state-wise thermal distributions.
           </p>
+          <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
+            <span style={{ background: "var(--surface-alt)", padding: "3px 10px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+              📊 <strong>Data Source:</strong> Prepared historical LST dataset, 2020–2025
+            </span>
+            <span style={{ background: "var(--surface-alt)", padding: "3px 10px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+              🔬 <strong>Scientific Note:</strong> Land Surface Temperature (LST) measures radiative skin temperature and differs from ambient 2m air temperature.
+            </span>
+          </div>
         </div>
 
         {/* Reusable Year Selector */}

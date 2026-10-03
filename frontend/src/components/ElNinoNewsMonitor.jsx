@@ -60,8 +60,16 @@ function ElNinoNewsMonitor() {
 
   // Fetch news automatically when module is loaded or activeFilter changes
   useEffect(() => {
-    fetchNews(activeFilter, false);
+    let isMounted = true;
+    const loadNews = async () => {
+      await Promise.resolve();
+      if (isMounted) {
+        fetchNews(activeFilter, false);
+      }
+    };
+    loadNews();
     return () => {
+      isMounted = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }

@@ -1,4 +1,4 @@
-import React from "react";
+
 
 function HumidityCard({ humidity, errorMessage }) {
   const displayValue = errorMessage
