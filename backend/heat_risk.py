@@ -19,8 +19,10 @@ def classify_current_heat_risk(temperature, humidity, rainfall, wind_speed):
         level = "Low"
     elif temperature < 36:
         level = "Medium"
-    else:
+    elif temperature < 40:
         level = "High"
+    else:
+        level = "Critical"
 
     return {"level": level, "score": score}
 

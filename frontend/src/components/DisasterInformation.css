@@ -1,0 +1,732 @@
+/* ==========================================================================
+   DISASTER INFORMATION & SAFETY MODULE STYLES
+   Designed for clarity, high accessibility, light/dark themes, and responsiveness.
+   ========================================================================== */
+
+.disaster-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 24px);
+  width: 100%;
+  animation: fadeInDisaster 0.3s ease-in-out;
+}
+
+@keyframes fadeInDisaster {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── HEADER ── */
+.disaster-info-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--space-6, 24px);
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+}
+
+.disaster-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-caption, 0.75rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+  color: var(--primary, #1d4f91);
+}
+
+.disaster-title {
+  font-size: var(--type-page-title, 1.875rem);
+  font-weight: var(--weight-heading, 700);
+  color: var(--text, #172033);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.disaster-subtitle {
+  font-size: var(--type-body, 0.9375rem);
+  color: var(--text-muted, #5f6f86);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 800px;
+}
+
+/* ── OFFICIAL DISCLAIMER BANNER ── */
+.disaster-disclaimer-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-left: 4px solid var(--primary, #1d4f91);
+  border-radius: var(--radius-sm, 10px);
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--text-muted, #5f6f86);
+  line-height: 1.5;
+}
+
+.disaster-disclaimer-banner strong {
+  color: var(--text, #172033);
+}
+
+.disclaimer-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* ── FILTER TABS ── */
+.disaster-filter-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 10px 2px;
+  scrollbar-width: thin;
+}
+
+.disaster-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 20px;
+  color: var(--text-muted, #5f6f86);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.disaster-filter-btn:hover {
+  background: var(--surface-alt, #f8fafc);
+  color: var(--text, #172033);
+  border-color: var(--primary, #1d4f91);
+  transform: translateY(-1px);
+}
+
+.disaster-filter-btn.active {
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  border-color: var(--primary, #1d4f91);
+  box-shadow: 0 2px 8px rgba(29, 79, 145, 0.25);
+}
+
+/* ── DISASTER CARDS CONTAINER ── */
+.disaster-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 24px);
+}
+
+/* ── SINGLE DISASTER CARD ── */
+.disaster-card {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
+}
+
+.disaster-card:hover {
+  box-shadow: var(--shadow-hover, 0 8px 24px rgba(23, 32, 51, 0.08));
+}
+
+/* Card Header with Category Accent */
+.disaster-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border, #dce4ee);
+}
+
+.disaster-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.disaster-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+/* Disaster specific accent colors */
+.disaster-card.cat-heatwave {
+  --cat-accent: #ea580c;
+  --cat-bg: #fff7ed;
+  --cat-border: #fed7aa;
+}
+.disaster-card.cat-flood {
+  --cat-accent: #0284c7;
+  --cat-bg: #f0f9ff;
+  --cat-border: #bae6fd;
+}
+.disaster-card.cat-cyclone {
+  --cat-accent: #0d9488;
+  --cat-bg: #f0fdfa;
+  --cat-border: #99f6e4;
+}
+.disaster-card.cat-landslide {
+  --cat-accent: #d97706;
+  --cat-bg: #fffbeb;
+  --cat-border: #fde68a;
+}
+.disaster-card.cat-earthquake {
+  --cat-accent: #7c3aed;
+  --cat-bg: #f5f3ff;
+  --cat-border: #ddd6fe;
+}
+
+.disaster-icon-box {
+  background: var(--cat-bg);
+  border: 1px solid var(--cat-border);
+  color: var(--cat-accent);
+}
+
+.disaster-card-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+}
+
+.disaster-card-category-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--cat-accent);
+  letter-spacing: 0.5px;
+}
+
+.disaster-card-authority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #5f6f86);
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  padding: 4px 12px;
+  border-radius: 14px;
+}
+
+/* Card Body */
+.disaster-card-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 1. What is it? */
+.disaster-overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cat-accent);
+}
+
+.disaster-description {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text, #172033);
+  margin: 0;
+}
+
+/* 2. Warning Signs Box */
+.disaster-warning-box {
+  background: var(--cat-bg);
+  border: 1px solid var(--cat-border);
+  border-radius: var(--radius-sm, 10px);
+  padding: 16px 20px;
+}
+
+.disaster-warning-box h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cat-accent);
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.disaster-warning-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px 16px;
+}
+
+.disaster-warning-list li {
+  font-size: 13.5px;
+  color: var(--text, #172033);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.45;
+}
+
+.disaster-warning-list li span:first-child {
+  color: var(--cat-accent);
+  font-weight: 700;
+}
+
+/* Action Grids: Precautions, During, What to Avoid */
+.disaster-protocol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.protocol-box {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.protocol-box h4 {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.protocol-box.precautions h4 {
+  color: var(--primary, #1d4f91);
+}
+
+.protocol-box.during h4 {
+  color: #16a34a;
+}
+
+.protocol-box.avoid h4 {
+  color: #dc2626;
+}
+
+.protocol-box.preparedness h4 {
+  color: #9333ea;
+}
+
+.protocol-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.protocol-list li {
+  font-size: 13px;
+  color: var(--text, #172033);
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.protocol-bullet {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+/* Official Source link inside card */
+.disaster-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--surface-alt, #f8fafc);
+  border-top: 1px solid var(--border, #dce4ee);
+}
+
+.official-sources-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.official-source-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #5f6f86);
+  text-transform: uppercase;
+}
+
+.official-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 6px;
+  color: var(--primary, #1d4f91);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.official-source-link:hover {
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  border-color: var(--primary, #1d4f91);
+  transform: translateY(-1px);
+}
+
+/* ── EMERGENCY PREPAREDNESS SECTION ── */
+.emergency-preparedness-section {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  padding: 24px;
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-header-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-header-block h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header-block p {
+  font-size: 13.5px;
+  color: var(--text-muted, #5f6f86);
+  margin: 0;
+}
+
+.kit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.kit-card {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kit-card-icon {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.kit-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+}
+
+.kit-card-items {
+  font-size: 12.5px;
+  color: var(--text-muted, #5f6f86);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Helplines Strip */
+.helpline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.helpline-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+}
+
+.helpline-label {
+  font-size: 12px;
+  color: var(--text-muted, #5f6f86);
+  font-weight: 600;
+}
+
+.helpline-number {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary, #1d4f91);
+}
+
+/* ── OFFICIAL SOURCES DIRECTORY ── */
+.official-sources-directory {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  padding: 24px;
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sources-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.directory-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.directory-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary, #1d4f91);
+}
+
+.directory-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.directory-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.directory-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--primary-light, #e8f0fb);
+  color: var(--primary, #1d4f91);
+}
+
+.directory-card-desc {
+  font-size: 12.5px;
+  color: var(--text-muted, #5f6f86);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.directory-visit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 6px;
+  color: var(--primary, #1d4f91);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.directory-visit-btn:hover {
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  border-color: var(--primary, #1d4f91);
+}
+
+/* ── DARK THEME OVERRIDES ── */
+:root[data-theme="dark"] .disaster-info-header,
+:root[data-theme="dark"] .disaster-card,
+:root[data-theme="dark"] .emergency-preparedness-section,
+:root[data-theme="dark"] .official-sources-directory {
+  background: var(--card, #131f31);
+  border-color: var(--border, #2b3b52);
+}
+
+:root[data-theme="dark"] .disaster-filter-btn {
+  background: var(--surface, #131f31);
+  border-color: var(--border, #2b3b52);
+  color: var(--text-muted, #adbbce);
+}
+
+:root[data-theme="dark"] .disaster-filter-btn:hover {
+  background: var(--secondary, #18273b);
+  color: var(--text, #e9eff8);
+}
+
+:root[data-theme="dark"] .disaster-filter-btn.active {
+  background: var(--primary, #8bb9ff);
+  color: #0d1625;
+  border-color: var(--primary, #8bb9ff);
+}
+
+:root[data-theme="dark"] .disaster-card-header,
+:root[data-theme="dark"] .disaster-card-footer {
+  border-color: var(--border, #2b3b52);
+  background: var(--card, #131f31);
+}
+
+:root[data-theme="dark"] .disaster-disclaimer-banner,
+:root[data-theme="dark"] .protocol-box,
+:root[data-theme="dark"] .kit-card,
+:root[data-theme="dark"] .helpline-card,
+:root[data-theme="dark"] .directory-card,
+:root[data-theme="dark"] .disaster-card-authority-badge {
+  background: var(--secondary, #18273b);
+  border-color: var(--border, #2b3b52);
+  color: var(--text, #e9eff8);
+}
+
+:root[data-theme="dark"] .disaster-card.cat-heatwave {
+  --cat-accent: #fb923c;
+  --cat-bg: #431407;
+  --cat-border: #7c2d12;
+}
+:root[data-theme="dark"] .disaster-card.cat-flood {
+  --cat-accent: #38bdf8;
+  --cat-bg: #082f49;
+  --cat-border: #075985;
+}
+:root[data-theme="dark"] .disaster-card.cat-cyclone {
+  --cat-accent: #2dd4bf;
+  --cat-bg: #042f2e;
+  --cat-border: #115e59;
+}
+:root[data-theme="dark"] .disaster-card.cat-landslide {
+  --cat-accent: #fbbf24;
+  --cat-bg: #451a03;
+  --cat-border: #78350f;
+}
+:root[data-theme="dark"] .disaster-card.cat-earthquake {
+  --cat-accent: #a78bfa;
+  --cat-bg: #2e1065;
+  --cat-border: #5b21b6;
+}
+
+:root[data-theme="dark"] .official-source-link,
+:root[data-theme="dark"] .directory-visit-btn {
+  background: var(--card, #131f31);
+  border-color: var(--border, #2b3b52);
+  color: var(--primary, #8bb9ff);
+}
+
+:root[data-theme="dark"] .official-source-link:hover,
+:root[data-theme="dark"] .directory-visit-btn:hover {
+  background: var(--primary, #8bb9ff);
+  color: #0d1625;
+  border-color: var(--primary, #8bb9ff);
+}
+
+:root[data-theme="dark"] .directory-badge {
+  background: var(--primary-light, #1b365c);
+  color: var(--primary, #8bb9ff);
+}
+
+:root[data-theme="dark"] .helpline-number {
+  color: var(--primary, #8bb9ff);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .disaster-info-header,
+  .disaster-card-header,
+  .disaster-card-body,
+  .disaster-card-footer,
+  .emergency-preparedness-section,
+  .official-sources-directory {
+    padding: 16px;
+  }
+
+  .disaster-protocol-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .disaster-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .disaster-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sources-directory-grid {
+    grid-template-columns: 1fr;
+  }
+}

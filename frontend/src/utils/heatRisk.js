@@ -6,6 +6,7 @@ export function getHeatRiskExplanation(risk, confidence) {
     Low: `Low heat risk based on current weather conditions${confidenceText}. Conditions are favorable.`,
     Medium: `Medium heat risk based on current weather conditions${confidenceText}. Monitor conditions.`,
     High: `High heat risk based on current weather conditions${confidenceText}. Take precautions.`,
+    Critical: `Critical heat risk based on current weather conditions${confidenceText}. Immediate precautions required.`,
   };
   return explanations[risk] || "Heat risk prediction unavailable";
 }

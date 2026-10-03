@@ -17,6 +17,15 @@ from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
 from heat_risk import classify_current_heat_risk, classify_forecast_heat_risk
 from email_service import send_heat_alert_subscription_email, is_valid_email
+from email_alerts import (
+    is_valid_email as is_valid_alert_email,
+    is_smtp_configured,
+    send_heat_alert_email,
+    save_alert_config,
+    get_alert_config_status,
+    VALID_THRESHOLDS,
+)
+from emergency_location import get_emergency_info
 from elnino_news import fetch_elnino_news
 
 # Configure logging so weather.py logger output is visible in the Flask console
@@ -412,7 +421,12 @@ def home():
             "/weather": "GET - Returns current weather data",
             "/satellite": "GET - Returns satellite heat monitoring data",
             "/predict": "GET/POST - ML-based heat risk prediction",
-            "/elnino-news": "GET - Returns real-world El Niño and ENSO news with category filter"
+            "/elnino-news": "GET - Returns real-world El Niño and ENSO news with category filter",
+            "/smart-awareness": "GET - Returns smart heat awareness guidance and recommendations",
+            "/india-lst": "GET - Returns historical India Land Surface Temperature (LST) dataset (2020-2025)",
+            "/email-alert/config": "GET/POST - Retrieve or save heat alert notification configuration",
+            "/email-alert/test": "POST - Send a test heat risk alert notification email",
+            "/emergency-info": "GET - Returns verified emergency contacts, location heat status, and safety guidance"
         }
     }), 200
 
@@ -540,6 +554,849 @@ def get_world_heatmap():
             "error": "Failed to load world heatmap dataset",
             "details": str(exc),
             "data": []
+        }), 500
+
+
+@app.route("/smart-awareness", methods=["GET"])
+def get_smart_awareness():
+    """
+    Endpoint providing smart heat awareness messages, recommended actions,
+    and alert context based on live weather heat-risk level or specified level.
+    """
+    awareness_catalog = {
+        "Low": {
+            "headline": "Heat conditions are currently low.",
+            "guidance": "Continue normal hydration and stay aware of weather changes.",
+            "severity": "Low Risk",
+            "temperature_threshold": "< 30°C",
+            "recommended_actions": [
+                {
+                    "title": "Hydration Routine",
+                    "category": "Hydration",
+                    "icon": "💧",
+                    "desc": "Maintain regular daily hydration with 2 to 2.5 litres of clean drinking water."
+                },
+                {
+                    "title": "Outdoor Activities",
+                    "category": "Activity",
+                    "icon": "🏃",
+                    "desc": "Normal outdoor work, recreation, and athletic activities are completely safe."
+                },
+                {
+                    "title": "Weather Awareness",
+                    "category": "Awareness",
+                    "icon": "🌤️",
+                    "desc": "Stay aware of local weather updates and sudden temperature variations."
+                },
+                {
+                    "title": "Sun Protection",
+                    "category": "Protection",
+                    "icon": "🧢",
+                    "desc": "Wear lightweight comfortable clothing and hats when under direct midday sun."
+                }
+            ],
+            "why_this_alert": [
+                "Ambient temperature is within comfortable baseline limits (< 30°C).",
+                "Thermal comfort index indicates negligible stress on cardiovascular systems.",
+                "Atmospheric heat retention is low with favorable ventilation."
+            ]
+        },
+        "Medium": {
+            "headline": "Moderate heat conditions detected.",
+            "guidance": "Stay hydrated and avoid unnecessary exposure to strong afternoon heat.",
+            "severity": "Moderate Risk",
+            "temperature_threshold": "30°C – 35.9°C",
+            "recommended_actions": [
+                {
+                    "title": "Proactive Hydration",
+                    "category": "Hydration",
+                    "icon": "🥤",
+                    "desc": "Drink plenty of water at regular intervals, even before experiencing thirst."
+                },
+                {
+                    "title": "Afternoon Heat Caution",
+                    "category": "Activity",
+                    "icon": "⛱️",
+                    "desc": "Avoid unnecessary exposure to strong afternoon heat between 12:00 PM and 3:00 PM."
+                },
+                {
+                    "title": "Comfortable Attire",
+                    "category": "Protection",
+                    "icon": "👕",
+                    "desc": "Wear loose, light-colored cotton garments and use sunglasses or umbrellas outdoors."
+                },
+                {
+                    "title": "Vulnerable Care",
+                    "category": "Health",
+                    "icon": "🩺",
+                    "desc": "Check on children, elderly family members, and outdoor workers during midday hours."
+                }
+            ],
+            "why_this_alert": [
+                "Elevated temperatures (30°C–36°C) increase physiological thermal load.",
+                "Moderate humidity slows evaporative cooling through perspiration.",
+                "Solar radiation intensity peaks in early afternoon, elevating heat stress."
+            ]
+        },
+        "High": {
+            "headline": "High heat conditions detected.",
+            "guidance": "Drink plenty of water, reduce outdoor activity during peak afternoon hours, and stay in cool areas.",
+            "severity": "High Risk",
+            "temperature_threshold": "36°C – 39.9°C",
+            "recommended_actions": [
+                {
+                    "title": "Intensive Hydration",
+                    "category": "Hydration",
+                    "icon": "🚰",
+                    "desc": "Drink 3 to 4 litres of water throughout the day; include electrolyte or lemon water."
+                },
+                {
+                    "title": "Peak Hour Restriction",
+                    "category": "Activity",
+                    "icon": "🚫",
+                    "desc": "Reduce outdoor activity during peak afternoon hours (11:30 AM to 4:00 PM)."
+                },
+                {
+                    "title": "Cool Environments",
+                    "category": "Environment",
+                    "icon": "❄️",
+                    "desc": "Stay in cool, shaded, or air-conditioned areas and keep indoor living spaces ventilated."
+                },
+                {
+                    "title": "Heat Exhaustion Watch",
+                    "category": "Health",
+                    "icon": "⚠️",
+                    "desc": "Watch for early symptoms of heat exhaustion: dizziness, profuse sweating, and fatigue."
+                }
+            ],
+            "why_this_alert": [
+                "Sustained high temperatures (36°C–40°C) exceed comfortable thermal regulation.",
+                "Combined heat index places significant strain on vulnerable populations.",
+                "Urban heat island effect amplifies localized surface and air temperatures."
+            ]
+        },
+        "Critical": {
+            "headline": "Critical heat conditions detected.",
+            "guidance": "Avoid unnecessary outdoor exposure, stay hydrated, remain in a cool place, and seek medical help if heat-related symptoms occur.",
+            "severity": "Critical Risk",
+            "temperature_threshold": "≥ 40°C",
+            "recommended_actions": [
+                {
+                    "title": "Avoid Outdoor Exposure",
+                    "category": "Urgent",
+                    "icon": "🏠",
+                    "desc": "Avoid all unnecessary outdoor exposure; stay indoors in the coolest available room."
+                },
+                {
+                    "title": "Continuous Hydration",
+                    "category": "Hydration",
+                    "icon": "🧊",
+                    "desc": "Stay constantly hydrated with ORS, coconut water, or water; avoid caffeine and alcohol."
+                },
+                {
+                    "title": "Active Indoor Cooling",
+                    "category": "Environment",
+                    "icon": "💨",
+                    "desc": "Use fans, AC, cold compresses, or damp towels; draw dark curtains against direct sunlight."
+                },
+                {
+                    "title": "Seek Medical Help",
+                    "category": "Emergency",
+                    "icon": "🚑",
+                    "desc": "Seek emergency medical help immediately if confusion, fainting, or high body fever occurs."
+                }
+            ],
+            "why_this_alert": [
+                "Extreme temperatures (≥ 40°C) pose dangerous risk of acute heatstroke and hyperthermia.",
+                "Body cooling mechanisms can fail under prolonged exposure to critical thermal limits.",
+                "Satellite LST and atmospheric conditions indicate hazardous heatwave intensity."
+            ]
+        }
+    }
+
+    requested_level = request.args.get("level", "").strip().capitalize()
+    if requested_level in awareness_catalog:
+        selected_data = awareness_catalog[requested_level]
+        return jsonify({
+            "status": "success",
+            "level": requested_level,
+            "headline": selected_data["headline"],
+            "guidance": selected_data["guidance"],
+            "severity": selected_data["severity"],
+            "temperature_threshold": selected_data["temperature_threshold"],
+            "recommended_actions": selected_data["recommended_actions"],
+            "why_this_alert": selected_data["why_this_alert"],
+            "all_levels": list(awareness_catalog.keys())
+        }), 200
+
+    city = request.args.get("city", "Coimbatore").strip() or "Coimbatore"
+    weather_data = fetch_weather(city)
+    if weather_data is not None:
+        risk_obj = classify_current_heat_risk(
+            temperature=weather_data.get("temperature"),
+            humidity=weather_data.get("humidity"),
+            rainfall=weather_data.get("rainfall"),
+            wind_speed=weather_data.get("wind_speed")
+        )
+        resolved_level = risk_obj["level"] if risk_obj else "Medium"
+        selected_data = awareness_catalog.get(resolved_level, awareness_catalog["Medium"])
+        return jsonify({
+            "status": "success",
+            "city": weather_data.get("city", city),
+            "temperature": weather_data.get("temperature"),
+            "humidity": weather_data.get("humidity"),
+            "wind_speed": weather_data.get("wind_speed"),
+            "rainfall": weather_data.get("rainfall"),
+            "level": resolved_level,
+            "score": risk_obj.get("score") if risk_obj else None,
+            "headline": selected_data["headline"],
+            "guidance": selected_data["guidance"],
+            "severity": selected_data["severity"],
+            "temperature_threshold": selected_data["temperature_threshold"],
+            "recommended_actions": selected_data["recommended_actions"],
+            "why_this_alert": selected_data["why_this_alert"],
+            "all_levels": list(awareness_catalog.keys())
+        }), 200
+
+    default_level = "Medium"
+    selected_data = awareness_catalog[default_level]
+    return jsonify({
+        "status": "success",
+        "city": city,
+        "level": default_level,
+        "headline": selected_data["headline"],
+        "guidance": selected_data["guidance"],
+        "severity": selected_data["severity"],
+        "temperature_threshold": selected_data["temperature_threshold"],
+        "recommended_actions": selected_data["recommended_actions"],
+        "why_this_alert": selected_data["why_this_alert"],
+        "all_levels": list(awareness_catalog.keys())
+    }), 200
+
+
+INDIA_STATE_COORDINATES = {
+    "Andaman and Nicobar": (11.6670, 92.7359),
+    "Andhra Pradesh": (15.9129, 79.7400),
+    "Arunachal Pradesh": (28.2180, 94.7278),
+    "Assam": (26.2006, 92.9376),
+    "Bihar": (25.0961, 85.3131),
+    "Chandigarh": (30.7333, 76.7794),
+    "Chhattisgarh": (21.2787, 81.8661),
+    "Dadra and Nagar Haveli": (20.1809, 73.0169),
+    "Daman and Diu": (20.4283, 72.8397),
+    "Delhi": (28.7041, 77.1025),
+    "Goa": (15.2993, 74.1240),
+    "Gujarat": (22.2587, 71.1924),
+    "Haryana": (29.0588, 76.0856),
+    "Himachal Pradesh": (31.1048, 77.1734),
+    "Jharkhand": (23.6102, 85.2799),
+    "Karnataka": (15.3173, 75.7139),
+    "Kerala": (10.8505, 76.2711),
+    "Lakshadweep": (10.5667, 72.6417),
+    "Madhya Pradesh": (22.9734, 78.6569),
+    "Maharashtra": (19.7515, 75.7139),
+    "Manipur": (24.6637, 93.9063),
+    "Meghalaya": (25.4670, 91.3662),
+    "Mizoram": (23.1645, 92.9376),
+    "Nagaland": (26.1584, 94.5624),
+    "Orissa": (20.9517, 85.0985),
+    "Puducherry": (11.9416, 79.8083),
+    "Punjab": (31.1471, 75.3412),
+    "Rajasthan": (27.0238, 74.2179),
+    "Sikkim": (27.5330, 88.5122),
+    "Tamil Nadu": (11.1271, 78.6569),
+    "Tripura": (23.9408, 91.9882),
+    "Uttar Pradesh": (26.8467, 80.9462),
+    "Uttarakhand": (30.0668, 79.0193),
+    "West Bengal": (22.9868, 87.8550)
+}
+
+AVAILABLE_INDIA_LST_YEARS = [2020, 2021, 2022, 2023, 2024, 2025]
+
+
+@app.route("/india-lst", methods=["GET"])
+def get_india_lst():
+    """
+    Endpoint to retrieve India Land Surface Temperature (LST) data for a given year.
+    Supports years 2020 through 2025.
+    Returns: JSON containing selected year, count, average_lst, highest_lst, lowest_lst,
+             heat_risk distribution, and state-wise records from actual dataset.
+    """
+    try:
+        year_str = request.args.get("year", "2025").strip()
+        try:
+            year_int = int(year_str)
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "error": "Invalid year format",
+                "available_years": AVAILABLE_INDIA_LST_YEARS,
+                "data": []
+            }), 400
+
+        if year_int not in AVAILABLE_INDIA_LST_YEARS:
+            return jsonify({
+                "status": "error",
+                "error": f"Data unavailable for year {year_int}",
+                "available_years": AVAILABLE_INDIA_LST_YEARS,
+                "data": []
+            }), 404
+
+        dataset_dir = os.path.join(os.path.dirname(__file__), "..", "dataset")
+        csv_path = os.path.join(dataset_dir, f"India_LST_{year_int}.csv")
+        xlsx_path = os.path.join(dataset_dir, "India_LST_Clean_Dataset_2020_2025.xlsx")
+
+        df = None
+        source_name = ""
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+            source_name = f"India_LST_{year_int}.csv"
+        elif os.path.exists(xlsx_path):
+            full_df = pd.read_excel(xlsx_path)
+            df = full_df[full_df["Year"] == year_int].copy()
+            source_name = "India_LST_Clean_Dataset_2020_2025.xlsx"
+
+        if df is None or df.empty:
+            logger.warning("India LST dataset file missing or empty for year %d", year_int)
+            return jsonify({
+                "status": "error",
+                "error": f"Data unavailable for year {year_int}",
+                "available_years": AVAILABLE_INDIA_LST_YEARS,
+                "data": []
+            }), 404
+
+        lst_col = next((c for c in df.columns if "LST" in c or "Average" in c), "Average LST (°C)")
+
+        records = []
+        for _, row in df.iterrows():
+            state_name = str(row["State"]).strip()
+            lst_val = round(float(row[lst_col]), 2)
+            risk_val = str(row["Heat Risk"]).strip()
+            coords = INDIA_STATE_COORDINATES.get(state_name, (20.5937, 78.9629))
+            records.append({
+                "state": state_name,
+                "year": year_int,
+                "lst_celsius": lst_val,
+                "heat_risk": risk_val,
+                "latitude": coords[0],
+                "longitude": coords[1]
+            })
+
+        avg_lst = round(float(df[lst_col].mean()), 2)
+        highest_record = max(records, key=lambda x: x["lst_celsius"])
+        lowest_record = min(records, key=lambda x: x["lst_celsius"])
+
+        raw_dist = df["Heat Risk"].value_counts().to_dict()
+        risk_dist = {str(k): int(v) for k, v in raw_dist.items()}
+
+        logger.info("Serving India LST data for year %d (%d records)", year_int, len(records))
+
+        return jsonify({
+            "status": "success",
+            "year": year_int,
+            "available_years": AVAILABLE_INDIA_LST_YEARS,
+            "source_file": source_name,
+            "count": len(records),
+            "average_lst": avg_lst,
+            "highest_lst": highest_record,
+            "lowest_lst": lowest_record,
+            "risk_distribution": risk_dist,
+            "data": records
+        }), 200
+
+    except Exception as exc:
+        logger.error("Failed to load India LST dataset: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to load India LST dataset",
+            "details": str(exc),
+            "data": []
+        }), 500
+
+
+def _load_full_india_lst_df():
+    """Helper to load all 2020-2025 India LST dataset records."""
+    dataset_dir = os.path.join(os.path.dirname(__file__), "..", "dataset")
+    xlsx_path = os.path.join(dataset_dir, "India_LST_Clean_Dataset_2020_2025.xlsx")
+
+    if os.path.exists(xlsx_path):
+        df = pd.read_excel(xlsx_path)
+    else:
+        dfs = []
+        for y in AVAILABLE_INDIA_LST_YEARS:
+            cpath = os.path.join(dataset_dir, f"India_LST_{y}.csv")
+            if os.path.exists(cpath):
+                dfs.append(pd.read_csv(cpath))
+        if not dfs:
+            return None, ""
+        df = pd.concat(dfs, ignore_index=True)
+
+    lst_col = next((c for c in df.columns if "LST" in c or "Average" in c), "Average LST (°C)")
+    return df, lst_col
+
+
+@app.route("/heat-analysis", methods=["GET"])
+def get_heat_analysis():
+    """
+    Endpoint to retrieve comprehensive India LST Heat Analysis statistics (2020-2025).
+    Optional query parameters:
+      - year: int (2020-2025, default 2025)
+      - state_a: str (optional, state for comparison)
+      - state_b: str (optional, state for comparison)
+      - state: str (optional, single state for historical trend)
+    Returns: JSON containing yearly trend, hottest/lowest states, risk distribution,
+             state historical data, key insights, and comparison data.
+    """
+    try:
+        df, lst_col = _load_full_india_lst_df()
+        if df is None or df.empty:
+            logger.warning("India LST dataset file missing or empty for heat analysis")
+            return jsonify({
+                "status": "error",
+                "error": "India LST dataset unavailable",
+                "available_years": AVAILABLE_INDIA_LST_YEARS
+            }), 404
+
+        years = sorted(df["Year"].dropna().unique().astype(int).tolist())
+        states = sorted(df["State"].dropna().astype(str).unique().tolist())
+
+        year_param = request.args.get("year", "2025").strip()
+        try:
+            selected_year = int(year_param)
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "error": "Invalid year format",
+                "available_years": AVAILABLE_INDIA_LST_YEARS
+            }), 400
+
+        if selected_year not in AVAILABLE_INDIA_LST_YEARS:
+            return jsonify({
+                "status": "error",
+                "error": f"Data unavailable for year {selected_year}",
+                "available_years": AVAILABLE_INDIA_LST_YEARS
+            }), 404
+
+        yearly_trend = []
+        risk_distribution_by_year = []
+        by_year = {}
+
+        for y in years:
+            sub = df[df["Year"] == y].copy()
+            avg_lst = round(float(sub[lst_col].mean()), 2)
+            min_lst = round(float(sub[lst_col].min()), 2)
+            max_lst = round(float(sub[lst_col].max()), 2)
+            yearly_trend.append({
+                "year": y,
+                "average_lst": avg_lst,
+                "min_lst": min_lst,
+                "max_lst": max_lst,
+                "state_count": len(sub)
+            })
+
+            rc = sub["Heat Risk"].value_counts().to_dict()
+            dist_obj = {
+                "year": y,
+                "Low": int(rc.get("Low", 0)),
+                "Moderate": int(rc.get("Moderate", 0)),
+                "High": int(rc.get("High", 0)),
+                "total": len(sub)
+            }
+            risk_distribution_by_year.append(dist_obj)
+
+            sub_sorted = sub.sort_values(lst_col, ascending=False)
+            top10 = []
+            for _, r in sub_sorted.head(10).iterrows():
+                top10.append({
+                    "state": str(r["State"]).strip(),
+                    "lst_celsius": round(float(r[lst_col]), 2),
+                    "heat_risk": str(r["Heat Risk"]).strip()
+                })
+            bottom5 = []
+            for _, r in sub.sort_values(lst_col, ascending=True).head(5).iterrows():
+                bottom5.append({
+                    "state": str(r["State"]).strip(),
+                    "lst_celsius": round(float(r[lst_col]), 2),
+                    "heat_risk": str(r["Heat Risk"]).strip()
+                })
+
+            by_year[y] = {
+                "year": y,
+                "top_10_hottest": top10,
+                "bottom_5_lowest": bottom5,
+                "risk_distribution": dist_obj,
+                "average_lst": avg_lst,
+                "highest_lst": top10[0] if top10 else None,
+                "lowest_lst": bottom5[0] if bottom5 else None,
+            }
+
+        state_history = {}
+        for st in states:
+            sub_st = df[df["State"] == st].sort_values("Year")
+            records = []
+            rc_st = {"Low": 0, "Moderate": 0, "High": 0}
+            years_by_risk = {"Low": [], "Moderate": [], "High": []}
+            for _, r in sub_st.iterrows():
+                yr = int(r["Year"])
+                val = round(float(r[lst_col]), 2)
+                risk = str(r["Heat Risk"]).strip()
+                rc_st[risk] = rc_st.get(risk, 0) + 1
+                if risk in years_by_risk:
+                    years_by_risk[risk].append(yr)
+                records.append({
+                    "year": yr,
+                    "lst_celsius": val,
+                    "heat_risk": risk
+                })
+
+            avg_st = round(float(sub_st[lst_col].mean()), 2)
+            id_max = sub_st[lst_col].idxmax()
+            id_min = sub_st[lst_col].idxmin()
+
+            state_history[st] = {
+                "state": st,
+                "average_lst": avg_st,
+                "highest_lst": {
+                    "year": int(sub_st.loc[id_max, "Year"]),
+                    "lst_celsius": round(float(sub_st.loc[id_max, lst_col]), 2)
+                },
+                "lowest_lst": {
+                    "year": int(sub_st.loc[id_min, "Year"]),
+                    "lst_celsius": round(float(sub_st.loc[id_min, lst_col]), 2)
+                },
+                "risk_counts": rc_st,
+                "years_by_risk": years_by_risk,
+                "yearly_data": records
+            }
+
+        idx_all_max = df[lst_col].idxmax()
+        idx_all_min = df[lst_col].idxmin()
+        warmest_yr = max(yearly_trend, key=lambda x: x["average_lst"])
+        coolest_yr = min(yearly_trend, key=lambda x: x["average_lst"])
+        overall_avg = round(float(df[lst_col].mean()), 2)
+
+        overall_insights = {
+            "overall_average_lst": overall_avg,
+            "highest_record": {
+                "state": str(df.loc[idx_all_max, "State"]).strip(),
+                "year": int(df.loc[idx_all_max, "Year"]),
+                "lst_celsius": round(float(df.loc[idx_all_max, lst_col]), 2)
+            },
+            "lowest_record": {
+                "state": str(df.loc[idx_all_min, "State"]).strip(),
+                "year": int(df.loc[idx_all_min, "Year"]),
+                "lst_celsius": round(float(df.loc[idx_all_min, lst_col]), 2)
+            },
+            "warmest_year": warmest_yr,
+            "coolest_year": coolest_yr,
+            "total_records": len(df),
+            "total_states": len(states)
+        }
+
+        comparison = None
+        state_a_param = request.args.get("state_a")
+        state_b_param = request.args.get("state_b")
+        if state_a_param or state_b_param:
+            sa = (state_a_param or "Tamil Nadu").strip()
+            sb = (state_b_param or "Rajasthan").strip()
+            if sa not in state_history:
+                return jsonify({
+                    "status": "error",
+                    "error": f"State '{sa}' not found in dataset",
+                    "available_states": states
+                }), 400
+            if sb not in state_history:
+                return jsonify({
+                    "status": "error",
+                    "error": f"State '{sb}' not found in dataset",
+                    "available_states": states
+                }), 400
+
+            comp_chart = []
+            for y in years:
+                val_a = next((d["lst_celsius"] for d in state_history[sa]["yearly_data"] if d["year"] == y), None)
+                val_b = next((d["lst_celsius"] for d in state_history[sb]["yearly_data"] if d["year"] == y), None)
+                comp_chart.append({
+                    "year": y,
+                    sa: val_a,
+                    sb: val_b
+                })
+            comparison = {
+                "state_a": state_history[sa],
+                "state_b": state_history[sb],
+                "chart_data": comp_chart
+            }
+
+        single_state_analysis = None
+        state_param = request.args.get("state")
+        if state_param:
+            st_clean = state_param.strip()
+            if st_clean not in state_history:
+                return jsonify({
+                    "status": "error",
+                    "error": f"State '{st_clean}' not found in dataset",
+                    "available_states": states
+                }), 400
+            single_state_analysis = state_history[st_clean]
+
+        return jsonify({
+            "status": "success",
+            "selected_year": selected_year,
+            "available_years": AVAILABLE_INDIA_LST_YEARS,
+            "available_states": states,
+            "yearly_trend": yearly_trend,
+            "by_year": by_year,
+            "risk_distribution_by_year": risk_distribution_by_year,
+            "state_history": state_history,
+            "overall_insights": overall_insights,
+            "selected_year_analysis": by_year[selected_year],
+            "comparison": comparison,
+            "single_state_analysis": single_state_analysis,
+            "source_info": {
+                "dataset_name": "India LST dataset 2020–2025",
+                "temperature_type": "Land Surface Temperature (LST)",
+                "note": "Temperature represents Land Surface Temperature (LST), not standard air temperature."
+            }
+        }), 200
+
+    except Exception as exc:
+        logger.error("Failed to generate heat analysis: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to generate heat analysis",
+            "details": str(exc)
+        }), 500
+
+
+@app.route("/heat-2026-prediction", methods=["GET"])
+def get_heat_2026_prediction():
+    """
+    Endpoint for 2026 India Land Surface Temperature (LST) predictions.
+    Uses historical 2020-2025 observations and Linear Regression modeling.
+    Optional query parameter:
+      - state: str (filter by specific state/UT)
+    Returns:
+      JSON response with state-wise 2026 estimates, predicted risk tiers,
+      national summary, top hotspots, model metadata, and limitation disclosures.
+    """
+    try:
+        from heat_2026_prediction import get_all_2026_predictions
+        data = get_all_2026_predictions()
+        requested_state = request.args.get("state")
+
+        if requested_state:
+            query = requested_state.strip()
+            matched = next(
+                (p for p in data["states"] if p["state"].casefold() == query.casefold()),
+                None
+            )
+            if not matched:
+                available_state_names = [p["state"] for p in data["states"]]
+                return jsonify({
+                    "status": "error",
+                    "error": f"State '{requested_state}' not found in 2026 predictions dataset.",
+                    "available_states": available_state_names
+                }), 404
+
+            return jsonify({
+                "status": "success",
+                "prediction_year": data["prediction_year"],
+                "state": matched,
+                "summary": data["summary"],
+                "model_info": data["model_info"],
+                "limitations": data["limitations"]
+            }), 200
+
+        return jsonify(data), 200
+
+    except Exception as exc:
+        logger.error("Failed to generate 2026 heat predictions: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to generate 2026 heat predictions",
+            "details": str(exc)
+        }), 500
+
+
+@app.route("/enso-analysis", methods=["GET"])
+def get_enso_analysis():
+    """
+    Endpoint for ENSO / Oceanic Niño Index (ONI) Analysis & Integration.
+    Combines authentic NOAA CPC ONI data with 2020-2025 India LST observations.
+    Optional query parameter:
+      - year: int (2020-2025, highlight specific annual comparison)
+    Returns:
+      JSON response with latest ENSO status, ONI trend time-series,
+      ENSO vs India LST comparison table, phase aggregates, correlation,
+      and scientific disclosures.
+    """
+    try:
+        from enso_analysis import get_full_enso_analysis
+        data = get_full_enso_analysis()
+        year_param = request.args.get("year")
+
+        if year_param:
+            try:
+                yr_int = int(year_param.strip())
+            except ValueError:
+                return jsonify({
+                    "status": "error",
+                    "error": "Invalid year parameter format",
+                    "available_years": [r["year"] for r in data["comparison_table"]]
+                }), 400
+
+            matched_row = next(
+                (r for r in data["comparison_table"] if r["year"] == yr_int),
+                None
+            )
+            if not matched_row:
+                return jsonify({
+                    "status": "error",
+                    "error": f"Year {yr_int} not found in comparison dataset",
+                    "available_years": [r["year"] for r in data["comparison_table"]]
+                }), 404
+
+            return jsonify({
+                "status": "success",
+                "selected_year": yr_int,
+                "yearly_record": matched_row,
+                "latest_status": data["latest_status"],
+                "phase_comparison": data["phase_comparison"],
+                "correlation": data["correlation"],
+                "insights": data["insights"],
+                "limitations": data["limitations"],
+                "source_info": data["source_info"]
+            }), 200
+
+        return jsonify(data), 200
+
+    except Exception as exc:
+        logger.error("Failed to generate ENSO analysis: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to generate ENSO analysis",
+            "details": str(exc)
+        }), 500
+
+
+
+@app.route("/email-alert/test", methods=["POST"])
+def email_alert_test():
+    """
+    POST /email-alert/test
+    Accepts: { "email": str, "location": str, "threshold": str (optional) }
+    Validates email format, checks SMTP configuration, sends a test heat alert.
+    Returns: success/failure status and alert details.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip()
+        location = (data.get("location") or data.get("state") or "Tamil Nadu").strip() or "Tamil Nadu"
+        raw_thresh = data.get("threshold") or "Medium"
+        threshold = str(raw_thresh).strip().capitalize()
+        if threshold not in VALID_THRESHOLDS:
+            threshold = "Medium"
+
+        if not email:
+            return jsonify({"success": False, "error": "Email address is required."}), 400
+
+        if not is_valid_alert_email(email):
+            return jsonify({"success": False, "error": "Please enter a valid email address."}), 400
+
+        if not is_smtp_configured():
+            logger.info("Test alert requested without SMTP configuration.")
+            return jsonify({
+                "success": False,
+                "error": "Email service is not configured.",
+                "message": "Email service is not configured.",
+                "is_smtp_configured": False
+            }), 503
+
+        success, message, alert_details = send_heat_alert_email(
+            to_email=email,
+            location=location,
+            threshold=threshold,
+            is_test=True
+        )
+
+        if not success:
+            return jsonify({"success": False, "error": message}), 500
+
+        return jsonify({
+            "success": True,
+            "message": f"Test alert email sent successfully to {email}.",
+            "alert_details": alert_details
+        }), 200
+
+    except Exception as exc:
+        logger.error("Error in /email-alert/test: %s", exc)
+        return jsonify({"success": False, "error": "Failed to send test alert email.", "details": str(exc)}), 500
+
+
+@app.route("/email-alert/config", methods=["GET", "POST"])
+def email_alert_config():
+    """
+    GET /email-alert/config - Returns current non-sensitive configuration
+    POST /email-alert/config - Saves/validates alert configuration without storing passwords/secrets
+    """
+    if request.method == "POST":
+        try:
+            data = request.get_json(silent=True) or {}
+            success, message, updated_config = save_alert_config(data)
+            if not success:
+                return jsonify({"success": False, "error": message}), 400
+            return jsonify({
+                "success": True,
+                "message": message,
+                "config": updated_config
+            }), 200
+        except Exception as exc:
+            logger.error("Error in POST /email-alert/config: %s", exc)
+            return jsonify({"success": False, "error": "Failed to save alert configuration.", "details": str(exc)}), 500
+
+    # GET method
+    try:
+        config_status = get_alert_config_status()
+        return jsonify({
+            "success": True,
+            "configured": config_status.get("configured", False),
+            "config": config_status,
+            "is_smtp_configured": config_status.get("is_smtp_configured", False),
+            "smtp_status_message": config_status.get("smtp_status_message", "Email service is not configured.")
+        }), 200
+    except Exception as exc:
+        logger.error("Error in GET /email-alert/config: %s", exc)
+        return jsonify({"success": False, "error": "Failed to load alert configuration.", "details": str(exc)}), 500
+
+
+@app.route("/emergency-info", methods=["GET"])
+def emergency_info():
+    """
+    GET /emergency-info
+    Returns verified official emergency contacts, location-based heat risk status,
+    and disaster safety guidance without storing or tracking private user location.
+    Optional query parameters:
+      - location / city / state: str
+      - lat: float
+      - lon: float
+    """
+    try:
+        location_param = request.args.get("location") or request.args.get("city") or request.args.get("state")
+        lat_param = request.args.get("lat")
+        lon_param = request.args.get("lon")
+
+        data = get_emergency_info(
+            location_query=location_param,
+            lat=lat_param,
+            lon=lon_param
+        )
+        return jsonify(data), 200
+    except Exception as exc:
+        logger.error("Error in /emergency-info: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve emergency information",
+            "details": str(exc)
         }), 500
 
 

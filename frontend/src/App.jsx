@@ -1,7 +1,7 @@
 import SatelliteTimeMachine from "./components/SatelliteTimeMachine";
 import ElNinoAnalyzer from "./components/ElNinoAnalyzer";
 import SatelliteChangeDetector from "./components/SatelliteChangeDetector";
-import EmailAlert from "./components/EmailAlert";
+import EmailHeatAlerts from "./components/EmailHeatAlerts";
 import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
@@ -28,6 +28,13 @@ import FutureCitySimulator from "./components/FutureCitySimulator";
 import HeatPreparednessScore from "./components/HeatPreparednessScore";
 import HeatHotspotRanking from "./components/HeatHotspotRanking";
 import AIChatbot from "./components/AIChatbot";
+import SmartAwareness from "./components/SmartAwareness";
+import DisasterInformation from "./components/DisasterInformation";
+import IndiaLSTMap from "./components/IndiaLSTMap";
+import HeatAnalysis from "./components/HeatAnalysis";
+import Heat2026Prediction from "./components/Heat2026Prediction";
+import ElNinoAnalysis from "./components/ElNinoAnalysis";
+import EmergencyLocation from "./components/EmergencyLocation";
 import Footer from "./components/Footer";
 import DashboardNavigation from "./components/DashboardNavigation";
 import { calculateElNinoImpact, getLatestOniData } from "./data/oniData";
@@ -40,6 +47,13 @@ const getStoredTheme = () => localStorage.getItem("el-nino-theme");
 
 const DASHBOARD_PAGES = [
   { id: "live", label: "Live Weather", icon: "📊" },
+  { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
+  { id: "disaster-info", label: "Disaster Information", icon: "🚨" },
+  { id: "emergency-location", label: "Emergency & Nearby Help", icon: "🆘" },
+  { id: "india-lst", label: "India Heat Map (LST)", icon: "🗺️" },
+  { id: "heat-analysis", label: "Heat Analysis", icon: "📊" },
+  { id: "heat-2026", label: "2026 Heat Prediction", icon: "🔮" },
+  { id: "enso-analysis", label: "El Niño & ENSO Analysis", icon: "🌊" },
   { id: "world-heatmap", label: "World Heat Map", icon: "🌍" },
   { id: "analytics", label: "Analytics", icon: "📈" },
   { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
@@ -58,6 +72,8 @@ const DASHBOARD_PAGES = [
 
 const getPageFromHash = () => {
   const page = window.location.hash.replace(/^#/, "");
+  if (page === "elnino-analysis" || page === "enso-analysis") return "enso-analysis";
+  if (page === "emergency-location" || page === "emergency-help") return "emergency-location";
   return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "live";
 };
 
@@ -600,6 +616,64 @@ function App() {
         </section>
         </>}
 
+        {/* ── SMART HEAT AWARENESS ── */}
+        {activePage === "smart-awareness" && (
+          <section className="section">
+            <SmartAwareness
+              weather={weather}
+              currentHeatRisk={currentHeatRisk}
+              predictionResult={predictionResult}
+              loading={loading}
+              onRefresh={() => fetchWeatherForCity(weather?.city || "Coimbatore")}
+            />
+          </section>
+        )}
+
+        {/* ── DISASTER INFORMATION ── */}
+        {activePage === "disaster-info" && (
+          <section className="section">
+            <DisasterInformation
+              currentHeatRisk={currentHeatRisk}
+              weather={weather}
+            />
+          </section>
+        )}
+
+        {/* ── EMERGENCY LOCATION & NEARBY HELP ── */}
+        {activePage === "emergency-location" && (
+          <section className="section">
+            <EmergencyLocation />
+          </section>
+        )}
+
+        {/* ── INDIA LST HEAT MAP & YEAR SELECTOR ── */}
+        {activePage === "india-lst" && (
+          <section className="section">
+            <IndiaLSTMap />
+          </section>
+        )}
+
+        {/* ── HEAT ANALYSIS MODULE ── */}
+        {activePage === "heat-analysis" && (
+          <section className="section">
+            <HeatAnalysis />
+          </section>
+        )}
+
+        {/* ── 2026 HEAT PREDICTION MODULE ── */}
+        {activePage === "heat-2026" && (
+          <section className="section">
+            <Heat2026Prediction />
+          </section>
+        )}
+
+        {/* ── EL NIÑO & ENSO ANALYSIS MODULE ── */}
+        {activePage === "enso-analysis" && (
+          <section className="section">
+            <ElNinoAnalysis />
+          </section>
+        )}
+
         {/* ── WORLD HEAT MAP (NASA MODIS TERRA LST) ── */}
         {activePage === "world-heatmap" && (
           <section className="section">
@@ -693,11 +767,9 @@ function App() {
   />
 </section>}
 
-{/* ── EMAIL ALERT ── */}
+{/* ── EMAIL HEAT ALERTS ── */}
 {activePage === "email-alerts" && <section className="section">
-  <h2 className="section-title">📧 Email Alerts</h2>
-
-  <EmailAlert weather={weather} />
+  <EmailHeatAlerts />
 </section>}
 
 {/* ── EL NIÑO NEWS MONITOR ── */}

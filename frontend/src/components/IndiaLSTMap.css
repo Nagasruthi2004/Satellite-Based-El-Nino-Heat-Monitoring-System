@@ -1,0 +1,578 @@
+/* ==========================================================================
+   INDIA LST & HEAT MAP MODULE STYLES
+   Year selector, metrics cards, Leaflet map, and state-wise dataset table.
+   ========================================================================== */
+
+.india-lst-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 24px);
+  width: 100%;
+  animation: fadeInIndia 0.3s ease-in-out;
+}
+
+@keyframes fadeInIndia {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── HEADER WITH YEAR SELECTOR ── */
+.india-lst-header-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: var(--space-6, 24px);
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+}
+
+.india-lst-title-block {
+  flex: 1 1 340px;
+}
+
+.india-lst-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-caption, 0.75rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+  color: var(--primary, #1d4f91);
+  margin-bottom: 6px;
+}
+
+.india-lst-title {
+  font-size: var(--type-page-title, 1.875rem);
+  font-weight: var(--weight-heading, 700);
+  color: var(--text, #172033);
+  margin: 0 0 6px 0;
+  line-height: 1.2;
+}
+
+.india-lst-subtitle {
+  font-size: var(--type-body, 0.9375rem);
+  color: var(--text-muted, #5f6f86);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 680px;
+}
+
+/* ── REUSABLE YEAR SELECTOR COMPONENT STYLES ── */
+.year-selector-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+  padding: 12px 16px;
+}
+
+.year-selector-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #5f6f86);
+  letter-spacing: 0.5px;
+}
+
+.year-selector-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.year-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 14px;
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 58px;
+}
+
+.year-btn:hover:not(:disabled) {
+  border-color: var(--primary, #1d4f91);
+  color: var(--primary, #1d4f91);
+  transform: translateY(-1px);
+}
+
+.year-btn.active {
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  border-color: var(--primary, #1d4f91);
+  box-shadow: 0 2px 8px rgba(29, 79, 145, 0.25);
+}
+
+.year-btn .active-dot {
+  width: 5px;
+  height: 5px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+.year-selector-dropdown-wrap {
+  display: none;
+}
+
+.year-selector-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #172033);
+}
+
+/* ── SUMMARY METRICS CARDS ── */
+.india-lst-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  padding: 18px 20px;
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+}
+
+.metric-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #5f6f86);
+  letter-spacing: 0.5px;
+}
+
+.metric-icon {
+  font-size: 18px;
+}
+
+.metric-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text, #172033);
+  line-height: 1.15;
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: var(--text-muted, #5f6f86);
+  margin-top: 2px;
+}
+
+.metric-sub strong {
+  color: var(--text, #172033);
+}
+
+/* Distribution badges inside card */
+.risk-pills-wrap {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.risk-pill-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.risk-pill-count.low {
+  background: var(--success-surface, #f0fdf4);
+  color: var(--risk-low, #16a34a);
+  border: 1px solid var(--risk-low, #16a34a);
+}
+
+.risk-pill-count.moderate {
+  background: var(--warning-surface, #fffbeb);
+  color: var(--risk-medium, #d97706);
+  border: 1px solid var(--risk-medium, #d97706);
+}
+
+.risk-pill-count.high {
+  background: var(--danger-surface, #fef2f2);
+  color: var(--risk-high, #dc2626);
+  border: 1px solid var(--risk-high, #dc2626);
+}
+
+/* ── LEAFLET INDIA HEAT MAP CONTAINER ── */
+.india-map-container-card {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  padding: 20px;
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.india-map-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.india-map-header-row h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.india-map-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #5f6f86);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-dot.low { background: #16a34a; }
+.legend-dot.moderate { background: #d97706; }
+.legend-dot.high { background: #dc2626; }
+
+.india-leaflet-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  border-radius: var(--radius-sm, 10px);
+  overflow: hidden;
+  border: 1px solid var(--border, #dce4ee);
+}
+
+.india-leaflet-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── STATE-WISE DATASET TABLE ── */
+.india-table-card {
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  padding: 24px;
+  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.india-table-header-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.india-table-title-group h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+}
+
+.india-table-title-group p {
+  font-size: 13px;
+  color: var(--text-muted, #5f6f86);
+  margin: 2px 0 0 0;
+}
+
+.india-table-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-search-input {
+  padding: 8px 14px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text, #172033);
+  min-width: 200px;
+}
+
+.table-filter-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.table-filter-btn {
+  padding: 6px 12px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #5f6f86);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-filter-btn.active {
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  border-color: var(--primary, #1d4f91);
+}
+
+.india-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+}
+
+.india-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13.5px;
+}
+
+.india-table th {
+  background: var(--surface-alt, #f8fafc);
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--text-muted, #5f6f86);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border, #dce4ee);
+}
+
+.india-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #dce4ee);
+  color: var(--text, #172033);
+}
+
+.india-table tbody tr:hover {
+  background: var(--surface-alt, #f8fafc);
+}
+
+.state-cell {
+  font-weight: 600;
+  color: var(--text, #172033);
+}
+
+.temp-cell {
+  font-weight: 700;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.heat-risk-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.heat-risk-tag.low {
+  background: var(--success-surface, #f0fdf4);
+  color: var(--risk-low, #16a34a);
+  border: 1px solid var(--risk-low, #16a34a);
+}
+
+.heat-risk-tag.moderate {
+  background: var(--warning-surface, #fffbeb);
+  color: var(--risk-medium, #d97706);
+  border: 1px solid var(--risk-medium, #d97706);
+}
+
+.heat-risk-tag.high {
+  background: var(--danger-surface, #fef2f2);
+  color: var(--risk-high, #dc2626);
+  border: 1px solid var(--risk-high, #dc2626);
+}
+
+/* ── DATA UNAVAILABLE / LOADING STATES ── */
+.india-data-empty-card {
+  padding: 36px 20px;
+  text-align: center;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px dashed var(--border, #dce4ee);
+  border-radius: var(--radius-sm, 10px);
+  color: var(--text-muted, #5f6f86);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ── DARK THEME OVERRIDES ── */
+:root[data-theme="dark"] .india-lst-header-card,
+:root[data-theme="dark"] .metric-card,
+:root[data-theme="dark"] .india-map-container-card,
+:root[data-theme="dark"] .india-table-card {
+  background: var(--card, #131f31);
+  border-color: var(--border, #2b3b52);
+}
+
+:root[data-theme="dark"] .year-selector-wrap,
+:root[data-theme="dark"] .table-search-input,
+:root[data-theme="dark"] .table-filter-btn,
+:root[data-theme="dark"] .india-data-empty-card {
+  background: var(--secondary, #18273b);
+  border-color: var(--border, #2b3b52);
+  color: var(--text, #e9eff8);
+}
+
+:root[data-theme="dark"] .year-btn {
+  background: var(--card, #131f31);
+  border-color: var(--border, #2b3b52);
+  color: var(--text, #e9eff8);
+}
+
+:root[data-theme="dark"] .year-btn:hover:not(:disabled) {
+  border-color: var(--primary, #8bb9ff);
+  color: var(--primary, #8bb9ff);
+}
+
+:root[data-theme="dark"] .year-btn.active {
+  background: var(--primary, #8bb9ff);
+  color: #0d1625;
+  border-color: var(--primary, #8bb9ff);
+}
+
+:root[data-theme="dark"] .year-selector-dropdown {
+  background: var(--secondary, #18273b);
+  border-color: var(--border, #2b3b52);
+  color: var(--text, #e9eff8);
+}
+
+:root[data-theme="dark"] .india-table th {
+  background: var(--secondary, #18273b);
+  border-color: var(--border, #2b3b52);
+  color: var(--text-muted, #adbbce);
+}
+
+:root[data-theme="dark"] .india-table td {
+  border-color: var(--border, #2b3b52);
+  color: var(--text, #e9eff8);
+}
+
+:root[data-theme="dark"] .india-table tbody tr:hover {
+  background: var(--secondary, #18273b);
+}
+
+:root[data-theme="dark"] .risk-pill-count.low,
+:root[data-theme="dark"] .heat-risk-tag.low {
+  background: var(--success-surface, #123527);
+  color: var(--risk-low, #4ade80);
+  border-color: var(--risk-low, #4ade80);
+}
+
+:root[data-theme="dark"] .risk-pill-count.moderate,
+:root[data-theme="dark"] .heat-risk-tag.moderate {
+  background: var(--warning-surface, #352b13);
+  color: var(--risk-medium, #fbbf24);
+  border-color: var(--risk-medium, #fbbf24);
+}
+
+:root[data-theme="dark"] .risk-pill-count.high,
+:root[data-theme="dark"] .heat-risk-tag.high {
+  background: var(--danger-surface, #3b1720);
+  color: var(--risk-high, #fb7185);
+  border-color: var(--risk-high, #fb7185);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .india-lst-header-card {
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .year-selector-buttons {
+    display: none;
+  }
+
+  .year-selector-dropdown-wrap {
+    display: block;
+  }
+
+  .india-leaflet-map-wrapper {
+    height: 380px;
+  }
+
+  .india-table-header-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .table-search-input {
+    width: 100%;
+  }
+}
