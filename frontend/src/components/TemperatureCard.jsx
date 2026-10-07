@@ -1,11 +1,13 @@
 
 
+import { formatTemperature } from "../utils/temperature";
+
 function TemperatureCard({ temperature, weatherDescription, errorMessage }) {
   const displayValue = errorMessage
     ? "Unable to fetch weather data for this location."
     : temperature === "Loading..."
       ? "Loading..."
-      : `${temperature ?? 39}°C`;
+      : formatTemperature(temperature ?? 39);
 
   return (
     <div className="weather-card temperature-card">

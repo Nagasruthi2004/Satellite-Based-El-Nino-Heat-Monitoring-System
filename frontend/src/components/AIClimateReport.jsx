@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { jsPDF } from "jspdf";
 import { formatWindSpeedKmh } from "../utils/wind";
+import { formatTemperature } from "../utils/temperature";
 
 const BLUE = [21, 101, 192];
 const TEXT = [31, 41, 55];
@@ -24,7 +25,7 @@ function addHeader(doc, pageWidth, city) {
   doc.text("AI Climate Report", 18, 21);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Satellite-Based El Niño Heat Monitoring System • ${city}`, 18, 28);
+  doc.text(`Smart El Niño Heat Monitoring System • ${city}`, 18, 28);
   doc.setTextColor(...TEXT);
 }
 
@@ -70,7 +71,7 @@ export default function AIClimateReport({ weather, currentHeatRisk, elNinoData, 
     y = addSection(doc, "Report Title", "AI Climate Report", y, pageWidth, pageHeight, city);
     y = addSection(doc, "Report Date", reportDate.toLocaleString(), y, pageWidth, pageHeight, city);
     y = addSection(doc, "Selected Location", city, y, pageWidth, pageHeight, city);
-    y = addSection(doc, "Current Weather Summary", `Temperature: ${value(weather?.temperature)}°C • Humidity: ${value(weather?.humidity)}% • Rainfall: ${value(weather?.rainfall)} mm • Wind speed: ${formatWindSpeedKmh(weather?.wind_speed)} km/h. Current conditions: ${value(weather?.weather_description || weather?.description)}.`, y, pageWidth, pageHeight, city);
+    y = addSection(doc, "Current Weather Summary", `Temperature: ${weather?.temperature != null ? formatTemperature(weather.temperature) : "Not available"} • Humidity: ${value(weather?.humidity)}% • Rainfall: ${value(weather?.rainfall)} mm • Wind speed: ${formatWindSpeedKmh(weather?.wind_speed)} km/h. Current conditions: ${value(weather?.weather_description || weather?.description)}.`, y, pageWidth, pageHeight, city);
     y = addSection(doc, "Heat Risk Analysis", `The current heat risk is ${heatRisk}${confidence !== undefined && confidence !== null ? `, with ${confidence}% confidence` : ""}. ${value(predictionResult?.prediction?.explanation || weather?.heat_risk_explanation, "Continue monitoring local conditions and follow heat-safety guidance.")}`, y, pageWidth, pageHeight, city);
     y = addSection(doc, "Satellite Observation Summary", `Land surface temperature: ${value(satellite?.land_surface_temperature)}. Heat intensity: ${value(satellite?.heat_intensity_level)}. Thermal anomaly: ${value(satellite?.thermal_anomaly)}. Data source: ${value(satellite?.satellite_source)}. ${value(satellite?.recommendation, "Satellite observations help identify areas that may need closer heat monitoring.")}`, y, pageWidth, pageHeight, city);
     y = addSection(doc, "El Niño Analysis", `Status: ${value(elNinoData?.status)}. ONI Index: ${Number.isFinite(elNinoData?.oni) ? `${elNinoData.oni >= 0 ? "+" : ""}${elNinoData.oni.toFixed(1)}` : "Not available"}. Strength: ${value(elNinoData?.strength)}. Heat Influence: ${value(elNinoData?.influence)}. Impact Score: ${Number.isFinite(elNinoData?.impactScore) ? `${elNinoData.impactScore}/100` : "Not available"}. This climate signal is included alongside local weather and satellite observations to support heat-risk awareness for ${city}.`, y, pageWidth, pageHeight, city);
@@ -85,7 +86,7 @@ export default function AIClimateReport({ weather, currentHeatRisk, elNinoData, 
       doc.line(14, pageHeight - 13, pageWidth - 14, pageHeight - 13);
       doc.setTextColor(...MUTED);
       doc.setFontSize(7.5);
-      doc.text("Satellite-Based El Niño Heat Monitoring System", 14, pageHeight - 8);
+      doc.text("Smart El Niño Heat Monitoring System", 14, pageHeight - 8);
       doc.text(`Page ${page} of ${pages}`, pageWidth - 14, pageHeight - 8, { align: "right" });
     }
     doc.save(`ai-climate-report-${city.toLowerCase().replace(/\s+/g, "-")}-${reportDate.toISOString().slice(0, 10)}.pdf`);

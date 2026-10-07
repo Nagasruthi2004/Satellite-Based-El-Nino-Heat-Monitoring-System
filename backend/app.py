@@ -9,24 +9,22 @@ except ImportError:
 
 import os
 import logging
+from datetime import datetime
 import pandas as pd
-from flask import Flask, jsonify, request
+import requests
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from weather import fetch_weather
 from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
 from heat_risk import classify_current_heat_risk, classify_forecast_heat_risk
-from email_service import send_heat_alert_subscription_email, is_valid_email
-from email_alerts import (
-    is_valid_email as is_valid_alert_email,
-    is_smtp_configured,
-    send_heat_alert_email,
-    save_alert_config,
-    get_alert_config_status,
-    VALID_THRESHOLDS,
-)
-from emergency_location import get_emergency_info
 from elnino_news import fetch_elnino_news
+
+try:
+    from ml.inference import SatelliteCNNInference, extract_features_from_thermal_grid
+    cnn_inference_service = SatelliteCNNInference()
+except ImportError:
+    cnn_inference_service = None
 
 # Configure logging so weather.py logger output is visible in the Flask console
 logging.basicConfig(
@@ -151,6 +149,261 @@ def get_weather():
     return response, 200
 
 
+_SATELLITE_HISTORY_CACHE = {}
+
+INDIAN_CITY_TO_STATE = {
+    "visakhapatnam": "Andhra Pradesh",
+    "vizag": "Andhra Pradesh",
+    "vijayawada": "Andhra Pradesh",
+    "guntur": "Andhra Pradesh",
+    "tirupati": "Andhra Pradesh",
+    "kurnool": "Andhra Pradesh",
+    "nellore": "Andhra Pradesh",
+    "kakinada": "Andhra Pradesh",
+    "rajahmundry": "Andhra Pradesh",
+    "kadapa": "Andhra Pradesh",
+    "anantapur": "Andhra Pradesh",
+    "coimbatore": "Tamil Nadu",
+    "chennai": "Tamil Nadu",
+    "madurai": "Tamil Nadu",
+    "trichy": "Tamil Nadu",
+    "tiruchirappalli": "Tamil Nadu",
+    "salem": "Tamil Nadu",
+    "tiruppur": "Tamil Nadu",
+    "erode": "Tamil Nadu",
+    "vellore": "Tamil Nadu",
+    "thanjavur": "Tamil Nadu",
+    "dindigul": "Tamil Nadu",
+    "tirunelveli": "Tamil Nadu",
+    "ooty": "Tamil Nadu",
+    "udhagamandalam": "Tamil Nadu",
+    "kanyakumari": "Tamil Nadu",
+    "sivakasi": "Tamil Nadu",
+    "bengaluru": "Karnataka",
+    "bangalore": "Karnataka",
+    "mysuru": "Karnataka",
+    "mysore": "Karnataka",
+    "mumbai": "Maharashtra",
+    "bombay": "Maharashtra",
+    "pune": "Maharashtra",
+    "nagpur": "Maharashtra",
+    "delhi": "Delhi",
+    "new delhi": "Delhi",
+    "hyderabad": "Telangana",
+    "kolkata": "West Bengal",
+    "calcutta": "West Bengal",
+    "ahmedabad": "Gujarat",
+    "jaipur": "Rajasthan",
+    "lucknow": "Uttar Pradesh",
+    "kanpur": "Uttar Pradesh",
+    "patna": "Bihar",
+    "bhopal": "Madhya Pradesh",
+    "chandigarh": "Chandigarh",
+    "kochi": "Kerala",
+    "thiruvananthapuram": "Kerala",
+    "bhubaneswar": "Orissa",
+    "guwahati": "Assam",
+}
+
+KNOWN_CITY_COORDINATES = {
+    "visakhapatnam": (17.6868, 83.2185),
+    "vizag": (17.6868, 83.2185),
+    "coimbatore": (11.0168, 76.9558),
+    "chennai": (13.0827, 80.2707),
+    "madurai": (9.9252, 78.1198),
+    "trichy": (10.7905, 78.7047),
+    "tiruchirappalli": (10.7905, 78.7047),
+    "salem": (11.6643, 78.1460),
+    "bengaluru": (12.9716, 77.5946),
+    "bangalore": (12.9716, 77.5946),
+    "hyderabad": (17.3850, 78.4867),
+    "mumbai": (19.0760, 72.8777),
+    "delhi": (28.6139, 77.2090),
+    "new delhi": (28.6139, 77.2090),
+    "kolkata": (22.5726, 88.3639),
+    "pune": (18.5204, 73.8567),
+    "mysuru": (12.2958, 76.6394),
+    "mysore": (12.2958, 76.6394),
+    "tiruppur": (11.1085, 77.3411),
+    "erode": (11.3410, 77.7172),
+    "vellore": (12.9165, 79.1325),
+}
+
+
+@app.route("/satellite/history", methods=["GET"])
+@app.route("/satellite-history", methods=["GET"])
+def get_satellite_history():
+    """
+    Endpoint for Satellite Time Machine historical satellite and LST data.
+    Driven by the selected location or coordinates and observation year.
+    Supports coordinates (lat, lon) and location/city name.
+    Reuses authentic NASA GIBS / MODIS satellite observations and the project's
+    India LST dataset (2020-2025).
+    """
+    try:
+        city_raw = request.args.get("city", "").strip() or request.args.get("location", "").strip()
+        lat_raw = request.args.get("lat") or request.args.get("latitude")
+        lon_raw = request.args.get("lon") or request.args.get("longitude")
+        year_raw = request.args.get("year", "2024").strip()
+        state_raw = request.args.get("state", "").strip()
+
+        try:
+            year = int(year_raw)
+        except ValueError:
+            year = 2024
+
+        lat = None
+        lon = None
+        if lat_raw is not None and lon_raw is not None:
+            try:
+                lat = float(lat_raw)
+                lon = float(lon_raw)
+            except ValueError:
+                pass
+
+        city_key = city_raw.lower().strip()
+        if (lat is None or lon is None) and city_key:
+            if city_key in KNOWN_CITY_COORDINATES:
+                lat, lon = KNOWN_CITY_COORDINATES[city_key]
+            else:
+                try:
+                    w = fetch_weather(city_raw)
+                    if w and w.get("lat") is not None and w.get("lon") is not None:
+                        lat = float(w["lat"])
+                        lon = float(w["lon"])
+                except Exception:
+                    pass
+
+        if lat is None or lon is None:
+            return jsonify({
+                "status": "no_data",
+                "available": False,
+                "error": "Historical satellite data is not available for this location.",
+                "location": city_raw or "Selected Location",
+                "year": year
+            }), 404
+
+        if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
+            return jsonify({
+                "status": "error",
+                "available": False,
+                "error": "Coordinates out of bounds: lat must be [-90, 90], lon [-180, 180]."
+            }), 400
+
+        display_location = city_raw or f"{abs(lat):.2f}°{'N' if lat>=0 else 'S'}, {abs(lon):.2f}°{'E' if lon>=0 else 'W'}"
+
+        cache_key = (round(lat, 3), round(lon, 3), year)
+        if cache_key in _SATELLITE_HISTORY_CACHE:
+            return jsonify(_SATELLITE_HISTORY_CACHE[cache_key]), 200
+
+        # 1. Check Indian State historical LST dataset (2020-2025)
+        dataset_lst = None
+        dataset_risk = None
+        resolved_state = None
+
+        if state_raw and state_raw in INDIA_STATE_COORDINATES:
+            resolved_state = state_raw
+        elif city_key in INDIAN_CITY_TO_STATE:
+            resolved_state = INDIAN_CITY_TO_STATE[city_key]
+        elif 8.0 <= lat <= 37.0 and 68.0 <= lon <= 97.0:
+            import math
+            best_st, _ = min(INDIA_STATE_COORDINATES.items(), key=lambda s: math.hypot(s[1][0] - lat, s[1][1] - lon))
+            resolved_state = best_st
+
+        dataset_dir = os.path.join(os.path.dirname(__file__), "..", "dataset")
+        if resolved_state and 2020 <= year <= 2025:
+            csv_path = os.path.join(dataset_dir, f"India_LST_{year}.csv")
+            xlsx_path = os.path.join(dataset_dir, "India_LST_Clean_Dataset_2020_2025.xlsx")
+            df = None
+            if os.path.exists(csv_path):
+                df = pd.read_csv(csv_path)
+            elif os.path.exists(xlsx_path):
+                full_df = pd.read_excel(xlsx_path)
+                df = full_df[full_df["Year"] == year].copy()
+
+            if df is not None and not df.empty:
+                lst_col = next((c for c in df.columns if "LST" in c or "Average" in c), "Average LST (°C)")
+                state_row = df[df["State"].astype(str).str.strip().str.lower() == resolved_state.lower()]
+                if not state_row.empty:
+                    dataset_lst = round(float(state_row.iloc[0][lst_col]), 2)
+                    dataset_risk = str(state_row.iloc[0]["Heat Risk"]).strip()
+
+        # 2. Authentic NASA MODIS Terra GIBS satellite imagery & thermal radiometry
+        date_str = f"{year}-05-15"
+        sat_result = None
+        try:
+            from satellite_heat_analysis import analyze_satellite_heat
+            sat_result = analyze_satellite_heat(lat=lat, lon=lon, date_str=date_str)
+        except Exception as sat_err:
+            logger.warning("Error fetching satellite heat analysis for %s (%s, %s, %s): %s",
+                           display_location, lat, lon, year, sat_err)
+
+        satellite_image_url = None
+        thermal_image_url = None
+        thermal_overlay_url = None
+        radiometry_lst = None
+        radiometry_risk = None
+        green_cover = None
+        urban_expansion = None
+
+        if sat_result and sat_result.get("status") == "success":
+            satellite_image_url = sat_result.get("satellite_image_url")
+            thermal_image_url = sat_result.get("thermal_image_url")
+            thermal_overlay_url = sat_result.get("thermal_overlay_url")
+            radiometry_lst = sat_result.get("land_surface_temperature")
+            radiometry_risk = sat_result.get("heat_risk")
+            if "risk_distribution" in sat_result:
+                dist = sat_result["risk_distribution"]
+                green_cover = round(dist.get("low_pct", 0), 1)
+                urban_expansion = round(dist.get("high_pct", 0) + dist.get("critical_pct", 0), 1)
+
+        if dataset_lst is None and radiometry_lst is None:
+            return jsonify({
+                "status": "no_data",
+                "available": False,
+                "error": "Historical satellite data is not available for this location.",
+                "location": display_location,
+                "year": year
+            }), 404
+
+        final_lst = dataset_lst if dataset_lst is not None else radiometry_lst
+        final_risk = dataset_risk if dataset_risk is not None else (radiometry_risk or "Moderate")
+
+        response_payload = {
+            "status": "success",
+            "available": True,
+            "location": display_location,
+            "city": display_location,
+            "latitude": round(lat, 4),
+            "longitude": round(lon, 4),
+            "year": year,
+            "date": date_str,
+            "land_surface_temperature": final_lst,
+            "temperature": final_lst,
+            "heat_risk": final_risk,
+            "heatTrend": final_risk,
+            "satellite_image_url": satellite_image_url,
+            "thermal_image_url": thermal_image_url,
+            "thermal_overlay_url": thermal_overlay_url,
+            "satellite_source": "NASA MODIS Terra / GIBS & Prepared India LST Dataset",
+            "greenCover": green_cover,
+            "urbanExpansion": urban_expansion,
+            "state": resolved_state,
+        }
+
+        _SATELLITE_HISTORY_CACHE[cache_key] = response_payload
+        return jsonify(response_payload), 200
+
+    except Exception as exc:
+        logger.error("Error in get_satellite_history: %s", exc)
+        return jsonify({
+            "status": "error",
+            "available": False,
+            "error": "Historical satellite data is not available for this location.",
+            "details": str(exc),
+        }), 500
+
+
 @app.route("/satellite", methods=["GET"])
 def get_satellite():
     """
@@ -158,13 +411,21 @@ def get_satellite():
     Returns: JSON response with LST, heat intensity, thermal anomalies, etc.
     """
     try:
+        year = request.args.get("year")
+        if year:
+            return get_satellite_history()
+
         city = request.args.get("city", "Coimbatore").strip() or "Coimbatore"
+        lat = request.args.get("latitude") or request.args.get("lat")
+        lon = request.args.get("longitude") or request.args.get("lon")
         environment = {
             "temperature": request.args.get("temperature"),
             "humidity": request.args.get("humidity"),
             "rainfall": request.args.get("rainfall"),
             "wind_speed": request.args.get("wind_speed"),
             "heat_risk": request.args.get("heat_risk"),
+            "latitude": lat,
+            "longitude": lon,
         }
         satellite_data = get_satellite_data(location=city, **environment)
         alert_data = get_satellite_alert(location=city, **environment)
@@ -423,10 +684,7 @@ def home():
             "/predict": "GET/POST - ML-based heat risk prediction",
             "/elnino-news": "GET - Returns real-world El Niño and ENSO news with category filter",
             "/smart-awareness": "GET - Returns smart heat awareness guidance and recommendations",
-            "/india-lst": "GET - Returns historical India Land Surface Temperature (LST) dataset (2020-2025)",
-            "/email-alert/config": "GET/POST - Retrieve or save heat alert notification configuration",
-            "/email-alert/test": "POST - Send a test heat risk alert notification email",
-            "/emergency-info": "GET - Returns verified emergency contacts, location heat status, and safety guidance"
+            "/india-lst": "GET - Returns historical India Land Surface Temperature (LST) dataset (2020-2025)"
         }
     }), 200
 
@@ -444,51 +702,6 @@ def research():
         data.get("heat_risk", "Low")
     )
     return jsonify({"research": result})
-
-
-@app.route("/subscribe", methods=["POST"])
-@app.route("/subscribe-alert", methods=["POST"])
-def subscribe_alert():
-    """
-    Endpoint to register an email address for heat alerts.
-    Sends a real confirmation email using SMTP (Gmail).
-    Accepts JSON body:
-        {
-            "email": "user@example.com",
-            "city": "Coimbatore"
-        }
-    """
-    try:
-        data = request.get_json(silent=True) or {}
-        email = (data.get("email") or "").strip()
-        city = (data.get("city") or "Coimbatore").strip() or "Coimbatore"
-
-        if not email:
-            return jsonify({"error": "Email address is required."}), 400
-
-        if not is_valid_email(email):
-            return jsonify({"error": "Please enter a valid email address."}), 400
-
-        logger.info("Processing heat alert subscription | email=%s | city=%s", email, city)
-        success, message = send_heat_alert_subscription_email(to_email=email, city=city)
-
-        if not success:
-            logger.error("Failed to send subscription email to %s: %s", email, message)
-            return jsonify({
-                "error": "Unable to send email. Please try again.",
-                "details": message
-            }), 500
-
-        return jsonify({
-            "status": "success",
-            "message": "Email Alert Registered Successfully",
-            "email": email,
-            "city": city
-        }), 200
-
-    except Exception as exc:
-        logger.error("Unexpected error in /subscribe: %s", exc)
-        return jsonify({"error": "Unable to send email. Please try again."}), 500
 
 
 @app.route("/elnino-news", methods=["GET"])
@@ -554,6 +767,150 @@ def get_world_heatmap():
             "error": "Failed to load world heatmap dataset",
             "details": str(exc),
             "data": []
+        }), 500
+
+
+@app.route("/satellite-change-detection/image", methods=["GET"])
+@app.route("/satellite/nasa-gibs", methods=["GET"])
+def get_nasa_gibs_imagery():
+    """
+    Proxy endpoint for NASA GIBS (Global Imagery Browse Services) WMS satellite imagery.
+    Fetches real MODIS Terra / VIIRS imagery by coordinates and date for Satellite Change Detection.
+    Query params:
+        lat (float): Latitude (-90 to 90)
+        lon (float): Longitude (-180 to 180)
+        date (str): Observation date (YYYY-MM-DD)
+        layer (str, optional): GIBS WMS layer (default: 'MODIS_Terra_CorrectedReflectance_TrueColor')
+        delta (float, optional): Half-degree bounding box width (default: 0.15)
+    """
+    try:
+        lat_raw = request.args.get("lat")
+        lon_raw = request.args.get("lon")
+        date_str = request.args.get("date", "").strip()
+
+        if lat_raw is None or lon_raw is None or not date_str:
+            return jsonify({
+                "status": "error",
+                "error": "Missing required parameters: lat, lon, and date are required.",
+            }), 400
+
+        try:
+            lat = float(lat_raw)
+            lon = float(lon_raw)
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "error": "Invalid coordinates: lat and lon must be valid numbers.",
+            }), 400
+
+        if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
+            return jsonify({
+                "status": "error",
+                "error": "Coordinates out of bounds: lat must be [-90, 90], lon must be [-180, 180].",
+            }), 400
+
+        try:
+            datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "error": "Invalid date format: must be YYYY-MM-DD.",
+            }), 400
+
+        layer = request.args.get("layer", "MODIS_Terra_CorrectedReflectance_TrueColor").strip()
+        delta = float(request.args.get("delta", 0.15))
+        delta = max(0.05, min(delta, 1.0))
+
+        min_lat = max(-90.0, lat - delta)
+        max_lat = min(90.0, lat + delta)
+        min_lon = max(-180.0, lon - delta)
+        max_lon = min(180.0, lon + delta)
+
+        bbox = f"{min_lat:.4f},{min_lon:.4f},{max_lat:.4f},{max_lon:.4f}"
+        gibs_url = (
+            f"https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
+            f"?SERVICE=WMS&REQUEST=GetMap&LAYERS={layer}&VERSION=1.3.0"
+            f"&FORMAT=image/jpeg&TRANSPARENT=TRUE&WIDTH=512&HEIGHT=512"
+            f"&CRS=EPSG:4326&BBOX={bbox}&TIME={date_str}"
+        )
+
+        resp = requests.get(gibs_url, timeout=12)
+        content_type = resp.headers.get("content-type", "")
+
+        if resp.status_code != 200 or "xml" in content_type.lower() or len(resp.content) < 2000:
+            logger.warning(
+                "No satellite imagery available from NASA GIBS for lat=%.4f lon=%.4f date=%s (status=%d, len=%d)",
+                lat, lon, date_str, resp.status_code, len(resp.content)
+            )
+            return jsonify({
+                "status": "no_data",
+                "error": "Satellite imagery is not available for this location/date range.",
+                "latitude": lat,
+                "longitude": lon,
+                "date": date_str,
+            }), 404
+
+        flask_resp = Response(resp.content, mimetype="image/jpeg")
+        flask_resp.headers["Cache-Control"] = "public, max-age=86400"
+        flask_resp.headers["Access-Control-Allow-Origin"] = "*"
+        return flask_resp
+
+    except Exception as exc:
+        logger.error("Error retrieving NASA GIBS imagery: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Satellite imagery is not available for this location/date range.",
+            "details": str(exc),
+        }), 500
+
+
+@app.route("/satellite-heat-analysis", methods=["GET"])
+def get_satellite_heat_analysis():
+    """
+    Endpoint for Location-Based Satellite Image Heat Analysis.
+    Fetches authentic NASA MODIS / GIBS satellite data, derives Land Surface Temperature (LST),
+    detects heat hotspots, and calculates heat risk.
+    Query params:
+        lat (float): Latitude (-90 to 90)
+        lon (float): Longitude (-180 to 180)
+        date (str, optional): Observation date (YYYY-MM-DD)
+    """
+    try:
+        lat_raw = request.args.get("lat")
+        lon_raw = request.args.get("lon")
+        date_str = request.args.get("date", "").strip()
+        compare_date_str = request.args.get("compare_date", "").strip()
+
+        if lat_raw is None or lon_raw is None:
+            return jsonify({
+                "status": "error",
+                "available": False,
+                "error": "Missing required parameters: lat and lon are required.",
+            }), 400
+
+        from satellite_heat_analysis import analyze_satellite_heat
+        result = analyze_satellite_heat(
+            lat=lat_raw,
+            lon=lon_raw,
+            date_str=date_str if date_str else None,
+            compare_date_str=compare_date_str if compare_date_str else None,
+        )
+
+        if result.get("status") == "no_data":
+            return jsonify(result), 404
+
+        if result.get("status") == "error":
+            return jsonify(result), 400
+
+        return jsonify(result), 200
+
+    except Exception as exc:
+        logger.error("Error in /satellite-heat-analysis: %s", exc)
+        return jsonify({
+            "status": "error",
+            "available": False,
+            "error": "An unexpected error occurred during satellite heat analysis.",
+            "details": str(exc),
         }), 500
 
 
@@ -814,6 +1171,27 @@ INDIA_STATE_COORDINATES = {
 AVAILABLE_INDIA_LST_YEARS = [2020, 2021, 2022, 2023, 2024, 2025]
 
 
+def classify_lst_heat_risk(lst_celsius):
+    """
+    Classify heat risk according to India LST thresholds:
+    - Low Risk: Average LST < 30°C
+    - Moderate Risk: Average LST >= 30°C and < 36°C
+    - High Risk: Average LST >= 36°C and < 40°C
+    - Critical Risk: Average LST >= 40°C
+    """
+    if lst_celsius is None or pd.isna(lst_celsius):
+        return "Low"
+    val = float(lst_celsius)
+    if val < 30.0:
+        return "Low"
+    elif val < 36.0:
+        return "Moderate"
+    elif val < 40.0:
+        return "High"
+    else:
+        return "Critical"
+
+
 @app.route("/india-lst", methods=["GET"])
 def get_india_lst():
     """
@@ -871,7 +1249,7 @@ def get_india_lst():
         for _, row in df.iterrows():
             state_name = str(row["State"]).strip()
             lst_val = round(float(row[lst_col]), 2)
-            risk_val = str(row["Heat Risk"]).strip()
+            risk_val = classify_lst_heat_risk(lst_val)
             coords = INDIA_STATE_COORDINATES.get(state_name, (20.5937, 78.9629))
             records.append({
                 "state": state_name,
@@ -886,8 +1264,9 @@ def get_india_lst():
         highest_record = max(records, key=lambda x: x["lst_celsius"])
         lowest_record = min(records, key=lambda x: x["lst_celsius"])
 
-        raw_dist = df["Heat Risk"].value_counts().to_dict()
-        risk_dist = {str(k): int(v) for k, v in raw_dist.items()}
+        risk_dist = {"Low": 0, "Moderate": 0, "High": 0, "Critical": 0}
+        for r in records:
+            risk_dist[r["heat_risk"]] = risk_dist.get(r["heat_risk"], 0) + 1
 
         logger.info("Serving India LST data for year %d (%d records)", year_int, len(records))
 
@@ -1218,184 +1597,57 @@ def get_heat_2026_prediction():
         }), 500
 
 
-@app.route("/enso-analysis", methods=["GET"])
-def get_enso_analysis():
+@app.route("/api/satellite/ml-status", methods=["GET"])
+def satellite_ml_status():
     """
-    Endpoint for ENSO / Oceanic Niño Index (ONI) Analysis & Integration.
-    Combines authentic NOAA CPC ONI data with 2020-2025 India LST observations.
-    Optional query parameter:
-      - year: int (2020-2025, highlight specific annual comparison)
-    Returns:
-      JSON response with latest ENSO status, ONI trend time-series,
-      ENSO vs India LST comparison table, phase aggregates, correlation,
-      and scientific disclosures.
+    GET /api/satellite/ml-status
+    Returns the real-time status of the Satellite Thermal CNN model and training dataset.
     """
-    try:
-        from enso_analysis import get_full_enso_analysis
-        data = get_full_enso_analysis()
-        year_param = request.args.get("year")
-
-        if year_param:
-            try:
-                yr_int = int(year_param.strip())
-            except ValueError:
-                return jsonify({
-                    "status": "error",
-                    "error": "Invalid year parameter format",
-                    "available_years": [r["year"] for r in data["comparison_table"]]
-                }), 400
-
-            matched_row = next(
-                (r for r in data["comparison_table"] if r["year"] == yr_int),
-                None
-            )
-            if not matched_row:
-                return jsonify({
-                    "status": "error",
-                    "error": f"Year {yr_int} not found in comparison dataset",
-                    "available_years": [r["year"] for r in data["comparison_table"]]
-                }), 404
-
-            return jsonify({
-                "status": "success",
-                "selected_year": yr_int,
-                "yearly_record": matched_row,
-                "latest_status": data["latest_status"],
-                "phase_comparison": data["phase_comparison"],
-                "correlation": data["correlation"],
-                "insights": data["insights"],
-                "limitations": data["limitations"],
-                "source_info": data["source_info"]
-            }), 200
-
-        return jsonify(data), 200
-
-    except Exception as exc:
-        logger.error("Failed to generate ENSO analysis: %s", exc)
+    if cnn_inference_service is None:
         return jsonify({
-            "status": "error",
-            "error": "Failed to generate ENSO analysis",
-            "details": str(exc)
-        }), 500
-
-
-
-@app.route("/email-alert/test", methods=["POST"])
-def email_alert_test():
-    """
-    POST /email-alert/test
-    Accepts: { "email": str, "location": str, "threshold": str (optional) }
-    Validates email format, checks SMTP configuration, sends a test heat alert.
-    Returns: success/failure status and alert details.
-    """
-    try:
-        data = request.get_json(silent=True) or {}
-        email = (data.get("email") or "").strip()
-        location = (data.get("location") or data.get("state") or "Tamil Nadu").strip() or "Tamil Nadu"
-        raw_thresh = data.get("threshold") or "Medium"
-        threshold = str(raw_thresh).strip().capitalize()
-        if threshold not in VALID_THRESHOLDS:
-            threshold = "Medium"
-
-        if not email:
-            return jsonify({"success": False, "error": "Email address is required."}), 400
-
-        if not is_valid_alert_email(email):
-            return jsonify({"success": False, "error": "Please enter a valid email address."}), 400
-
-        if not is_smtp_configured():
-            logger.info("Test alert requested without SMTP configuration.")
-            return jsonify({
-                "success": False,
-                "error": "Email service is not configured.",
-                "message": "Email service is not configured.",
-                "is_smtp_configured": False
-            }), 503
-
-        success, message, alert_details = send_heat_alert_email(
-            to_email=email,
-            location=location,
-            threshold=threshold,
-            is_test=True
-        )
-
-        if not success:
-            return jsonify({"success": False, "error": message}), 500
-
-        return jsonify({
-            "success": True,
-            "message": f"Test alert email sent successfully to {email}.",
-            "alert_details": alert_details
+            "status": "unavailable",
+            "message": "CNN ML module not initialized.",
+            "model_status": "Not Trained",
+            "dataset_status": "No Labeled Satellite Dataset Available",
+            "training_status": "Not Started",
+            "inference_status": "Unavailable",
         }), 200
 
-    except Exception as exc:
-        logger.error("Error in /email-alert/test: %s", exc)
-        return jsonify({"success": False, "error": "Failed to send test alert email.", "details": str(exc)}), 500
+    valid_pixels = request.args.get("valid_pixels", default=0, type=int)
+    hotspots_count = request.args.get("hotspots_count", default=0, type=int)
+    status_data = cnn_inference_service.get_status(
+        valid_thermal_pixels=valid_pixels,
+        detected_hotspots_count=hotspots_count,
+    )
+    return jsonify(status_data), 200
 
 
-@app.route("/email-alert/config", methods=["GET", "POST"])
-def email_alert_config():
+@app.route("/api/satellite/ml-inference", methods=["POST"])
+def satellite_ml_inference():
     """
-    GET /email-alert/config - Returns current non-sensitive configuration
-    POST /email-alert/config - Saves/validates alert configuration without storing passwords/secrets
+    POST /api/satellite/ml-inference
+    Accepts validated thermal data. If CNN model is not trained, returns honest
+    'CNN model not trained — inference unavailable' status without fabricating predictions.
     """
-    if request.method == "POST":
-        try:
-            data = request.get_json(silent=True) or {}
-            success, message, updated_config = save_alert_config(data)
-            if not success:
-                return jsonify({"success": False, "error": message}), 400
-            return jsonify({
-                "success": True,
-                "message": message,
-                "config": updated_config
-            }), 200
-        except Exception as exc:
-            logger.error("Error in POST /email-alert/config: %s", exc)
-            return jsonify({"success": False, "error": "Failed to save alert configuration.", "details": str(exc)}), 500
-
-    # GET method
-    try:
-        config_status = get_alert_config_status()
+    if cnn_inference_service is None:
         return jsonify({
-            "success": True,
-            "configured": config_status.get("configured", False),
-            "config": config_status,
-            "is_smtp_configured": config_status.get("is_smtp_configured", False),
-            "smtp_status_message": config_status.get("smtp_status_message", "Email service is not configured.")
+            "success": False,
+            "status": "unavailable",
+            "message": "CNN model not trained — inference unavailable.",
+            "evaluation": "Evaluation unavailable — no validated trained model is currently available.",
         }), 200
-    except Exception as exc:
-        logger.error("Error in GET /email-alert/config: %s", exc)
-        return jsonify({"success": False, "error": "Failed to load alert configuration.", "details": str(exc)}), 500
 
-
-@app.route("/emergency-info", methods=["GET"])
-def emergency_info():
-    """
-    GET /emergency-info
-    Returns verified official emergency contacts, location-based heat risk status,
-    and disaster safety guidance without storing or tracking private user location.
-    Optional query parameters:
-      - location / city / state: str
-      - lat: float
-      - lon: float
-    """
+    payload = request.get_json(silent=True) or {}
     try:
-        location_param = request.args.get("location") or request.args.get("city") or request.args.get("state")
-        lat_param = request.args.get("lat")
-        lon_param = request.args.get("lon")
-
-        data = get_emergency_info(
-            location_query=location_param,
-            lat=lat_param,
-            lon=lon_param
-        )
-        return jsonify(data), 200
+        result = cnn_inference_service.predict(payload)
+        return jsonify(result), 200
+    except ValueError as val_err:
+        return jsonify({"success": False, "error": str(val_err)}), 400
     except Exception as exc:
-        logger.error("Error in /emergency-info: %s", exc)
+        logger.error("Error in /api/satellite/ml-inference: %s", exc)
         return jsonify({
-            "status": "error",
-            "error": "Failed to retrieve emergency information",
+            "success": False,
+            "error": "Internal inference error",
             "details": str(exc)
         }), 500
 

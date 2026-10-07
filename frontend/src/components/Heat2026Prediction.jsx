@@ -53,6 +53,10 @@ export default function Heat2026Prediction() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedStateName, setSelectedStateName] = useState("Tamil Nadu");
+  const [inspectedStateName, setInspectedStateName] = useState(null);
+  const [inspectedStateData, setInspectedStateData] = useState(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectError, setInspectError] = useState("");
   const [tableSearch, setTableSearch] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -105,11 +109,82 @@ export default function Heat2026Prediction() {
   }, [refreshTrigger]);
 
   const states = useMemo(() => data?.states || [], [data]);
-  const summary = useMemo(() => data?.summary || {}, [data]);
   const top10 = useMemo(() => data?.top_10_hotspots || [], [data]);
   const modelInfo = useMemo(() => data?.model_info || {}, [data]);
-  const limitations = useMemo(() => data?.limitations || [], [data]);
-  const riskDist = useMemo(() => summary.risk_distribution || {}, [summary]);
+
+  const handleInspectState = useCallback(async (stateName) => {
+    if (!stateName) return;
+    setInspectedStateName(stateName);
+    setSelectedStateName(stateName);
+    setInspectError("");
+    setInspectLoading(true);
+
+    const localMatch = states.find(
+      (s) => s.state.toLowerCase() === stateName.toLowerCase()
+    );
+    if (localMatch) {
+      setInspectedStateData(localMatch);
+    } else {
+      setInspectedStateData(null);
+    }
+
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:5000/heat-2026-prediction?state=${encodeURIComponent(stateName)}`
+      );
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error(`Details unavailable: State "${stateName}" not found in prediction dataset.`);
+        }
+        throw new Error(`Failed to load details for ${stateName} (HTTP ${res.status})`);
+      }
+      const json = await res.json();
+      if (json.status !== "success" || !json.state) {
+        throw new Error(json.error || `Details unavailable for ${stateName}.`);
+      }
+      setInspectedStateData(json.state);
+    } catch (err) {
+      if (!localMatch) {
+        setInspectError(err.message || "Details unavailable for this state.");
+      }
+    } finally {
+      setInspectLoading(false);
+    }
+  }, [states]);
+
+  useEffect(() => {
+    if (!inspectedStateName) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setInspectedStateName(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [inspectedStateName]);
+
+  const inspectedChartData = useMemo(() => {
+    if (!inspectedStateData) return [];
+    const historical = inspectedStateData.historical_records || [];
+    const points = historical.map((h) => ({
+      yearLabel: String(h.year),
+      observed: h.lst_celsius,
+      predicted: null,
+    }));
+
+    const val2025 = inspectedStateData.observed_2025_lst;
+    if (points.length > 0) {
+      points[points.length - 1].predicted = val2025;
+    }
+
+    points.push({
+      yearLabel: "2026 (Est.)",
+      observed: null,
+      predicted: inspectedStateData.predicted_2026_lst,
+    });
+
+    return points;
+  }, [inspectedStateData]);
 
   const selectedState = useMemo(() => {
     return states.find((s) => s.state === selectedStateName) || states[0] || null;
@@ -190,148 +265,8 @@ export default function Heat2026Prediction() {
             <span>🔮</span> Machine Learning Projection
           </span>
           <h1 className="hp-page-title">2026 Heat Prediction</h1>
-          <p className="hp-page-desc">
-            Model-based estimate using historical 2020–2025 India LST data.
-          </p>
-        </div>
-        <div className="hp-estimate-badge-box">
-          <span className="hp-badge-pill">Model Estimate Only</span>
-          <span className="hp-badge-sub">Not Observed Satellite Measurements</span>
         </div>
       </header>
-
-      {/* ── 2. SUMMARY CARDS ── */}
-      <section className="hp-section" aria-labelledby="hp-summary-heading">
-        <div className="hp-section-header">
-          <h2 id="hp-summary-heading" className="hp-section-title">
-            <span>📊</span> 2026 National Forecast Overview
-          </h2>
-          <span className="hp-tag-disclaimer">Predicted Values</span>
-        </div>
-
-        <div className="hp-summary-grid">
-          <div className="hp-summary-card accent-primary">
-            <div className="hp-card-icon">🇮🇳</div>
-            <div className="hp-card-body">
-              <span className="hp-card-label">Predicted National Average LST</span>
-              <div className="hp-card-value">
-                {formatCelsius(summary.predicted_national_average_lst)}
-              </div>
-              <p className="hp-card-sub">
-                Predicted mean across all 34 states and union territories for 2026.
-              </p>
-            </div>
-          </div>
-
-          <div className="hp-summary-card accent-danger">
-            <div className="hp-card-icon">🔥</div>
-            <div className="hp-card-body">
-              <span className="hp-card-label">Highest Predicted LST</span>
-              <div className="hp-card-value">
-                {formatCelsius(summary.highest_predicted?.predicted_2026_lst)}
-              </div>
-              <p className="hp-card-sub">
-                <strong>{summary.highest_predicted?.state}</strong> (Predicted{" "}
-                {summary.highest_predicted?.predicted_2026_risk} Risk)
-              </p>
-            </div>
-          </div>
-
-          <div className="hp-summary-card accent-info">
-            <div className="hp-card-icon">❄️</div>
-            <div className="hp-card-body">
-              <span className="hp-card-label">Lowest Predicted LST</span>
-              <div className="hp-card-value">
-                {formatCelsius(summary.lowest_predicted?.predicted_2026_lst)}
-              </div>
-              <p className="hp-card-sub">
-                <strong>{summary.lowest_predicted?.state}</strong> (Predicted{" "}
-                {summary.lowest_predicted?.predicted_2026_risk} Risk)
-              </p>
-            </div>
-          </div>
-
-          <div className="hp-summary-card accent-warning">
-            <div className="hp-card-icon">⚠️</div>
-            <div className="hp-card-body">
-              <span className="hp-card-label">Predicted High / Critical States</span>
-              <div className="hp-card-value">{summary.high_critical_count ?? 0} states</div>
-              <p className="hp-card-sub">
-                {summary.high_critical_count === 0
-                  ? "0 states projected to exceed the High risk threshold in 2026."
-                  : `${summary.high_critical_count} states projected in High/Critical risk tiers.`}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 6. RISK DISTRIBUTION ── */}
-      <section className="hp-section" aria-labelledby="hp-risk-heading">
-        <div className="hp-card">
-          <div className="hp-card-header">
-            <div>
-              <h2 id="hp-risk-heading" className="hp-card-title">
-                <span>⚠️</span> 2026 Predicted Heat-Risk Distribution
-              </h2>
-              <p className="hp-card-subtitle">
-                Predicted breakdown of 34 Indian states and UTs across standardized risk tiers.
-              </p>
-            </div>
-            <span className="hp-count-badge">Total 34 States / UTs</span>
-          </div>
-
-          <div className="hp-risk-dist-grid">
-            <div className="hp-risk-dist-box low">
-              <span className="hp-risk-tier-name">Low Risk</span>
-              <span className="hp-risk-threshold">&lt; 28.0°C</span>
-              <strong className="hp-risk-stat-count">{riskDist.Low ?? 0} states</strong>
-              <div className="hp-dist-meter">
-                <div
-                  className="hp-dist-meter-fill low"
-                  style={{ width: `${((riskDist.Low ?? 0) / 34) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="hp-risk-dist-box moderate">
-              <span className="hp-risk-tier-name">Moderate Risk</span>
-              <span className="hp-risk-threshold">28.0°C – 31.99°C</span>
-              <strong className="hp-risk-stat-count">{riskDist.Moderate ?? 0} states</strong>
-              <div className="hp-dist-meter">
-                <div
-                  className="hp-dist-meter-fill moderate"
-                  style={{ width: `${((riskDist.Moderate ?? 0) / 34) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="hp-risk-dist-box high">
-              <span className="hp-risk-tier-name">High Risk</span>
-              <span className="hp-risk-threshold">32.0°C – 39.99°C</span>
-              <strong className="hp-risk-stat-count">{riskDist.High ?? 0} states</strong>
-              <div className="hp-dist-meter">
-                <div
-                  className="hp-dist-meter-fill high"
-                  style={{ width: `${((riskDist.High ?? 0) / 34) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="hp-risk-dist-box critical">
-              <span className="hp-risk-tier-name">Critical Risk</span>
-              <span className="hp-risk-threshold">≥ 40.0°C</span>
-              <strong className="hp-risk-stat-count">{riskDist.Critical ?? 0} states</strong>
-              <div className="hp-dist-meter">
-                <div
-                  className="hp-dist-meter-fill critical"
-                  style={{ width: `${((riskDist.Critical ?? 0) / 34) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── 4. TOP HOTSPOTS & 5. HISTORICAL VS PREDICTED CHART ── */}
       <div className="hp-two-col-layout">
@@ -550,28 +485,36 @@ export default function Heat2026Prediction() {
               </div>
             </div>
 
-            {/* Explanation Callout */}
-            <div className="hp-explanation-callout">
-              <span className="hp-exp-icon">🧠</span>
-              <div className="hp-exp-content">
-                <strong>Model Prediction Explanation:</strong>
-                <p>{selectedState.explanation}</p>
+            {/* Model & Trend Summary Grid */}
+            <div className="hp-inspect-stats-grid">
+              <div className="hp-stat-pill">
+                <span className="hp-stat-pill-label">Trend Rate (Slope):</span>
+                <strong className="hp-stat-pill-val">
+                  {selectedState.slope != null
+                    ? `${selectedState.slope > 0 ? "+" : ""}${selectedState.slope.toFixed(3)}°C / year`
+                    : "N/A"}
+                </strong>
+              </div>
+              <div className="hp-stat-pill">
+                <span className="hp-stat-pill-label">Model Fit (R²):</span>
+                <strong className="hp-stat-pill-val">
+                  {selectedState.r2_score != null ? selectedState.r2_score.toFixed(3) : "N/A"}
+                </strong>
+              </div>
+              <div className="hp-stat-pill">
+                <span className="hp-stat-pill-label">Linear Intercept:</span>
+                <strong className="hp-stat-pill-val">
+                  {selectedState.intercept != null ? selectedState.intercept.toFixed(2) : "N/A"}
+                </strong>
+              </div>
+              <div className="hp-stat-pill">
+                <span className="hp-stat-pill-label">Regression Model:</span>
+                <strong className="hp-stat-pill-val">
+                  {modelInfo.model_name || "Linear Regression (OLS)"}
+                </strong>
               </div>
             </div>
 
-            {/* Historical Values Strip */}
-            <div className="hp-hist-strip">
-              <span className="hp-hist-strip-title">Historical Observations:</span>
-              <div className="hp-hist-pills">
-                {(selectedState.historical_records || []).map((h) => (
-                  <div key={h.year} className="hp-hist-pill">
-                    <span className="hp-hist-year">{h.year}</span>
-                    <strong className="hp-hist-temp">{formatCelsius(h.lst_celsius)}</strong>
-                    <span className="hp-hist-risk">{h.heat_risk}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </section>
       )}
@@ -626,7 +569,7 @@ export default function Heat2026Prediction() {
                     <tr
                       key={st.state}
                       className={isSelected ? "selected-row" : ""}
-                      onClick={() => setSelectedStateName(st.state)}
+                      onClick={() => handleInspectState(st.state)}
                     >
                       <td className="hp-rank-col">#{idx + 1}</td>
                       <td className="hp-state-col">
@@ -662,8 +605,10 @@ export default function Heat2026Prediction() {
                           className="hp-inspect-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedStateName(st.state);
+                            handleInspectState(st.state);
                           }}
+                          id={`inspect-btn-${st.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                          title={`Inspect ${st.state} 2026 prediction details`}
                         >
                           Inspect 📈
                         </button>
@@ -677,72 +622,205 @@ export default function Heat2026Prediction() {
         </div>
       </section>
 
-      {/* ── 8. MODEL INFORMATION & 9. LIMITATIONS ── */}
-      <div className="hp-two-col-layout">
-        {/* 8. MODEL INFORMATION */}
-        <section className="hp-section" aria-labelledby="hp-model-heading">
-          <div className="hp-card hp-info-card">
-            <div className="hp-info-header">
-              <span className="hp-info-icon">🤖</span>
-              <div>
-                <h3 id="hp-model-heading" className="hp-info-title">
-                  Model Information & Architecture
-                </h3>
-                <span className="hp-info-sub">Transparent ML Framework</span>
+      {/* ── INSPECT STATE DETAIL MODAL ── */}
+      {inspectedStateName && (
+        <div
+          className="hp-modal-backdrop"
+          onClick={() => setInspectedStateName(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="hp-inspect-modal-title"
+        >
+          <div
+            className="hp-inspect-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="hp-modal-header">
+              <div className="hp-modal-title-group">
+                <span className="hp-modal-icon">📍</span>
+                <div>
+                  <h2 id="hp-inspect-modal-title" className="hp-modal-title">
+                    {inspectedStateName} — 2026 Heat Risk Profile
+                  </h2>
+                  <span className="hp-modal-subtitle">
+                    State-Level Regression Analysis & 2026 Projection
+                  </span>
+                </div>
+              </div>
+
+              <div className="hp-modal-actions">
+                {inspectedStateData && (
+                  <span
+                    className="hp-state-risk-badge"
+                    style={{
+                      backgroundColor: RISK_BADGE_COLORS[inspectedStateData.predicted_2026_risk]?.bg,
+                      color: RISK_BADGE_COLORS[inspectedStateData.predicted_2026_risk]?.text,
+                      borderColor: RISK_BADGE_COLORS[inspectedStateData.predicted_2026_risk]?.border,
+                    }}
+                  >
+                    Predicted Risk: {inspectedStateData.predicted_2026_risk}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="hp-modal-close-btn"
+                  onClick={() => setInspectedStateName(null)}
+                  aria-label="Close state details"
+                  id="close-inspect-modal-btn"
+                >
+                  ✕
+                </button>
               </div>
             </div>
 
-            <div className="hp-info-body">
-              <p className="hp-info-highlight">
-                <strong>{modelInfo.disclosure || "Model: Regression-based prediction using 2020–2025 historical LST data. 2026 values are model estimates, not observed satellite measurements."}</strong>
-              </p>
-              <ul className="hp-model-specs">
-                <li>
-                  <strong>Algorithm:</strong> {modelInfo.model_name}
-                </li>
-                <li>
-                  <strong>Training Dataset:</strong> {modelInfo.training_period}
-                </li>
-                <li>
-                  <strong>Input Variable:</strong> Annual temporal progression vector (2020–2025)
-                </li>
-                <li>
-                  <strong>Target Output:</strong> Projected Land Surface Temperature (°C)
-                </li>
-                <li>
-                  <strong>Explainability:</strong> Fitted ordinary least squares coefficient (slope) and R² correlation metrics.
-                </li>
-              </ul>
+            {/* Modal Content */}
+            <div className="hp-modal-body">
+              {inspectLoading && !inspectedStateData ? (
+                <div className="hp-inspect-loading">
+                  <div className="hp-spinner" aria-hidden="true" />
+                  <p>Loading {inspectedStateName} prediction details...</p>
+                </div>
+              ) : inspectError && !inspectedStateData ? (
+                <div className="hp-inspect-error-box">
+                  <span className="hp-error-icon">⚠️</span>
+                  <h3>Details Unavailable</h3>
+                  <p>{inspectError}</p>
+                  <button
+                    type="button"
+                    className="hp-modal-back-btn"
+                    onClick={() => setInspectedStateName(null)}
+                  >
+                    ← Back to Table
+                  </button>
+                </div>
+              ) : inspectedStateData ? (
+                <>
+                  {/* Primary Metrics Grid */}
+                  <div className="hp-details-metrics-grid">
+                    <div className="hp-detail-metric-box">
+                      <span className="hp-metric-label">2025 Observed LST</span>
+                      <strong className="hp-metric-val">
+                        {formatCelsius(inspectedStateData.observed_2025_lst)}
+                      </strong>
+                      <span className="hp-metric-note">Actual historical record</span>
+                    </div>
+
+                    <div className="hp-detail-metric-box highlight">
+                      <span className="hp-metric-label">Predicted 2026 LST</span>
+                      <strong className="hp-metric-val purple">
+                        {formatCelsius(inspectedStateData.predicted_2026_lst)}
+                      </strong>
+                      <span className="hp-metric-note">Regression model estimate</span>
+                    </div>
+
+                    <div className="hp-detail-metric-box">
+                      <span className="hp-metric-label">Change from 2025</span>
+                      <strong
+                        className={`hp-metric-val ${inspectedStateData.change_from_2025 >= 0 ? "warming" : "cooling"}`}
+                      >
+                        {inspectedStateData.change_from_2025 >= 0 ? "+" : ""}
+                        {inspectedStateData.change_from_2025?.toFixed(2)}°C
+                      </strong>
+                      <span className="hp-metric-note">{inspectedStateData.trend_label}</span>
+                    </div>
+
+                  </div>
+
+                  {/* Model & Trend Stats Row */}
+                  <div className="hp-inspect-stats-grid">
+                    <div className="hp-stat-pill">
+                      <span className="hp-stat-pill-label">Trend Rate (Slope):</span>
+                      <strong className="hp-stat-pill-val">
+                        {inspectedStateData.slope != null
+                          ? `${inspectedStateData.slope > 0 ? "+" : ""}${inspectedStateData.slope.toFixed(3)}°C / year`
+                          : "N/A"}
+                      </strong>
+                    </div>
+                    <div className="hp-stat-pill">
+                      <span className="hp-stat-pill-label">Model Fit (R²):</span>
+                      <strong className="hp-stat-pill-val">
+                        {inspectedStateData.r2_score != null
+                          ? inspectedStateData.r2_score.toFixed(3)
+                          : "N/A"}
+                      </strong>
+                    </div>
+                    <div className="hp-stat-pill">
+                      <span className="hp-stat-pill-label">Linear Intercept:</span>
+                      <strong className="hp-stat-pill-val">
+                        {inspectedStateData.intercept != null
+                          ? inspectedStateData.intercept.toFixed(2)
+                          : "N/A"}
+                      </strong>
+                    </div>
+                    <div className="hp-stat-pill">
+                      <span className="hp-stat-pill-label">Historical Average:</span>
+                      <strong className="hp-stat-pill-val">
+                        {formatCelsius(inspectedStateData.historical_average_lst)}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Trend Line Chart */}
+                  {inspectedChartData.length > 0 && (
+                    <div className="hp-modal-chart-section">
+                      <h4 className="hp-modal-chart-title">
+                        📈 {inspectedStateName} Historical vs 2026 Projected Trajectory
+                      </h4>
+                      <div className="hp-chart-wrapper" style={{ height: 260 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={inspectedChartData}
+                            margin={{ top: 12, right: 24, left: 10, bottom: 8 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
+                            <XAxis dataKey="yearLabel" tick={{ fill: "var(--text-muted, #64748b)", fontSize: 12 }} />
+                            <YAxis unit="°C" tick={{ fill: "var(--text-muted, #64748b)", fontSize: 12 }} domain={["dataMin - 1", "dataMax + 1"]} />
+                            <Tooltip content={<CustomPredictionTooltip />} />
+                            <Legend verticalAlign="top" height={32} />
+                            <Line
+                              type="monotone"
+                              name="Observed LST (2020–2025)"
+                              dataKey="observed"
+                              stroke="var(--primary, #1d4f91)"
+                              strokeWidth={3}
+                              dot={{ r: 5, fill: "var(--primary, #1d4f91)" }}
+                              connectNulls={false}
+                            />
+                            <Line
+                              type="monotone"
+                              name="2026 Prediction (Model)"
+                              dataKey="predicted"
+                              stroke="#8b5cf6"
+                              strokeWidth={3}
+                              strokeDasharray="5 5"
+                              dot={{ r: 6, fill: "#8b5cf6" }}
+                              activeDot={{ r: 8 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                </>
+              ) : null}
+            </div>
+
+            {/* Modal Footer with Back Button */}
+            <div className="hp-modal-footer">
+              <button
+                type="button"
+                className="hp-modal-back-btn"
+                onClick={() => setInspectedStateName(null)}
+                id="back-to-table-btn"
+              >
+                ← Back to State-Wise Table
+              </button>
             </div>
           </div>
-        </section>
-
-        {/* 9. LIMITATIONS */}
-        <section className="hp-section" aria-labelledby="hp-limits-heading">
-          <div className="hp-card hp-info-card warning-accent">
-            <div className="hp-info-header">
-              <span className="hp-info-icon">⚠️</span>
-              <div>
-                <h3 id="hp-limits-heading" className="hp-info-title">
-                  Scientific Assumptions & Limitations
-                </h3>
-                <span className="hp-info-sub">Important Operational Notice</span>
-              </div>
-            </div>
-
-            <div className="hp-info-body">
-              <ul className="hp-limits-list">
-                {limitations.map((limit, idx) => (
-                  <li key={`lim-${idx}`}>{limit}</li>
-                ))}
-              </ul>
-              <div className="hp-limitation-footer">
-                This projection is an automated analytical research estimate and should not replace emergency alerts or official meteorological warnings issued by the India Meteorological Department (IMD) or NDMA.
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

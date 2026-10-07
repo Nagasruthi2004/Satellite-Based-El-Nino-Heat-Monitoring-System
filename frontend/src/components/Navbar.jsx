@@ -5,7 +5,7 @@ function Navbar({ theme, liveLocation, onToggleTheme }) {
         <span className="brand-icon">🌍</span>
         <div className="brand-divider" />
         <div className="brand-text">
-          <span className="brand-title">El Niño Heat Monitoring</span>
+          <span className="brand-title">Smart El Niño Heat Monitoring System</span>
           <span className="navbar-subtitle">Satellite-Based AI Early Warning</span>
         </div>
       </div>

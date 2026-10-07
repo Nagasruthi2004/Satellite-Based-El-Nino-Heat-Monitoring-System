@@ -3,6 +3,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { formatTemperature } from "../utils/temperature";
 
 const RISK_COLORS = {
   Low:      "var(--success)",
@@ -99,9 +100,9 @@ export default function AnalyticsDashboard({ weather, currentHeatRisk }) {
   const rains    = forecast.map((d) => d.rainfall    ?? 0);
 
   const stats = [
-    { label: "Highest Temp",    value: `${Math.max(...temps)}°C`,  icon: "🌡️",  accent: "#ef4444" },
-    { label: "Lowest Temp",     value: `${Math.min(...temps)}°C`,  icon: "❄️",  accent: "#0ea5e9" },
-    { label: "Avg Temperature", value: `${avg(temps)}°C`,          icon: "📊",  accent: "#f97316" },
+    { label: "Highest Temp",    value: formatTemperature(Math.max(...temps)), icon: "🌡️", accent: "#ef4444" },
+    { label: "Lowest Temp",     value: formatTemperature(Math.min(...temps)), icon: "❄️", accent: "#0ea5e9" },
+    { label: "Avg Temperature", value: formatTemperature(avg(temps)),          icon: "📊", accent: "#f97316" },
     { label: "Avg Humidity",    value: `${avg(humids)}%`,          icon: "💧",  accent: "#06b6d4" },
     { label: "Avg Wind Speed",  value: `${avg(winds)} km/h`,       icon: "💨",  accent: "#10b981" },
     { label: "Avg Rainfall",    value: `${avg(rains)} mm`,         icon: "🌧️", accent: "#3b82f6" },
@@ -147,8 +148,8 @@ export default function AnalyticsDashboard({ weather, currentHeatRisk }) {
             <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-              <YAxis domain={[tempMin, tempMax]} tick={{ fontSize: 11 }} unit="°C" />
-              <Tooltip formatter={(v) => [`${v}°C`, "Temp"]} />
+              <YAxis domain={[tempMin, tempMax]} tick={{ fontSize: 10 }} tickFormatter={formatTemperature} width={116} />
+              <Tooltip formatter={(v) => [formatTemperature(v), "Temp"]} />
               <Line type="monotone" dataKey="temp" stroke="var(--chart-temperature)" strokeWidth={2.5}
                 dot={{ r: 4, fill: "var(--chart-temperature)" }} activeDot={{ r: 6 }} />
             </LineChart>

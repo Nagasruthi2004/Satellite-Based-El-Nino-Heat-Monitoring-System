@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { formatTemperature } from "../utils/temperature";
 
 const RISK_COLORS = {
   high:     "#dc2626",
@@ -41,6 +42,7 @@ function makeIcon(color) {
 function MapHoverTracker({
   onHoverMove,
   onHoverSettle,
+  onMapClick,
   debounceMs = 700,
   minDistance = 0.05,
 }) {
@@ -118,9 +120,8 @@ function MapHoverTracker({
         clearTimeout(debounceTimerRef.current);
       }
 
-      onHoverMove?.(lat, lng);
       lastSettledCoordsRef.current = { lat, lng };
-      onHoverSettle?.(lat, lng);
+      onMapClick?.(lat, lng);
     };
 
     const handleMouseOut = () => {
@@ -141,7 +142,7 @@ function MapHoverTracker({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [map, onHoverMove, onHoverSettle, debounceMs, minDistance]);
+  }, [map, onHoverMove, onHoverSettle, onMapClick, debounceMs, minDistance]);
 
   return null;
 }
@@ -215,7 +216,9 @@ function HeatMap({
   weather,
   currentHeatRisk,
   mapLocation,
+  selectedCoordinates,
   onHoverLocationChange,
+  onMapClick,
   onCenterChange,
   loading = false,
   title = "🗺️ Interactive Live Weather Map",
@@ -262,7 +265,16 @@ function HeatMap({
     }
   }, [triggerLocationChange]);
 
-  const position = hasWeatherLocation
+  const handleMapClick = useCallback((lat, lon) => {
+    setIsHovering(false);
+    setIsDebouncing(false);
+    setHoverCoords({ lat, lon });
+    (onMapClick || triggerLocationChange)?.(lat, lon);
+  }, [onMapClick, triggerLocationChange]);
+
+  const position = selectedCoordinates
+    ? [selectedCoordinates.lat, selectedCoordinates.lon]
+    : hasWeatherLocation
     ? [weather.lat, weather.lon]
     : mapLocation
       ? [mapLocation.lat, mapLocation.lon]
@@ -313,6 +325,10 @@ function HeatMap({
         .heat-map-container-wrapper .leaflet-touch-drag {
           cursor: default !important;
         }
+
+        .heat-map-container-wrapper .leaflet-marker-icon {
+          cursor: pointer !important;
+        }
       `}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
         <div>
@@ -340,7 +356,7 @@ function HeatMap({
             <span>📍</span>
             <span>{weather.city}</span>
             {weather.temperature != null && (
-              <span style={{ color: "var(--primary)", fontWeight: "700" }}>{weather.temperature}°C</span>
+              <span style={{ color: "var(--primary)", fontWeight: "700" }}>{formatTemperature(weather.temperature)}</span>
             )}
           </div>
         )}
@@ -382,10 +398,10 @@ function HeatMap({
             minZoom={2}
             maxZoom={18}
           />
-
           <MapHoverTracker
             onHoverMove={handleHoverMove}
             onHoverSettle={handleHoverSettle}
+            onMapClick={handleMapClick}
             debounceMs={700}
             minDistance={0.05}
           />
@@ -396,20 +412,14 @@ function HeatMap({
               icon={icon}
               draggable={false}
               interactive={true}
-              eventHandlers={{
-                click: (e) => {
-                  if (e?.latlng) {
-                    handleHoverSettle(e.latlng.lat, e.latlng.lng);
-                  }
-                },
-              }}
+              bubblingMouseEvents={true}
             >
               <Popup>
                 <strong>{markerLabel}</strong>
                 {weather ? (
                   <>
                     <br />
-                    🌡 Temperature: {weather.temperature}°C<br />
+                    🌡 Temperature: {formatTemperature(weather.temperature)}<br />
                     💧 Humidity: {weather.humidity}%<br />
                     🔥 Heat Risk: {currentHeatRisk?.level || "Not available"}
                   </>
@@ -474,7 +484,7 @@ function HeatMap({
                 fontWeight: "700",
               }}
             >
-              {weather.temperature}°C
+              {formatTemperature(weather.temperature)}
             </span>
           )}
         </div>

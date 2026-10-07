@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatTemperature } from "../utils/temperature";
 import "./SmartAwareness.css";
 
 const AWARENESS_CONFIG = {
@@ -11,7 +12,7 @@ const AWARENESS_CONFIG = {
     tierClass: "tier-low",
     badgeClass: "badge-low",
     levelCardClass: "level-low",
-    tempRange: "< 30°C",
+    tempRange: "< 30°C / < 86°F",
     recommendations: [
       {
         title: "Daily Hydration Routine",
@@ -39,7 +40,7 @@ const AWARENESS_CONFIG = {
       }
     ],
     whyFactors: [
-      "Ambient temperature is within comfortable baseline limits (< 30°C).",
+      "Ambient temperature is within comfortable baseline limits (< 30°C / < 86°F).",
       "Thermal comfort index indicates negligible stress on cardiovascular systems.",
       "Atmospheric heat retention is low with favorable ventilation."
     ]
@@ -53,7 +54,7 @@ const AWARENESS_CONFIG = {
     tierClass: "tier-medium",
     badgeClass: "badge-medium",
     levelCardClass: "level-medium",
-    tempRange: "30°C – 35.9°C",
+    tempRange: "30°C–<36°C / 86°F–<96.8°F",
     recommendations: [
       {
         title: "Proactive Hydration",
@@ -81,7 +82,7 @@ const AWARENESS_CONFIG = {
       }
     ],
     whyFactors: [
-      "Elevated temperatures (30°C–36°C) increase physiological thermal load.",
+      "Elevated temperatures (30–<36°C / 86–<96.8°F) increase physiological thermal load.",
       "Moderate humidity slows evaporative cooling through natural perspiration.",
       "Solar radiation intensity peaks in early afternoon, elevating heat stress."
     ]
@@ -95,7 +96,7 @@ const AWARENESS_CONFIG = {
     tierClass: "tier-high",
     badgeClass: "badge-high",
     levelCardClass: "level-high",
-    tempRange: "36°C – 39.9°C",
+    tempRange: "36°C–<40°C / 96.8°F–<104°F",
     recommendations: [
       {
         title: "Intensive Hydration",
@@ -123,7 +124,7 @@ const AWARENESS_CONFIG = {
       }
     ],
     whyFactors: [
-      "Sustained high temperatures (36°C–40°C) exceed comfortable thermal regulation.",
+      "Sustained high temperatures (36–<40°C / 96.8–<104°F) exceed comfortable thermal regulation.",
       "Combined heat index places significant strain on vulnerable populations.",
       "Urban heat island effect amplifies localized surface and air temperatures."
     ]
@@ -137,7 +138,7 @@ const AWARENESS_CONFIG = {
     tierClass: "tier-critical",
     badgeClass: "badge-critical",
     levelCardClass: "level-critical",
-    tempRange: "≥ 40°C",
+    tempRange: "≥ 40°C / ≥ 104°F",
     recommendations: [
       {
         title: "Avoid Outdoor Exposure",
@@ -165,7 +166,7 @@ const AWARENESS_CONFIG = {
       }
     ],
     whyFactors: [
-      "Extreme temperatures (≥ 40°C) pose dangerous risk of acute heatstroke and hyperthermia.",
+      "Extreme temperatures (≥ 40°C / ≥ 104°F) pose dangerous risk of acute heatstroke and hyperthermia.",
       "Body cooling mechanisms can fail under prolonged exposure to critical thermal limits.",
       "Satellite LST and atmospheric conditions indicate hazardous heatwave intensity."
     ]
@@ -226,7 +227,7 @@ export default function SmartAwareness({
   const cityName = weather?.city || "Selected Location";
   const tempDisplay =
     weather?.temperature != null
-      ? `${Number(weather.temperature).toFixed(1)}°C`
+      ? formatTemperature(weather.temperature)
       : loading
       ? "Loading..."
       : "—";

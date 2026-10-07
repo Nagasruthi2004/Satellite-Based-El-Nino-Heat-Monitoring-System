@@ -60,14 +60,6 @@
   line-height: 1.2;
 }
 
-.india-lst-subtitle {
-  font-size: var(--type-body, 0.9375rem);
-  color: var(--text-muted, #5f6f86);
-  line-height: 1.5;
-  margin: 0;
-  max-width: 680px;
-}
-
 /* ── REUSABLE YEAR SELECTOR COMPONENT STYLES ── */
 .year-selector-wrap {
   display: flex;
@@ -241,6 +233,12 @@
   border: 1px solid var(--risk-high, #dc2626);
 }
 
+.risk-pill-count.critical {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #991b1b;
+}
+
 /* ── LEAFLET INDIA HEAT MAP CONTAINER ── */
 .india-map-container-card {
   background: var(--surface, var(--card, #ffffff));
@@ -296,6 +294,7 @@
 .legend-dot.low { background: #16a34a; }
 .legend-dot.moderate { background: #d97706; }
 .legend-dot.high { background: #dc2626; }
+.legend-dot.critical { background: #991b1b; }
 
 .india-leaflet-map-wrapper {
   position: relative;
@@ -459,6 +458,12 @@
   border: 1px solid var(--risk-high, #dc2626);
 }
 
+.heat-risk-tag.critical {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #991b1b;
+}
+
 /* ── DATA UNAVAILABLE / LOADING STATES ── */
 .india-data-empty-card {
   padding: 36px 20px;
@@ -546,6 +551,13 @@
   background: var(--danger-surface, #3b1720);
   color: var(--risk-high, #fb7185);
   border-color: var(--risk-high, #fb7185);
+}
+
+:root[data-theme="dark"] .risk-pill-count.critical,
+:root[data-theme="dark"] .heat-risk-tag.critical {
+  background: #450a0a;
+  color: #fca5a5;
+  border-color: #fca5a5;
 }
 
 /* ── RESPONSIVE ── */

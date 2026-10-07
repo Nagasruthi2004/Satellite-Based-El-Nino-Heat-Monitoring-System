@@ -30,7 +30,8 @@ def _severity_from_heat_risk(heat_risk):
 
 
 def _generate_simulated_satellite_metrics(location, temperature=None, humidity=None,
-                                          rainfall=None, wind_speed=None, heat_risk=None):
+                                          rainfall=None, wind_speed=None, heat_risk=None,
+                                          latitude=None, longitude=None):
     """Generate deterministic, environment-driven simulated surface metrics.
 
     This is not a real satellite observation. The same location and weather inputs
@@ -39,8 +40,10 @@ def _generate_simulated_satellite_metrics(location, temperature=None, humidity=N
     location_key = str(location).strip().lower() or "coimbatore"
     seed = hashlib.sha256(location_key.encode("utf-8")).hexdigest()
 
-    latitude = round(11.0 + (int(seed[0:2], 16) / 255.0) * 0.03, 4)
-    longitude = round(76.9 + (int(seed[2:4], 16) / 255.0) * 0.03, 4)
+    lat_val = _to_float(latitude)
+    lon_val = _to_float(longitude)
+    lat_result = lat_val if lat_val is not None else round(11.0 + (int(seed[0:2], 16) / 255.0) * 0.03, 4)
+    lon_result = lon_val if lon_val is not None else round(76.9 + (int(seed[2:4], 16) / 255.0) * 0.03, 4)
     air_temperature = _to_float(temperature)
     humidity_value = _to_float(humidity)
     rainfall_value = _to_float(rainfall)
@@ -83,8 +86,8 @@ def _generate_simulated_satellite_metrics(location, temperature=None, humidity=N
         vegetation_status = "Sparse"
 
     return {
-        "latitude": latitude,
-        "longitude": longitude,
+        "latitude": lat_result,
+        "longitude": lon_result,
         "land_surface_temperature": lst,
         "heat_intensity_level": heat_intensity_level,
         "thermal_anomaly": thermal_anomaly,
@@ -96,7 +99,8 @@ def _generate_simulated_satellite_metrics(location, temperature=None, humidity=N
 
 
 def get_satellite_data(location="Coimbatore", temperature=None, humidity=None,
-                       rainfall=None, wind_speed=None, heat_risk=None):
+                       rainfall=None, wind_speed=None, heat_risk=None,
+                       latitude=None, longitude=None):
     """
     Fetch satellite-based heat information for a given location
     
@@ -107,7 +111,8 @@ def get_satellite_data(location="Coimbatore", temperature=None, humidity=None,
         dict: Satellite data containing LST, heat intensity, and location info
     """
     metrics = _generate_simulated_satellite_metrics(
-        location, temperature, humidity, rainfall, wind_speed, heat_risk
+        location, temperature, humidity, rainfall, wind_speed, heat_risk,
+        latitude=latitude, longitude=longitude
     )
 
     satellite_info = {
@@ -182,7 +187,8 @@ def calculate_heat_intensity(lst_value):
 
 
 def get_satellite_alert(location="Coimbatore", temperature=None, humidity=None,
-                        rainfall=None, wind_speed=None, heat_risk=None):
+                        rainfall=None, wind_speed=None, heat_risk=None,
+                        latitude=None, longitude=None):
     """
     Get satellite-based alert for excessive heat
     
@@ -193,13 +199,14 @@ def get_satellite_alert(location="Coimbatore", temperature=None, humidity=None,
         dict: Alert information with severity
     """
     satellite_data = get_satellite_data(
-        location, temperature, humidity, rainfall, wind_speed, heat_risk
+        location, temperature, humidity, rainfall, wind_speed, heat_risk,
+        latitude=latitude, longitude=longitude
     )
     heat_level = satellite_data["heat_intensity_level"]
     
     alert_info = {
         "location": location,
-        "lst": lst,
+        "lst": satellite_data["land_surface_temperature"],
         "heat_level": heat_level,
         "alert_status": "Active" if heat_level in ["High", "Extreme"] else "Normal",
         "recommendation": get_heat_recommendation(heat_level)

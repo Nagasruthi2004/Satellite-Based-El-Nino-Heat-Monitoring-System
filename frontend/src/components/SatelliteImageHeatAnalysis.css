@@ -1,0 +1,1668 @@
+/* ==========================================================================
+   Satellite Image Heat Analysis - Remote Sensing Thermal Dashboard Styles
+   ========================================================================== */
+
+.siha-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ── 1. TOP TITLE CARD ── */
+.siha-top-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.siha-top-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.siha-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary, #2563eb);
+  margin-bottom: 4px;
+}
+
+.siha-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.siha-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.siha-flow-banner {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #475569);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.siha-flow-banner span {
+  color: var(--primary, #2563eb);
+}
+
+/* ── 2. LOCATION & MAP SELECTION ── */
+.siha-location-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.siha-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.siha-controls-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.siha-section-heading {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  margin: 0;
+}
+
+.siha-section-sub {
+  font-size: 12.5px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.siha-active-coord-tag {
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.siha-coord-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary, #2563eb);
+  text-transform: uppercase;
+}
+
+.siha-coord-num {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  font-family: monospace;
+}
+
+/* Search bar & dates */
+.siha-input-strip {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.siha-search-bar {
+  flex: 1 1 320px;
+  display: flex;
+  gap: 8px;
+}
+
+.siha-search-field {
+  flex: 1;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #cbd5e1);
+  color: var(--text, #0f172a);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.siha-search-field:focus {
+  outline: none;
+  border-color: var(--primary, #2563eb);
+}
+
+.siha-search-submit {
+  background: var(--primary, #2563eb);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.siha-search-submit:hover {
+  background: #1d4ed8;
+}
+
+.siha-date-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.siha-picker-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+}
+
+.siha-picker-select {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #cbd5e1);
+  color: var(--text, #0f172a);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.siha-comparison-toggle {
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text, #1e293b);
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.siha-comparison-toggle:hover {
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+}
+
+.siha-comparison-toggle.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.siha-error-notice {
+  color: #dc2626;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* Quick Bar */
+.siha-quick-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.siha-quick-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+}
+
+.siha-quick-items {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.siha-quick-btn {
+  background: var(--surface-alt, #f1f5f9);
+  border: 1px solid var(--border, #cbd5e1);
+  color: var(--text, #334155);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.siha-quick-btn:hover {
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+}
+
+.siha-quick-btn.selected {
+  background: var(--primary, #2563eb);
+  color: #ffffff;
+  border-color: var(--primary, #2563eb);
+}
+
+/* Map Box */
+.siha-map-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.siha-leaflet {
+  width: 100%;
+  height: 380px;
+  min-height: 340px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #cbd5e1);
+  z-index: 1;
+}
+
+.siha-initial-prompt-card {
+  background: var(--surface, #ffffff);
+  border: 1px dashed var(--border, #cbd5e1);
+  border-radius: 12px;
+  padding: 36px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.siha-prompt-icon {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.siha-initial-prompt-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+  margin: 0;
+}
+
+.siha-initial-prompt-card p {
+  font-size: 0.9rem;
+  color: var(--text-muted, #64748b);
+  max-width: 580px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.siha-map-instruction {
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Selected Location readout strip */
+.siha-selection-readout-strip {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.siha-readout-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.siha-readout-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.04em;
+}
+
+.siha-readout-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+}
+
+.siha-readout-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border, #cbd5e1);
+}
+
+/* ── 3. LOADING & ERROR STATES ── */
+.siha-loading-stage {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.siha-loading-ring {
+  width: 44px;
+  height: 44px;
+  border: 4px solid rgba(37, 99, 235, 0.15);
+  border-top-color: var(--primary, #2563eb);
+  border-radius: 50%;
+  animation: sihaSpin 0.9s linear infinite;
+}
+
+@keyframes sihaSpin {
+  to { transform: rotate(360deg); }
+}
+
+.siha-loading-msg h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+}
+
+.siha-loading-msg p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+
+.siha-unavailable-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.siha-unavail-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.siha-unavail-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #b45309;
+}
+
+.siha-unavail-text p {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: var(--text, #334155);
+}
+
+.siha-unavail-action {
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.siha-unavail-action:hover {
+  background: #b45309;
+}
+
+.siha-error-card {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 4. MAIN HERO SATELLITE THERMAL / LST HEAT MAP ── */
+.siha-hero-visual-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.siha-visual-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.siha-feed-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #10b981;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: sihaDotPulse 1.4s infinite alternate;
+}
+
+@keyframes sihaDotPulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+.siha-visual-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.siha-visual-subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted, #64748b);
+  margin: 3px 0 0 0;
+}
+
+.siha-controls-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.siha-view-switcher {
+  display: flex;
+  gap: 6px;
+  background: var(--surface-alt, #f1f5f9);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.siha-view-btn {
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.siha-view-btn:hover {
+  color: var(--text, #0f172a);
+}
+
+.siha-view-btn.active {
+  background: var(--surface, #ffffff);
+  color: var(--primary, #2563eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.siha-opacity-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-alt, #f1f5f9);
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.siha-opacity-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.siha-opacity-slider {
+  width: 90px;
+  cursor: pointer;
+  accent-color: var(--primary, #2563eb);
+}
+
+.siha-opacity-val {
+  font-size: 11.5px;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--text, #0f172a);
+  min-width: 30px;
+}
+
+/* Map Display Stage (Large 520px Hero) */
+.siha-map-display-stage {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  background: #090e1a;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+/* Base Crystal-Clear Satellite Image Layer (NEVER blurred) */
+.siha-base-satellite-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  display: block;
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.siha-base-satellite-img.dimmed {
+  opacity: 0.15;
+  filter: grayscale(90%) brightness(0.35);
+}
+
+/* Semi-Transparent Thermal / LST Heat Overlay Layer */
+.siha-thermal-overlay-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+  pointer-events: none;
+  display: block;
+  transition: opacity 0.15s ease;
+}
+
+/* Graticule Neatline and Crosshairs */
+.siha-graticule-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.siha-hero-thermal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.siha-hero-thermal-img.hotspots-glow {
+  filter: contrast(1.15) saturate(1.25);
+}
+
+/* HUD Overlay Box (Top-Left of Thermal Map) */
+.siha-hud-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(10, 16, 30, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  padding: 14px 18px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 5;
+  min-width: 250px;
+}
+
+.siha-hud-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.siha-hud-loc {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.siha-hud-risk {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.siha-hud-risk.siha-risk-low {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.siha-hud-risk.siha-risk-moderate {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.siha-hud-risk.siha-risk-high {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.siha-hud-risk.siha-risk-critical {
+  background: rgba(185, 28, 28, 0.35);
+  color: #fca5a5;
+  border: 1px solid rgba(252, 165, 165, 0.5);
+  animation: sihaCriticalFlash 1.5s infinite alternate;
+}
+
+@keyframes sihaCriticalFlash {
+  from { opacity: 0.85; }
+  to { opacity: 1; box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+}
+
+.siha-hud-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  width: 100%;
+}
+
+.siha-hud-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.siha-hud-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.siha-hud-lbl {
+  color: #cbd5e1;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.siha-hud-val {
+  font-weight: 800;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.siha-hud-val.danger {
+  color: #f87171;
+}
+
+.siha-hud-val.highlight {
+  color: #fbbf24;
+}
+
+.siha-hud-val.cool {
+  color: #38bdf8;
+}
+
+/* Hotspot Pins Layer */
+.siha-hotspot-pins-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  padding: 40px;
+  box-sizing: border-box;
+  z-index: 4;
+}
+
+.siha-thermal-hotspot-pin {
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(239, 68, 68, 0.7);
+  padding: 5px 10px;
+  border-radius: 20px;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+  pointer-events: auto;
+}
+
+.pin-pulse {
+  font-size: 16px;
+  animation: sihaPinPulse 1.2s infinite alternate;
+}
+
+@keyframes sihaPinPulse {
+  from { transform: scale(0.9); }
+  to { transform: scale(1.2); }
+}
+
+.pin-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Colorbar Legend (Bottom of Thermal Map) */
+.siha-colorbar-legend {
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  right: 16px;
+  background: rgba(10, 16, 30, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px 16px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.siha-legend-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.legend-end-lbl.cool {
+  color: #38bdf8;
+}
+
+.legend-end-lbl.warm {
+  color: #f87171;
+}
+
+.legend-center-lbl {
+  color: #94a3b8;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.siha-colorbar-gradient {
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(
+    to right,
+    #0a2472 0%,
+    #0077b6 18%,
+    #00b4d8 32%,
+    #2d6a4f 45%,
+    #ffb703 62%,
+    #fb8500 78%,
+    #d90429 92%,
+    #800020 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.siha-legend-ticks {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.siha-legend-ticks .tick.blue { color: #38bdf8; }
+.siha-legend-ticks .tick.cyan { color: #06b6d4; }
+.siha-legend-ticks .tick.green { color: #4ade80; }
+.siha-legend-ticks .tick.yellow { color: #facc15; }
+.siha-legend-ticks .tick.orange { color: #fb923c; }
+.siha-legend-ticks .tick.red { color: #ef4444; }
+.siha-legend-ticks .tick-sep { color: rgba(255, 255, 255, 0.3); font-weight: 400; }
+
+/* Telemetry Stamp */
+.siha-telemetry-stamp {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: rgba(10, 16, 30, 0.75);
+  backdrop-filter: blur(4px);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-family: monospace;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 5;
+}
+
+/* ── 5. SIDE-BY-SIDE COMPARISON VIEW ── */
+.siha-comparison-section {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.06);
+}
+
+.siha-comparison-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.siha-change-pill {
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: var(--primary, #2563eb);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.siha-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 40px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.siha-comp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.siha-comp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.siha-comp-label {
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  letter-spacing: 0.04em;
+}
+
+.siha-comp-date {
+  font-family: monospace;
+  color: var(--text-muted, #64748b);
+  font-weight: 700;
+}
+
+.siha-comp-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  background: #090e1a;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.siha-comp-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.siha-comp-stat-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(10, 16, 30, 0.85);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.siha-comp-stat-badge.highlight {
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fef08a;
+}
+
+.siha-comp-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: center;
+}
+
+.siha-divider-line {
+  width: 1px;
+  height: 140px;
+  background: var(--border, #cbd5e1);
+}
+
+.siha-divider-badge {
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-muted, #475569);
+  border: 1px solid var(--border, #cbd5e1);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* ── 6. LOCATION-SPECIFIC INFORMATION PANEL (4-GRID) ── */
+.siha-info-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.siha-info-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.siha-info-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  padding-bottom: 8px;
+}
+
+.siha-info-icon {
+  font-size: 16px;
+}
+
+.siha-info-heading {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.siha-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.siha-loc-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  line-height: 1.3;
+}
+
+.siha-loc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.siha-loc-row .siha-label {
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+}
+
+.siha-loc-row .siha-val {
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  font-family: monospace;
+}
+
+.siha-loc-row .siha-val.highlight {
+  color: #d97706;
+}
+
+.siha-loc-row .siha-val.danger {
+  color: #dc2626;
+}
+
+.siha-loc-row .siha-val.cool {
+  color: #0284c7;
+}
+
+.siha-scientific-note {
+  font-size: 10.5px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.4;
+  margin-top: 4px;
+  border-top: 1px dashed var(--border, #e2e8f0);
+  padding-top: 6px;
+}
+
+/* Heat Risk Panel Card */
+.siha-risk-card-highlight {
+  border-color: rgba(37, 99, 235, 0.25);
+  background: linear-gradient(to bottom, var(--surface, #ffffff), var(--surface-alt, #f8fafc));
+}
+
+.siha-risk-body {
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.siha-risk-big-badge {
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  border-radius: 8px;
+  letter-spacing: 0.05em;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.siha-risk-big-badge.siha-risk-low {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.siha-risk-big-badge.siha-risk-moderate {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.siha-risk-big-badge.siha-risk-high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.siha-risk-big-badge.siha-risk-critical {
+  background: rgba(185, 28, 28, 0.2);
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.4);
+}
+
+.siha-risk-scale-tag {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+}
+
+.siha-risk-scale-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.tier-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--surface-alt, #f1f5f9);
+}
+
+.tier-pill.active.low {
+  background: #059669;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.tier-pill.active.moderate {
+  background: #d97706;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.tier-pill.active.high {
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.tier-pill.active.critical {
+  background: #b91c1c;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+/* ── 7. THREE-COLUMN ANALYTICS SECTION ── */
+.siha-analytics-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.siha-col-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.siha-col-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.siha-col-icon {
+  font-size: 18px;
+}
+
+.siha-col-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+}
+
+.siha-col-subtitle {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+}
+
+/* Hotspots list */
+.siha-hotspot-clusters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.siha-hotspot-item {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.siha-hotspot-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.siha-hotspot-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+}
+
+.siha-hotspot-risk-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.siha-hotspot-risk-tag.siha-risk-low {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.siha-hotspot-risk-tag.siha-risk-moderate {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.siha-hotspot-risk-tag.siha-risk-high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+.siha-hotspot-risk-tag.siha-risk-critical {
+  background: rgba(185, 28, 28, 0.2);
+  color: #b91c1c;
+}
+
+.siha-hotspot-cluster-lbl {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+
+.siha-hotspot-lst-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.siha-hotspot-lst-row .lbl {
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+}
+
+.siha-hotspot-lst-row .val {
+  color: #dc2626;
+  font-family: monospace;
+  font-size: 13.5px;
+}
+
+.siha-empty-hotspots {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  padding: 10px;
+  text-align: center;
+  background: var(--surface-alt, #f8fafc);
+  border-radius: 6px;
+}
+
+/* Heat Risk Summary Bars */
+.siha-risk-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.siha-summary-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.siha-summary-lbl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.tier-name {
+  font-weight: 700;
+}
+
+.tier-name.low { color: #059669; }
+.tier-name.moderate { color: #d97706; }
+.tier-name.high { color: #dc2626; }
+.tier-name.critical { color: #b91c1c; }
+
+.tier-pct {
+  font-family: monospace;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+}
+
+.siha-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--surface-alt, #e2e8f0);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.siha-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.siha-progress-fill.low { background: #10b981; }
+.siha-progress-fill.moderate { background: #f59e0b; }
+.siha-progress-fill.high { background: #ef4444; }
+.siha-progress-fill.critical { background: #b91c1c; }
+
+/* Temperature Areas Breakdown (Section 6) */
+.siha-temp-areas-box {
+  margin-top: 8px;
+  border-top: 1px solid var(--border, #e2e8f0);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.siha-temp-area-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+}
+
+.siha-area-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.siha-area-dot.red { background: #ef4444; }
+.siha-area-dot.yellow { background: #facc15; }
+.siha-area-dot.green { background: #10b981; }
+
+.siha-area-lbl {
+  color: var(--text-muted, #64748b);
+  flex: 1;
+}
+
+.siha-area-val {
+  color: var(--text, #0f172a);
+  font-family: monospace;
+}
+
+/* Key Insights */
+.siha-insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.siha-insight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--text, #0f172a);
+}
+
+.siha-insight-check {
+  color: #10b981;
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.siha-insight-text {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.siha-insight-verification {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.shield-icon {
+  font-size: 13px;
+}
+
+/* ── 8. DARK THEME OVERRIDES ── */
+:root[data-theme="dark"] .siha-top-card,
+:root[data-theme="dark"] .siha-location-card,
+:root[data-theme="dark"] .siha-hero-visual-card,
+:root[data-theme="dark"] .siha-comparison-section,
+:root[data-theme="dark"] .siha-info-card,
+:root[data-theme="dark"] .siha-col-card,
+:root[data-theme="dark"] .siha-loading-stage {
+  background: var(--card, #111c2e);
+  border-color: var(--border, #29415f);
+}
+
+:root[data-theme="dark"] .siha-flow-banner,
+:root[data-theme="dark"] .siha-map-instruction,
+:root[data-theme="dark"] .siha-selection-readout-strip,
+:root[data-theme="dark"] .siha-view-switcher,
+:root[data-theme="dark"] .siha-hotspot-item,
+:root[data-theme="dark"] .siha-insight-item,
+:root[data-theme="dark"] .tier-pill {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--border, #29415f);
+}
+
+:root[data-theme="dark"] .siha-search-field,
+:root[data-theme="dark"] .siha-picker-select {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: var(--border, #29415f);
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .siha-quick-btn,
+:root[data-theme="dark"] .siha-comparison-toggle {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: var(--border, #29415f);
+  color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .siha-view-btn.active {
+  background: #1e293b;
+  color: #60a5fa;
+}
+
+:root[data-theme="dark"] .siha-opacity-control {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: var(--border, #29415f);
+}
+
+:root[data-theme="dark"] .siha-opacity-val {
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .siha-readout-sep,
+:root[data-theme="dark"] .siha-info-card-header,
+:root[data-theme="dark"] .siha-scientific-note,
+:root[data-theme="dark"] .siha-temp-areas-box {
+  border-color: var(--border, #29415f);
+}
+
+:root[data-theme="dark"] .siha-progress-track {
+  background: #1e293b;
+}
+
+:root[data-theme="dark"] .siha-risk-card-highlight {
+  background: linear-gradient(to bottom, #111c2e, #0c1524);
+  border-color: #29415f;
+}
+
+/* ── 9. RESPONSIVE ADAPTATIONS ── */
+@media (max-width: 1024px) {
+  .siha-info-panel-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .siha-analytics-three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .siha-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .siha-comp-divider {
+    flex-direction: row;
+    height: auto;
+    width: 100%;
+  }
+
+  .siha-divider-line {
+    width: 100%;
+    height: 1px;
+  }
+}
+
+@media (max-width: 768px) {
+  .siha-top-card {
+    padding: 16px;
+  }
+
+  .siha-title {
+    font-size: 19px;
+  }
+
+  .siha-flow-banner {
+    width: 100%;
+  }
+
+  .siha-input-strip {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .siha-search-bar {
+    flex-direction: column;
+  }
+
+  .siha-search-submit {
+    width: 100%;
+  }
+
+  .siha-date-picker-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .siha-picker-select {
+    width: 100%;
+  }
+
+  .siha-comparison-toggle {
+    width: 100%;
+  }
+
+  .siha-map-display-stage {
+    height: 380px;
+  }
+
+  .siha-hud-overlay {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+  }
+
+  .siha-colorbar-legend {
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    padding: 8px 10px;
+  }
+
+  .siha-info-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .siha-selection-readout-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .siha-readout-sep {
+    display: none;
+  }
+}

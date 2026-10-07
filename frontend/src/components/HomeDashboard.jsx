@@ -1,15 +1,18 @@
 import { useMemo } from "react";
+import { getLatestOniData } from "../data/oniData";
+import { formatTemperature } from "../utils/temperature";
 import "./HomeDashboard.css";
 
 export default function HomeDashboard({
   weather,
   currentHeatRisk,
   latestOniData,
+  loading = false,
   onNavigate,
 }) {
-  const currentRiskLevel = currentHeatRisk?.level || "Medium";
+  const currentRiskLevel = currentHeatRisk?.level || "Moderate";
 
-  const riskBadgeClass = useMemo(() => {
+  const riskColorClass = useMemo(() => {
     const r = String(currentRiskLevel).toLowerCase();
     if (r.includes("critical")) return "risk-critical";
     if (r.includes("high")) return "risk-high";
@@ -17,273 +20,163 @@ export default function HomeDashboard({
     return "risk-low";
   }, [currentRiskLevel]);
 
+  const resolvedOni = useMemo(() => {
+    return latestOniData || getLatestOniData();
+  }, [latestOniData]);
+
+  const oniStatus = resolvedOni?.status || "Neutral";
+  const oniValue = resolvedOni?.oni;
+
   return (
-    <div className="home-dashboard-container">
-      {/* ── HERO BANNER ── */}
-      <section className="home-hero-card">
-        <div className="home-hero-content">
-          <span className="home-hero-badge">
-            <span>🛰️</span>
-            <span>Planetary Climate & Thermal Intelligence Platform</span>
-          </span>
+    <div className="home-dashboard">
+      {/* ── 1. HERO ── */}
+      <section className="home-hero">
+        <div className="home-hero-text">
           <h1 className="home-hero-title">
             Satellite-Based El Niño Heat Monitoring System
           </h1>
           <p className="home-hero-subtitle">
-            An end-to-end meteorological and satellite observation platform integrating NASA MODIS Terra Land Surface Temperature (LST), NOAA Oceanic Niño Index (ONI) records, machine learning heat-risk forecasting, and automated civil safety alerts.
+            Satellite, weather and ENSO data for heat-risk monitoring and early warning.
           </p>
         </div>
+      </section>
 
-        <div className="home-hero-actions">
-          <button
-            type="button"
-            className="btn-hero-primary"
-            onClick={() => onNavigate("live")}
-          >
-            <span>📊</span>
-            <span>Open Live Weather Map</span>
-          </button>
-          <button
-            type="button"
-            className="btn-hero-secondary"
-            onClick={() => onNavigate("emergency-location")}
-          >
-            <span>🆘</span>
-            <span>Emergency Assistance</span>
-          </button>
+      {/* ── 2. KPI STRIP (EXACTLY 4 COMPACT CARDS) ── */}
+      <section className="home-kpi-strip" aria-label="Key Performance Indicators">
+        <div className="home-kpi-card">
+          <span className="home-kpi-label">Current Temperature</span>
+          <div className="home-kpi-value">
+            {weather?.temperature != null
+              ? formatTemperature(weather.temperature)
+              : (loading ? "..." : formatTemperature(34.2))}
+          </div>
+          <span className="home-kpi-status">{weather?.city || "Coimbatore"} • Live</span>
+        </div>
+
+        <div className="home-kpi-card">
+          <span className="home-kpi-label">Heat Risk</span>
+          <div className={`home-kpi-value ${riskColorClass}`}>
+            {currentRiskLevel}
+          </div>
+          <span className="home-kpi-status">
+            {currentRiskLevel === "High" || currentRiskLevel === "Critical"
+              ? "Advisory Active"
+              : "Normal Vigilance"}
+          </span>
+        </div>
+
+        <div className="home-kpi-card">
+          <span className="home-kpi-label">ENSO Status</span>
+          <div className="home-kpi-value">
+            {oniStatus}
+          </div>
+          <span className="home-kpi-status">
+            {oniValue != null ? `ONI: ${oniValue > 0 ? "+" : ""}${oniValue}°C` : "Pacific Neutral"}
+          </span>
+        </div>
+
+        <div className="home-kpi-card">
+          <span className="home-kpi-label">2026 Predicted LST</span>
+          <div className="home-kpi-value">
+            35.1°C
+          </div>
+          <span className="home-kpi-status">+0.28°C Model Trend</span>
         </div>
       </section>
 
-      {/* ── QUICK ACTION EMERGENCY & DISASTER BAR ── */}
-      <section className="home-quick-actions-bar">
-        <div className="quick-bar-left">
-          <span className="quick-bar-icon">🚨</span>
-          <div className="quick-bar-text">
-            <strong>Emergency & Disaster Rapid Assistance</strong>
-            <p>Direct access to verified national emergency lines (112, 108) and official natural hazard safety protocols.</p>
-          </div>
-        </div>
-        <div className="quick-bar-buttons">
-          <button
-            type="button"
-            className="btn-quick-danger"
-            onClick={() => onNavigate("emergency-location")}
-          >
-            <span>📞</span>
-            <span>Nearby Help (112 / 108)</span>
-          </button>
-          <button
-            type="button"
-            className="btn-quick-warning"
-            onClick={() => onNavigate("disaster-info")}
-          >
-            <span>📖</span>
-            <span>Disaster Information</span>
-          </button>
-        </div>
-      </section>
-
-      {/* ── EXECUTIVE SUMMARY CARDS GRID ── */}
-      <div className="home-summary-grid">
-        {/* Card 1: Live Heat & Temperature */}
-        <article className="summary-card">
-          <div className="summary-card-header">
-            <div className="summary-card-title-area">
-              <span className="summary-card-icon">🌡️</span>
-              <h2 className="summary-card-title">Live Heat & Weather</h2>
+      {/* ── 3. MAIN OVERVIEW (EXACTLY 2 LARGE CARDS SIDE-BY-SIDE) ── */}
+      <section className="home-overview-grid" aria-label="System Overview">
+        {/* CARD 1: Live Weather */}
+        <article className="home-overview-card">
+          <div className="home-card-header">
+            <div>
+              <span className="home-card-eyebrow">Atmospheric Station</span>
+              <h2 className="home-card-title">Live Weather</h2>
             </div>
-            <span className={`summary-badge ${riskBadgeClass}`}>
-              {currentRiskLevel} Risk
-            </span>
+            <span className="home-card-badge live">● Live Feed</span>
           </div>
 
-          <div>
-            <div className="summary-main-val">
-              <span className="summary-number">
-                {weather?.temperature != null ? `${Number(weather.temperature).toFixed(1)}` : "34.2"}
-              </span>
-              <span className="summary-unit">°C ambient</span>
+          <div className="home-weather-grid">
+            <div className="home-stat-box">
+              <span className="hsb-label">Temperature</span>
+              <strong className="hsb-value">
+                {weather?.temperature != null ? formatTemperature(weather.temperature) : formatTemperature(34.2)}
+              </strong>
             </div>
-            <p className="summary-desc">
-              Monitoring <strong>{weather?.city || "Coimbatore"}</strong>: {weather?.weather_description || "Normal conditions"}. Humidity at {weather?.humidity || 52}%.
-            </p>
-            <p className="summary-meta-note">Source: OpenWeatherMap meteorological observations</p>
+            <div className="home-stat-box">
+              <span className="hsb-label">Condition</span>
+              <strong className="hsb-value">
+                {weather?.weather_description || "Clear Sky"}
+              </strong>
+            </div>
+            <div className="home-stat-box">
+              <span className="hsb-label">Humidity</span>
+              <strong className="hsb-value">
+                {weather?.humidity != null ? `${weather.humidity}%` : "52%"}
+              </strong>
+            </div>
+            <div className="home-stat-box">
+              <span className="hsb-label">Heat Risk</span>
+              <strong className={`hsb-value ${riskColorClass}`}>
+                {currentRiskLevel}
+              </strong>
+            </div>
           </div>
 
           <button
             type="button"
-            className="btn-card-nav"
+            className="home-card-action-btn"
             onClick={() => onNavigate("live")}
           >
-            <span>Inspect Live Weather Map</span>
-            <span>→</span>
+            <span>View Live Weather</span>
+            <span aria-hidden="true">→</span>
           </button>
         </article>
 
-        {/* Card 2: India Heat Map Preview (LST) */}
-        <article className="summary-card">
-          <div className="summary-card-header">
-            <div className="summary-card-title-area">
-              <span className="summary-card-icon">🗺️</span>
-              <h2 className="summary-card-title">India Heat Map (LST)</h2>
+        {/* CARD 2: India LST Heat Map */}
+        <article className="home-overview-card">
+          <div className="home-card-header">
+            <div>
+              <span className="home-card-eyebrow">Multi-Year Satellite Observation</span>
+              <h2 className="home-card-title">India LST Heat Map</h2>
             </div>
-            <span className="summary-badge neutral">34 States & UTs</span>
+            <span className="home-card-badge neutral">2020–2025</span>
           </div>
 
-          <div>
-            <div className="summary-main-val">
-              <span className="summary-number">34.8</span>
-              <span className="summary-unit">°C Nat&apos;l Avg (2025)</span>
+          <div className="home-lst-content">
+            <div className="home-weather-grid">
+              <div className="home-stat-box">
+                <span className="hsb-label">2025 Average LST</span>
+                <strong className="hsb-value">34.8°C</strong>
+              </div>
+              <div className="home-stat-box">
+                <span className="hsb-label">Monitored Regions</span>
+                <strong className="hsb-value">34 States &amp; UTs</strong>
+              </div>
             </div>
-            <p className="summary-desc">
-              State-wise multi-year Land Surface Temperature tracking across 2020–2025. Explore thermal variations and regional hot-spots.
-            </p>
-            <p className="summary-meta-note">Source: Prepared historical LST dataset, 2020–2025</p>
+
+            {/* Compact thermal gradient indicator bar */}
+            <div className="home-thermal-preview">
+              <div className="home-thermal-bar" />
+              <div className="home-thermal-ticks">
+                <span>Cool (28°C)</span>
+                <span>Moderate (34°C)</span>
+                <span>Severe (42°C+)</span>
+              </div>
+            </div>
           </div>
 
           <button
             type="button"
-            className="btn-card-nav"
+            className="home-card-action-btn"
             onClick={() => onNavigate("india-lst")}
           >
-            <span>Explore India LST Map</span>
-            <span>→</span>
+            <span>View India LST Map</span>
+            <span aria-hidden="true">→</span>
           </button>
         </article>
+      </section>
 
-        {/* Card 3: Oceanic Niño Index (ENSO) Status */}
-        <article className="summary-card">
-          <div className="summary-card-header">
-            <div className="summary-card-title-area">
-              <span className="summary-card-icon">🌊</span>
-              <h2 className="summary-card-title">El Niño & ENSO Status</h2>
-            </div>
-            <span className="summary-badge neutral">
-              {latestOniData?.status || "Neutral"}
-            </span>
-          </div>
-
-          <div>
-            <div className="summary-main-val">
-              <span className="summary-number">
-                {latestOniData?.oni != null ? `${latestOniData.oni > 0 ? "+" : ""}${latestOniData.oni}` : "+0.3"}
-              </span>
-              <span className="summary-unit">°C ONI anomaly</span>
-            </div>
-            <p className="summary-desc">
-              Pacific SST equatorial anomaly. ENSO serves as a planetary thermal driver influencing Indian monsoon and seasonal heat patterns.
-            </p>
-            <p className="summary-meta-note">Source: NOAA Climate Prediction Center — ONI</p>
-          </div>
-
-          <button
-            type="button"
-            className="btn-card-nav"
-            onClick={() => onNavigate("enso-analysis")}
-          >
-            <span>Open El Niño & ENSO Analysis</span>
-            <span>→</span>
-          </button>
-        </article>
-
-        {/* Card 4: 2026 Heat Prediction Summary */}
-        <article className="summary-card">
-          <div className="summary-card-header">
-            <div className="summary-card-title-area">
-              <span className="summary-card-icon">🔮</span>
-              <h2 className="summary-card-title">2026 Heat Prediction</h2>
-            </div>
-            <span className="summary-badge model">Model Estimate</span>
-          </div>
-
-          <div>
-            <div className="summary-main-val">
-              <span className="summary-number">35.08</span>
-              <span className="summary-unit">°C Projected Avg</span>
-            </div>
-            <p className="summary-desc">
-              State-wise Linear Regression estimates trained on verified 2020–2025 historical data. Identifies emerging thermal hotspot trajectories.
-            </p>
-            <p className="summary-meta-note">Disclosure: Model estimate based on historical 2020–2025 data (not observed)</p>
-          </div>
-
-          <button
-            type="button"
-            className="btn-card-nav"
-            onClick={() => onNavigate("heat-2026")}
-          >
-            <span>View 2026 Projections</span>
-            <span>→</span>
-          </button>
-        </article>
-
-        {/* Card 5: Smart Awareness Guidance */}
-        <article className="summary-card">
-          <div className="summary-card-header">
-            <div className="summary-card-title-area">
-              <span className="summary-card-icon">💡</span>
-              <h2 className="summary-card-title">Smart Heat Awareness</h2>
-            </div>
-            <span className="summary-badge verified">Public Safety</span>
-          </div>
-
-          <div>
-            <div className="summary-main-val">
-              <span className="summary-number" style={{ fontSize: "20px" }}>
-                {currentRiskLevel === "Critical"
-                  ? "Extreme Heat Protocol"
-                  : currentRiskLevel === "High"
-                  ? "Hydration Alert"
-                  : "Normal Guidelines"}
-              </span>
-            </div>
-            <p className="summary-desc">
-              Actionable behavioral recommendations: maintain continuous electrolyte hydration, restrict outdoor exertion during 12 PM - 3 PM, and monitor at-risk relatives.
-            </p>
-            <p className="summary-meta-note">Standard: NDMA & IMD National Guidelines</p>
-          </div>
-
-          <button
-            type="button"
-            className="btn-card-nav"
-            onClick={() => onNavigate("smart-awareness")}
-          >
-            <span>Read Awareness Guidance</span>
-            <span>→</span>
-          </button>
-        </article>
-
-        {/* Card 6: NASA MODIS Planetary Thermal Map */}
-        <article className="summary-card">
-          <div className="summary-card-header">
-            <div className="summary-card-title-area">
-              <span className="summary-card-icon">🌍</span>
-              <h2 className="summary-card-title">World Heat Map</h2>
-            </div>
-            <span className="summary-badge neutral">Global Satellite</span>
-          </div>
-
-          <div>
-            <div className="summary-main-val">
-              <span className="summary-number">1 km</span>
-              <span className="summary-unit">Spatial Resolution</span>
-            </div>
-            <p className="summary-desc">
-              Global Land Surface Temperature observations from NASA Terra MOD11A2 satellite sensor, illustrating worldwide heat belts and thermal anomalies.
-            </p>
-            <p className="summary-meta-note">Source: NASA MODIS Terra MOD11A2 LST observations</p>
-          </div>
-
-          <button
-            type="button"
-            className="btn-card-nav"
-            onClick={() => onNavigate("world-heatmap")}
-          >
-            <span>Launch World Heat Map</span>
-            <span>→</span>
-          </button>
-        </article>
-      </div>
     </div>
   );
 }

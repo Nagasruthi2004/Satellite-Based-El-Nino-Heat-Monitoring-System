@@ -1603,20 +1603,20 @@ button, input, .weather-card {
 .elnino-metric-grid span, .elnino-summary-grid span { color: var(--text-muted); display: block; font-size: 12px; margin-bottom: 4px; }
 .elnino-metric-grid strong, .elnino-summary-grid strong { color: var(--primary-dark); font-size: 17px; }
 .elnino-strength { color: #0369a1 !important; }
-.elnino-detail-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; margin-bottom: 16px; }
+.elnino-detail-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
 .elnino-comparison-row { border-top: 1px solid #dbeafe; display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; font-size: 14px; }
 .elnino-comparison-row span { color: var(--text-muted); }
 .elnino-comparison-row strong { color: var(--primary-dark); text-align: right; }
-.elnino-observations { color: var(--text-muted); display: grid; gap: 8px; font-size: 14px; padding-left: 20px; }
+.elnino-data-note { color: var(--text-muted); font-size: 13px; margin: -6px 0 12px; }
 
 @media (max-width: 768px) {
   .elnino-analyzer-heading { flex-direction: column; }
   .elnino-year-select { width: 100%; }
-  .elnino-metric-grid, .elnino-summary-grid, .elnino-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .elnino-metric-grid, .elnino-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 480px) {
-  .elnino-metric-grid, .elnino-summary-grid, .elnino-detail-grid { grid-template-columns: 1fr; }
+  .elnino-metric-grid, .elnino-summary-grid { grid-template-columns: 1fr; }
   .elnino-chart { height: 240px; }
 }
 

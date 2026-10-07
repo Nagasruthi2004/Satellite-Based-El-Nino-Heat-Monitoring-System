@@ -79,6 +79,44 @@ export function getSatelliteData(city) {
   return satelliteData[String(city || "").trim().toLowerCase()] || tamilNaduSatelliteObservation;
 }
 
+export const SATELLITE_CITY_IMAGES = {
+  coimbatore: {
+    before: coimbatoreImage,
+    after: tamilNaduImage,
+    label: "Landsat 8 TIRS / Sentinel-2 Multispectral",
+  },
+  chennai: {
+    before: chennaiImage,
+    after: tamilNaduImage,
+    label: "Landsat 8 TIRS / Sentinel-2 Multispectral",
+  },
+  madurai: {
+    before: maduraiImage,
+    after: tamilNaduImage,
+    label: "Landsat 8 TIRS / Sentinel-2 Multispectral",
+  },
+  trichy: {
+    before: trichyImage,
+    after: tamilNaduImage,
+    label: "Landsat 8 TIRS / Sentinel-2 Multispectral",
+  },
+  tiruchirappalli: {
+    before: trichyImage,
+    after: tamilNaduImage,
+    label: "Landsat 8 TIRS / Sentinel-2 Multispectral",
+  },
+  salem: {
+    before: salemImage,
+    after: tamilNaduImage,
+    label: "Landsat 8 TIRS / Sentinel-2 Multispectral",
+  },
+};
+
+export function getCitySatelliteImages(city) {
+  const key = String(city || "").trim().toLowerCase();
+  return SATELLITE_CITY_IMAGES[key] || null;
+}
+
 function stableLocationFactor(location, offset) {
   const key = String(location || "").trim().toLowerCase();
   const hash = [...key].reduce((value, character) => ((value * 31) + character.charCodeAt(0) + offset) >>> 0, 0);

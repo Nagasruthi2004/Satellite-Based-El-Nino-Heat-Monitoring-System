@@ -1,3 +1,5 @@
+import { formatTemperature } from "../utils/temperature";
+
 function HeatAlert({ heatRisk, temperature, landSurfaceTemperature, thermalAnomaly }) {
   const riskLevel = typeof heatRisk === "object" ? heatRisk?.level : heatRisk;
 
@@ -25,7 +27,7 @@ function HeatAlert({ heatRisk, temperature, landSurfaceTemperature, thermalAnoma
           : { level: "MONITORING", className: "", message: "Heat risk data is not available yet." };
 
   const environmentalDetails = [];
-  if (Number.isFinite(Number(temperature))) environmentalDetails.push(`${Number(temperature).toFixed(1)}°C air temperature`);
+  if (Number.isFinite(Number(temperature))) environmentalDetails.push(`${formatTemperature(temperature)} air temperature`);
   if (Number.isFinite(Number(landSurfaceTemperature))) environmentalDetails.push(`${Number(landSurfaceTemperature).toFixed(1)}°C LST`);
   if (typeof thermalAnomaly === "boolean") environmentalDetails.push(thermalAnomaly ? "thermal anomaly detected" : "no thermal anomaly");
 

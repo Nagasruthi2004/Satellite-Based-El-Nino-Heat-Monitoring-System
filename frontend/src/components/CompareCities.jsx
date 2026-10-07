@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { formatWindSpeedKmh } from '../utils/wind';
+import { formatTemperature } from '../utils/temperature';
 
 const ROWS = [
-  { label: 'Temperature',        key: 'temperature',          unit: '°C' },
+  { label: 'Temperature',        key: 'temperature',          unit: '' },
   { label: 'Humidity',           key: 'humidity',             unit: '%'  },
   { label: 'Rainfall',           key: 'rainfall',             unit: ' mm'},
   { label: 'Wind Speed',         key: 'wind_speed',           unit: ' km/h'},
@@ -137,6 +138,9 @@ function CompareCities() {
                 const valB = dataB[key];
                 const hl   = highlight(key, valA, valB);
                 const isRisk = key === 'heat_risk';
+                const renderValue = (value) => key === 'temperature'
+                  ? formatTemperature(value)
+                  : `${key === 'wind_speed' ? formatWindSpeedKmh(value) : value ?? '—'}${value != null ? unit : ''}`;
 
                 return (
                   <tr key={key}>
@@ -144,12 +148,12 @@ function CompareCities() {
                     <td className={hl.a}>
                       {isRisk
                         ? <span className={riskClass(valA)}>{valA ?? '—'}</span>
-                        : `${key === 'wind_speed' ? formatWindSpeedKmh(valA) : valA ?? '—'}${valA != null ? unit : ''}`}
+                        : renderValue(valA)}
                     </td>
                     <td className={hl.b}>
                       {isRisk
                         ? <span className={riskClass(valB)}>{valB ?? '—'}</span>
-                        : `${key === 'wind_speed' ? formatWindSpeedKmh(valB) : valB ?? '—'}${valB != null ? unit : ''}`}
+                        : renderValue(valB)}
                     </td>
                   </tr>
                 );

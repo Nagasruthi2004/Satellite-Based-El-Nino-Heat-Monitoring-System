@@ -91,34 +91,6 @@
   gap: 12px;
 }
 
-.ha-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.ha-section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text, #172033);
-  margin: 0;
-}
-
-.ha-badge-sub {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-hover, #f1f5f9);
-  color: var(--text-muted, #64748b);
-  border: 1px solid var(--border, #e2e8f0);
-}
-
 .ha-card {
   background: var(--surface, var(--card, #ffffff));
   border: 1px solid var(--border, #dce4ee);
@@ -155,6 +127,31 @@
   line-height: 1.4;
 }
 
+.ha-estimate-notice {
+  padding: 12px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left: 4px solid #d97706;
+  border-radius: 10px;
+  color: var(--text, #172033);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.ha-estimate-notice.unavailable {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  border-left-color: #dc2626;
+}
+
+.ha-estimate-label {
+  margin-top: 4px;
+  color: var(--warning, #b45309);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .ha-pill-badge {
   font-size: 0.75rem;
   font-weight: 700;
@@ -183,84 +180,6 @@
   background: rgba(245, 158, 11, 0.1);
   color: #d97706;
   border-color: rgba(245, 158, 11, 0.25);
-}
-
-/* ── SECTION 7: KEY INSIGHTS GRID ── */
-.ha-insights-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.ha-insight-card {
-  display: flex;
-  gap: 16px;
-  padding: 18px 20px;
-  background: var(--surface, var(--card, #ffffff));
-  border: 1px solid var(--border, #dce4ee);
-  border-radius: var(--radius, 14px);
-  box-shadow: var(--shadow, 0 1px 2px rgba(23, 32, 51, 0.04));
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.ha-insight-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 4px;
-}
-
-.ha-insight-card.accent-primary::before { background: var(--primary, #1d4f91); }
-.ha-insight-card.accent-danger::before { background: var(--danger, #ef4444); }
-.ha-insight-card.accent-info::before { background: #0ea5e9; }
-.ha-insight-card.accent-warning::before { background: var(--warning, #f59e0b); }
-.ha-insight-card.accent-warmest::before { background: #f97316; }
-.ha-insight-card.accent-coolest::before { background: #06b6d4; }
-
-.ha-insight-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-.ha-insight-icon {
-  font-size: 2rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ha-insight-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.ha-insight-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-muted, #64748b);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ha-insight-val {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text, #172033);
-  line-height: 1.2;
-}
-
-.ha-insight-note {
-  font-size: 0.8125rem;
-  color: var(--text-muted, #64748b);
-  margin: 0;
-  line-height: 1.4;
 }
 
 /* ── SECTION 1: YEARLY STRIP ── */
@@ -312,86 +231,6 @@
 .ha-strip-range {
   font-size: 0.75rem;
   color: var(--text-muted, #64748b);
-}
-
-/* ── TWO COLUMN LAYOUT ── */
-.ha-two-col-grid {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: var(--space-6, 24px);
-  align-items: stretch;
-}
-
-@media (max-width: 960px) {
-  .ha-two-col-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ── SECTION 3: LOWEST 5 LIST ── */
-.ha-lowest-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ha-lowest-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--surface-hover, #f8fafc);
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 10px;
-  transition: background 0.15s ease;
-}
-
-.ha-lowest-item:hover {
-  background: var(--surface-active, #f1f5f9);
-}
-
-.ha-lowest-rank {
-  font-size: 0.875rem;
-  font-weight: 800;
-  color: var(--text-muted, #64748b);
-  width: 24px;
-}
-
-.ha-lowest-info {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.ha-lowest-state {
-  font-weight: 600;
-  color: var(--text, #172033);
-  font-size: 0.9375rem;
-}
-
-.ha-lowest-risk-label {
-  font-size: 0.75rem;
-  color: var(--text-muted, #64748b);
-}
-
-.ha-lowest-temp-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.ha-lowest-temp {
-  font-weight: 800;
-  font-size: 1.0625rem;
-  color: var(--text, #172033);
-}
-
-.ha-risk-badge {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  border: 1px solid;
 }
 
 .ha-year-summary-callout {
@@ -678,55 +517,6 @@
   color: var(--text, #172033);
 }
 
-/* ── SECTION 8: DATA SOURCE CARD ── */
-.ha-datasource-card {
-  display: flex;
-  gap: 18px;
-  padding: 22px 24px;
-  background: var(--surface, var(--card, #ffffff));
-  border: 1px dashed var(--border, #cbd5e1);
-  border-radius: var(--radius, 14px);
-  align-items: flex-start;
-}
-
-.ha-datasource-icon {
-  font-size: 2.25rem;
-  line-height: 1;
-}
-
-.ha-datasource-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ha-datasource-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text, #172033);
-  margin: 0;
-}
-
-.ha-datasource-line {
-  font-size: 0.9375rem;
-  color: var(--text, #172033);
-  margin: 0;
-}
-
-.ha-datasource-notice {
-  font-size: 0.875rem;
-  color: var(--primary, #1d4f91);
-  font-weight: 600;
-  margin: 0;
-}
-
-.ha-datasource-subtext {
-  font-size: 0.8125rem;
-  color: var(--text-muted, #64748b);
-  margin: 4px 0 0 0;
-  line-height: 1.4;
-}
-
 /* ── RECHARTS CUSTOM TOOLTIP ── */
 .ha-custom-tooltip {
   background: var(--surface, #ffffff);
@@ -925,8 +715,6 @@
 /* ── DARK THEME ADJUSTMENTS ── */
 :root[data-theme="dark"] .ha-header-card,
 :root[data-theme="dark"] .ha-card,
-:root[data-theme="dark"] .ha-insight-card,
-:root[data-theme="dark"] .ha-datasource-card,
 :root[data-theme="dark"] .ha-loading-card,
 :root[data-theme="dark"] .ha-error-card {
   background: #111a2e;
@@ -935,38 +723,27 @@
 }
 
 :root[data-theme="dark"] .ha-page-title,
-:root[data-theme="dark"] .ha-section-title,
 :root[data-theme="dark"] .ha-card-title,
-:root[data-theme="dark"] .ha-insight-val,
 :root[data-theme="dark"] .ha-strip-temp,
-:root[data-theme="dark"] .ha-lowest-state,
-:root[data-theme="dark"] .ha-lowest-temp,
 :root[data-theme="dark"] .ha-comp-state-name,
 :root[data-theme="dark"] .ha-stat-pill-value,
 :root[data-theme="dark"] .ha-risk-years-list,
-:root[data-theme="dark"] .ha-datasource-title,
-:root[data-theme="dark"] .ha-datasource-line,
 :root[data-theme="dark"] .ha-loading-title {
   color: #f1f5f9;
 }
 
 :root[data-theme="dark"] .ha-page-desc,
 :root[data-theme="dark"] .ha-card-subtitle,
-:root[data-theme="dark"] .ha-insight-label,
-:root[data-theme="dark"] .ha-insight-note,
 :root[data-theme="dark"] .ha-strip-range,
-:root[data-theme="dark"] .ha-lowest-risk-label,
 :root[data-theme="dark"] .ha-dist-focus-sub,
 :root[data-theme="dark"] .ha-comp-stat-lbl,
 :root[data-theme="dark"] .ha-stat-pill-label,
-:root[data-theme="dark"] .ha-datasource-subtext,
 :root[data-theme="dark"] .ha-tooltip-name,
 :root[data-theme="dark"] .ha-loading-sub {
   color: #94a3b8;
 }
 
 :root[data-theme="dark"] .ha-yearly-strip-item,
-:root[data-theme="dark"] .ha-lowest-item,
 :root[data-theme="dark"] .ha-dist-focus-box,
 :root[data-theme="dark"] .ha-compare-selectors,
 :root[data-theme="dark"] .ha-state-stat-pill,
@@ -979,6 +756,17 @@
   background: rgba(14, 165, 233, 0.12);
   border-color: rgba(14, 165, 233, 0.3);
   color: #e0f2fe;
+}
+
+:root[data-theme="dark"] .ha-estimate-notice {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .ha-estimate-notice.unavailable {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 :root[data-theme="dark"] .ha-compare-metric-box.state-a-box {

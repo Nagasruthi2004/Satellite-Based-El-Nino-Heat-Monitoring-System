@@ -19,6 +19,7 @@ const RISK_COLORS = {
   Low: "var(--success, #10b981)",
   Moderate: "var(--warning, #f59e0b)",
   High: "var(--danger, #ef4444)",
+  Critical: "#7f1d1d",
 };
 
 function formatCelsius(val) {
@@ -49,6 +50,7 @@ function CustomChartTooltip({ active, payload, label, unit = "°C" }) {
 
 export default function HeatAnalysis() {
   const [data, setData] = useState(null);
+  const [predictionData, setPredictionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedYear, setSelectedYear] = useState(2025);
@@ -78,8 +80,22 @@ export default function HeatAnalysis() {
         if (json.status !== "success") {
           throw new Error(json.error || "Failed to load heat analysis dataset");
         }
+
+        let modelEstimates = null;
+        try {
+          const predictionResponse = await fetch("http://127.0.0.1:5000/heat-2026-prediction");
+          const predictionJson = await predictionResponse.json();
+          if (!predictionResponse.ok || predictionJson.status !== "success" || !Array.isArray(predictionJson.states)) {
+            throw new Error(predictionJson.error || "2026 model estimates are unavailable.");
+          }
+          modelEstimates = predictionJson;
+        } catch (predictionError) {
+          console.error("Failed to load 2026 model-estimated LST:", predictionError);
+        }
+
         if (isMounted) {
           setData(json);
+          setPredictionData(modelEstimates);
           setError("");
           const availableStates = json.available_states || [];
           if (availableStates.length > 0) {
@@ -117,7 +133,7 @@ export default function HeatAnalysis() {
           <div className="ha-spinner" aria-hidden="true" />
           <h2 className="ha-loading-title">Loading Heat Analysis...</h2>
           <p className="ha-loading-sub">
-            Calculating 2020–2025 Land Surface Temperature statistics from the authentic dataset.
+            Loading historical LST analysis and available 2026 model estimates.
           </p>
         </div>
       </div>
@@ -146,13 +162,65 @@ export default function HeatAnalysis() {
     by_year = {},
     risk_distribution_by_year = [],
     state_history = {},
-    overall_insights = {},
-    source_info = {},
   } = data;
 
-  const currentYearData = by_year[selectedYear] || by_year[2025] || {
+  const yearOptions = [...new Set([...available_years, 2026])].sort((a, b) => a - b);
+  const predictedRecords = (predictionData?.states || []).map((item) => {
+    const rawLst = item.predicted_2026_lst;
+    if (rawLst == null || rawLst === "" || !Number.isFinite(Number(rawLst))) return null;
+    return {
+      state: item.state,
+      year: 2026,
+      lst_celsius: Number(rawLst),
+      heat_risk: item.predicted_2026_risk,
+      is_estimated: true,
+    };
+  }).filter(Boolean);
+  const predictedByState = new Map(predictedRecords.map((item) => [item.state, item]));
+  const predictedAverageValue = predictionData?.summary?.predicted_national_average_lst;
+  const predictedAverage = predictedAverageValue != null && Number.isFinite(Number(predictedAverageValue))
+    ? Number(predictedAverageValue)
+    : predictedRecords.length
+      ? Number((predictedRecords.reduce((sum, item) => sum + item.lst_celsius, 0) / predictedRecords.length).toFixed(2))
+      : null;
+  const predictedRiskDistribution = predictedRecords.reduce((distribution, item) => {
+    if (Object.hasOwn(distribution, item.heat_risk)) distribution[item.heat_risk] += 1;
+    return distribution;
+  }, { year: 2026, Low: 0, Moderate: 0, High: 0, Critical: 0, total: predictedRecords.length });
+  const predictedSorted = [...predictedRecords].sort((a, b) => b.lst_celsius - a.lst_celsius);
+  const predictedYearData = {
+    year: 2026,
+    top_10_hottest: predictedSorted.slice(0, 10),
+    risk_distribution: predictedRiskDistribution,
+    average_lst: predictedAverage,
+    highest_lst: predictedSorted[0] || null,
+    lowest_lst: predictedSorted[predictedSorted.length - 1] || null,
+  };
+  const predictionAvailable = predictedRecords.length > 0;
+  const yearlyTrendData = predictionAvailable
+    ? [...yearly_trend, {
+        year: 2026,
+        average_lst: predictedAverage,
+        min_lst: predictedSorted[predictedSorted.length - 1]?.lst_celsius,
+        max_lst: predictedSorted[0]?.lst_celsius,
+        state_count: predictedRecords.length,
+        is_estimated: true,
+      }]
+    : yearly_trend;
+  const riskTrendData = predictionAvailable
+    ? [...risk_distribution_by_year, predictedRiskDistribution]
+    : risk_distribution_by_year;
+
+  const currentYearData = selectedYear === 2026
+    ? predictionAvailable ? predictedYearData : {
+        top_10_hottest: [],
+        risk_distribution: {},
+        average_lst: null,
+        highest_lst: null,
+        lowest_lst: null,
+      }
+    : by_year[selectedYear] || by_year[2025] || {
     top_10_hottest: [],
-    bottom_5_lowest: [],
     risk_distribution: { Low: 0, Moderate: 0, High: 0, total: 0 },
     average_lst: 0,
   };
@@ -163,9 +231,13 @@ export default function HeatAnalysis() {
   const compHistoryA = state_history[stateA] || { yearly_data: [], average_lst: 0 };
   const compHistoryB = state_history[stateB] || { yearly_data: [], average_lst: 0 };
 
-  const comparisonChartData = available_years.map((yr) => {
-    const recA = compHistoryA.yearly_data.find((d) => d.year === yr);
-    const recB = compHistoryB.yearly_data.find((d) => d.year === yr);
+  const comparisonChartData = yearOptions.map((yr) => {
+    const recA = yr === 2026
+      ? predictedByState.get(stateA)
+      : compHistoryA.yearly_data.find((d) => d.year === yr);
+    const recB = yr === 2026
+      ? predictedByState.get(stateB)
+      : compHistoryB.yearly_data.find((d) => d.year === yr);
     return {
       year: yr,
       [stateA]: recA ? recA.lst_celsius : null,
@@ -183,11 +255,16 @@ export default function HeatAnalysis() {
     years_by_risk: { Low: [], Moderate: [], High: [] },
   };
 
-  const stateHistoricalChartData = selectedStateHistory.yearly_data.map((d) => ({
+  const stateHistoricalChartData = [...selectedStateHistory.yearly_data.map((d) => ({
     year: d.year,
     lst: d.lst_celsius,
     risk: d.heat_risk,
-  }));
+  })), ...(predictedByState.has(historicalState) ? [{
+    year: 2026,
+    lst: predictedByState.get(historicalState).lst_celsius,
+    risk: predictedByState.get(historicalState).heat_risk,
+    is_estimated: true,
+  }] : [])];
 
   return (
     <div className="ha-container">
@@ -195,133 +272,51 @@ export default function HeatAnalysis() {
       <header className="ha-header-card">
         <div className="ha-header-info">
           <span className="ha-eyebrow">
-            <span>📊</span> Historical Analytics (2020–2025)
+            <span>📊</span> Historical Analytics (2020–2026)
           </span>
           <h1 className="ha-page-title">India Land Surface Temperature Analysis</h1>
           <p className="ha-page-desc">
-            Explore factual Land Surface Temperature (LST) patterns, multi-year trends, state
-            comparisons, and official risk distribution metrics across India from 2020 to 2025.
+            Explore observed 2020–2025 LST patterns and the existing model-estimated 2026 projection across India.
           </p>
         </div>
 
         <div className="ha-year-selector-box">
           <span className="ha-selector-heading">Select Year for Analysis:</span>
           <YearSelector
-            years={available_years}
+            years={yearOptions}
             selectedYear={selectedYear}
             onChange={(yr) => setSelectedYear(yr)}
           />
         </div>
       </header>
 
-      {/* ── SECTION 7: KEY INSIGHTS (FACTUAL FROM DATASET) ── */}
-      <section className="ha-section" aria-labelledby="ha-insights-heading">
-        <div className="ha-section-header">
-          <h2 id="ha-insights-heading" className="ha-section-title">
-            <span>💡</span> Key Factual Insights
-          </h2>
-          <span className="ha-badge-sub">Ground-Truth Dataset Metrics</span>
-        </div>
+      <div className={`ha-estimate-notice ${predictionAvailable ? "" : "unavailable"}`} role="status">
+        <strong>2026:</strong>{" "}
+        {predictionAvailable
+          ? "Model Estimated from the existing regression model; these are predictions, not observed satellite measurements."
+          : "Model-estimated LST data is unavailable. No 2026 values are shown."}
+      </div>
 
-        <div className="ha-insights-grid">
-          <div className="ha-insight-card accent-primary">
-            <div className="ha-insight-icon">🌡️</div>
-            <div className="ha-insight-content">
-              <span className="ha-insight-label">Overall 6-Year Average LST</span>
-              <div className="ha-insight-val">{formatCelsius(overall_insights.overall_average_lst)}</div>
-              <p className="ha-insight-note">
-                Mean across all 34 states and union territories (2020–2025).
-              </p>
-            </div>
-          </div>
-
-          <div className="ha-insight-card accent-danger">
-            <div className="ha-insight-icon">🔥</div>
-            <div className="ha-insight-content">
-              <span className="ha-insight-label">Highest Recorded LST</span>
-              <div className="ha-insight-val">
-                {formatCelsius(overall_insights.highest_record?.lst_celsius)}
-              </div>
-              <p className="ha-insight-note">
-                <strong>{overall_insights.highest_record?.state}</strong> in{" "}
-                <strong>{overall_insights.highest_record?.year}</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="ha-insight-card accent-info">
-            <div className="ha-insight-icon">❄️</div>
-            <div className="ha-insight-content">
-              <span className="ha-insight-label">Lowest Recorded LST</span>
-              <div className="ha-insight-val">
-                {formatCelsius(overall_insights.lowest_record?.lst_celsius)}
-              </div>
-              <p className="ha-insight-note">
-                <strong>{overall_insights.lowest_record?.state}</strong> in{" "}
-                <strong>{overall_insights.lowest_record?.year}</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="ha-insight-card accent-warning">
-            <div className="ha-insight-icon">⚠️</div>
-            <div className="ha-insight-content">
-              <span className="ha-insight-label">High-Risk States in {selectedYear}</span>
-              <div className="ha-insight-val">{selectedYearDist.High ?? 0} states</div>
-              <p className="ha-insight-note">
-                {selectedYearDist.High === 0
-                  ? `0 states reached the High risk threshold in ${selectedYear}.`
-                  : `${selectedYearDist.High} of 34 states classified in High heat risk for ${selectedYear}.`}
-              </p>
-            </div>
-          </div>
-
-          <div className="ha-insight-card accent-warmest">
-            <div className="ha-insight-icon">📈</div>
-            <div className="ha-insight-content">
-              <span className="ha-insight-label">Warmest Year Recorded</span>
-              <div className="ha-insight-val">
-                {overall_insights.warmest_year?.year} ({formatCelsius(overall_insights.warmest_year?.average_lst)})
-              </div>
-              <p className="ha-insight-note">
-                Highest national average LST across all 6 recorded years.
-              </p>
-            </div>
-          </div>
-
-          <div className="ha-insight-card accent-coolest">
-            <div className="ha-insight-icon">📉</div>
-            <div className="ha-insight-content">
-              <span className="ha-insight-label">Coolest Year Recorded</span>
-              <div className="ha-insight-val">
-                {overall_insights.coolest_year?.year} ({formatCelsius(overall_insights.coolest_year?.average_lst)})
-              </div>
-              <p className="ha-insight-note">
-                Lowest national average LST across all 6 recorded years.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 1: YEAR-WISE LST TREND (2020–2025) ── */}
+      {/* ── SECTION 1: YEAR-WISE LST TREND ── */}
       <section className="ha-section" aria-labelledby="ha-trend-heading">
         <div className="ha-card ha-chart-card">
           <div className="ha-card-header">
             <div>
               <h2 id="ha-trend-heading" className="ha-card-title">
-                <span>📈</span> National Year-Wise LST Trend (2020–2025)
+                <span>📈</span> National Year-Wise LST Trend (2020–2026)
               </h2>
               <p className="ha-card-subtitle">
-                Annual mean Land Surface Temperature (°C) calculated across all 34 states and union territories.
+                Observed annual means through 2025; the 2026 value is model-estimated.
               </p>
             </div>
-            <div className="ha-pill-badge">Dataset Average</div>
+            <div className="ha-pill-badge">
+              {predictionAvailable ? "2026 Model Estimated" : "2026 Estimate Unavailable"}
+            </div>
           </div>
 
           <div className="ha-chart-wrap" style={{ height: 320 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={yearly_trend} margin={{ top: 16, right: 24, left: 10, bottom: 8 }}>
+              <LineChart data={yearlyTrendData} margin={{ top: 16, right: 24, left: 10, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
                 <XAxis dataKey="year" tick={{ fill: "var(--text-muted, #64748b)", fontSize: 13 }} />
                 <YAxis
@@ -353,7 +348,7 @@ export default function HeatAnalysis() {
 
           {/* Quick Year Pill Bar */}
           <div className="ha-yearly-strip">
-            {yearly_trend.map((yt) => {
+            {yearlyTrendData.map((yt) => {
               const isSelected = yt.year === selectedYear;
               return (
                 <div
@@ -369,6 +364,7 @@ export default function HeatAnalysis() {
                   <span className="ha-strip-range">
                     {yt.min_lst}° – {yt.max_lst}°
                   </span>
+                  {yt.is_estimated && <span className="ha-estimate-label">Model Estimated</span>}
                 </div>
               );
             })}
@@ -376,21 +372,23 @@ export default function HeatAnalysis() {
         </div>
       </section>
 
-      {/* ── SECTIONS 2 & 3: HOTTEST 10 & LOWEST 5 STATES FOR SELECTED YEAR ── */}
-      <div className="ha-two-col-grid">
-        {/* SECTION 2: HOTTEST STATES (HORIZONTAL BAR CHART) */}
-        <section className="ha-section" aria-labelledby="ha-hottest-heading">
+      {/* ── TOP 10 HOTTEST STATES FOR SELECTED YEAR ── */}
+      <section className="ha-section" aria-labelledby="ha-hottest-heading">
           <div className="ha-card ha-chart-card">
             <div className="ha-card-header">
               <div>
                 <h2 id="ha-hottest-heading" className="ha-card-title">
-                  <span>🔥</span> Top 10 Hottest States ({selectedYear})
+                  <span>🔥</span> Top 10 Hottest States ({selectedYear}{selectedYear === 2026 ? " Model Estimated" : ""})
                 </h2>
                 <p className="ha-card-subtitle">
-                  Highest Land Surface Temperatures recorded in {selectedYear}.
+                  {selectedYear === 2026
+                    ? "Highest state LST values predicted by the existing regression model."
+                    : `Highest Land Surface Temperatures recorded in ${selectedYear}.`}
                 </p>
               </div>
-              <div className="ha-pill-badge danger">Top 10 Hottest</div>
+              <div className={`ha-pill-badge ${selectedYear === 2026 ? "warning" : "danger"}`}>
+                {selectedYear === 2026 ? "Model Estimated" : "Top 10 Hottest"}
+              </div>
             </div>
 
             <div className="ha-chart-wrap" style={{ height: 380 }}>
@@ -436,65 +434,23 @@ export default function HeatAnalysis() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </section>
 
-        {/* SECTION 3: LOWEST 5 LST STATES */}
-        <section className="ha-section" aria-labelledby="ha-lowest-heading">
-          <div className="ha-card">
-            <div className="ha-card-header">
-              <div>
-                <h2 id="ha-lowest-heading" className="ha-card-title">
-                  <span>❄️</span> 5 States with Lowest LST ({selectedYear})
-                </h2>
-                <p className="ha-card-subtitle">
-                  Coolest Land Surface Temperatures recorded in {selectedYear}.
-                </p>
-              </div>
-              <div className="ha-pill-badge info">Bottom 5 Coolest</div>
-            </div>
-
-            <div className="ha-lowest-list">
-              {(currentYearData.bottom_5_lowest || []).map((item, idx) => (
-                <div key={item.state} className="ha-lowest-item">
-                  <div className="ha-lowest-rank">#{idx + 1}</div>
-                  <div className="ha-lowest-info">
-                    <span className="ha-lowest-state">{item.state}</span>
-                    <span className="ha-lowest-risk-label">Heat Risk: {item.heat_risk}</span>
-                  </div>
-                  <div className="ha-lowest-temp-box">
-                    <span className="ha-lowest-temp">{formatCelsius(item.lst_celsius)}</span>
-                    <span
-                      className="ha-risk-badge"
-                      style={{
-                        backgroundColor: RISK_COLORS[item.heat_risk] ? `${RISK_COLORS[item.heat_risk]}22` : "#e2e8f0",
-                        color: RISK_COLORS[item.heat_risk] || "inherit",
-                        borderColor: RISK_COLORS[item.heat_risk] || "transparent",
-                      }}
-                    >
-                      {item.heat_risk}
-                    </span>
-                  </div>
+            {(selectedYear !== 2026 || predictionAvailable) && (
+              <div className="ha-year-summary-callout">
+                <span className="ha-callout-icon">📌</span>
+                <div>
+                  <strong>{selectedYear} Summary:</strong> Average LST was{" "}
+                  <strong>{formatCelsius(currentYearData.average_lst)}</strong> across{" "}
+                  <strong>{currentYearData.risk_distribution?.total ?? 34} states</strong>, ranging from{" "}
+                  <strong>{formatCelsius(currentYearData.lowest_lst?.lst_celsius)}</strong> (
+                  {currentYearData.lowest_lst?.state}) to{" "}
+                  <strong>{formatCelsius(currentYearData.highest_lst?.lst_celsius)}</strong> (
+                  {currentYearData.highest_lst?.state}).
                 </div>
-              ))}
-            </div>
-
-            {/* Quick summary box for selected year */}
-            <div className="ha-year-summary-callout">
-              <span className="ha-callout-icon">📌</span>
-              <div>
-                <strong>{selectedYear} Summary:</strong> Average LST was{" "}
-                <strong>{formatCelsius(currentYearData.average_lst)}</strong> across 34 states,
-                ranging from{" "}
-                <strong>{formatCelsius(currentYearData.lowest_lst?.lst_celsius)}</strong> (
-                {currentYearData.lowest_lst?.state}) to{" "}
-                <strong>{formatCelsius(currentYearData.highest_lst?.lst_celsius)}</strong> (
-                {currentYearData.highest_lst?.state}).
               </div>
-            </div>
+            )}
           </div>
-        </section>
-      </div>
+      </section>
 
       {/* ── SECTION 4: HEAT-RISK DISTRIBUTION ACROSS YEARS ── */}
       <section className="ha-section" aria-labelledby="ha-dist-heading">
@@ -502,10 +458,10 @@ export default function HeatAnalysis() {
           <div className="ha-card-header">
             <div>
               <h2 id="ha-dist-heading" className="ha-card-title">
-                <span>⚠️</span> Heat-Risk Distribution (2020–2025)
+                <span>⚠️</span> Heat-Risk Distribution (2020–2026)
               </h2>
               <p className="ha-card-subtitle">
-                Number of states and union territories in Low, Moderate, and High heat-risk categories across all years.
+                Observed distributions through 2025 and existing model-estimated risk categories for 2026.
               </p>
             </div>
             <div className="ha-pill-badge warning">34 States per Year</div>
@@ -515,7 +471,7 @@ export default function HeatAnalysis() {
             <div className="ha-chart-wrap" style={{ height: 320, flex: "2 1 450px" }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={risk_distribution_by_year}
+                  data={riskTrendData}
                   margin={{ top: 16, right: 24, left: 0, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
@@ -537,6 +493,7 @@ export default function HeatAnalysis() {
                   <Bar dataKey="Low" name="Low Risk" stackId="a" fill="var(--success, #10b981)" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="Moderate" name="Moderate Risk" stackId="a" fill="var(--warning, #f59e0b)" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="High" name="High Risk" stackId="a" fill="var(--danger, #ef4444)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Critical" name="Critical Risk" stackId="a" fill="#7f1d1d" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -588,6 +545,20 @@ export default function HeatAnalysis() {
                     />
                   </div>
                 </div>
+
+                <div className="ha-dist-bar-item">
+                  <div className="ha-dist-bar-label">
+                    <span className="ha-dist-color-dot" style={{ backgroundColor: "#7f1d1d" }} />
+                    <span>Critical Risk</span>
+                    <strong>{selectedYearDist.Critical ?? 0} states</strong>
+                  </div>
+                  <div className="ha-dist-progress-track">
+                    <div
+                      className="ha-dist-progress-fill danger"
+                      style={{ width: `${((selectedYearDist.Critical ?? 0) / 34) * 100}%`, backgroundColor: "#7f1d1d" }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -600,10 +571,10 @@ export default function HeatAnalysis() {
           <div className="ha-card-header">
             <div>
               <h2 id="ha-compare-heading" className="ha-card-title">
-                <span>⚖️</span> State-to-State LST Comparison (2020–2025)
+                <span>⚖️</span> State-to-State LST Comparison (2020–2026)
               </h2>
               <p className="ha-card-subtitle">
-                Select any two states or union territories to compare their 6-year Land Surface Temperature trajectories.
+                Compare observed 2020–2025 trajectories with the existing model-estimated 2026 values.
               </p>
             </div>
             <div className="ha-pill-badge primary">Comparative Analysis</div>
@@ -755,7 +726,7 @@ export default function HeatAnalysis() {
                 <span>📍</span> State Historical Trend & Risk Profile
               </h2>
               <p className="ha-card-subtitle">
-                Select a state to inspect individual annual LST values, risk breakdown, and extremes from 2020 to 2025.
+                Select a state to inspect observed annual LST values through 2025 and its model-estimated 2026 value.
               </p>
             </div>
             <div className="ha-state-select-wrap">
@@ -870,25 +841,6 @@ export default function HeatAnalysis() {
         </div>
       </section>
 
-      {/* ── SECTION 8: DATA SOURCE & METHODOLOGY NOTE ── */}
-      <footer className="ha-datasource-card">
-        <div className="ha-datasource-icon">🛰️</div>
-        <div className="ha-datasource-text">
-          <h3 className="ha-datasource-title">Dataset Origin & Scientific Disclosure</h3>
-          <p className="ha-datasource-line">
-            <strong>Source:</strong> {source_info.dataset_name || "India LST dataset 2020–2025"}
-          </p>
-          <p className="ha-datasource-notice">
-            <strong>Note:</strong>{" "}
-            {source_info.note ||
-              "Temperature represents Land Surface Temperature (LST), not standard air temperature."}
-          </p>
-          <p className="ha-datasource-subtext">
-            All analytical figures, rankings, and statistical distributions are derived directly
-            from the verified 2020–2025 India state observations. No values are simulated or extrapolated.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

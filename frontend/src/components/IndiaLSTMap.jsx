@@ -7,14 +7,24 @@ import "./IndiaLSTMap.css";
 const BACKEND_URL = "http://127.0.0.1:5000/india-lst";
 const INDIA_CENTER = [22.8, 82.0];
 const INDIA_ZOOM = 4.8;
-const YEARS = [2020, 2021, 2022, 2023, 2024, 2025];
+const YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
 const RISK_COLORS = {
+  critical: "#991b1b",
   high: "#dc2626",
   moderate: "#d97706",
   medium: "#d97706",
   low: "#16a34a",
 };
+
+function getIndiaHeatRisk(lst) {
+  const val = Number(lst);
+  if (!Number.isFinite(val)) return "Low";
+  if (val < 30) return "Low";
+  if (val < 36) return "Moderate";
+  if (val < 40) return "High";
+  return "Critical";
+}
 
 function getRiskColor(risk) {
   return RISK_COLORS[(risk || "").toLowerCase()] || "#1565C0";
@@ -48,10 +58,59 @@ export default function IndiaLSTMap() {
       try {
         setLoading(true);
         setError("");
-        const res = await fetch(`${BACKEND_URL}?year=${selectedYear}`);
-        const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json.error || `Data unavailable for year ${selectedYear}`);
+        let json;
+        if (selectedYear === 2026) {
+          const [predictionResponse, locationResponse] = await Promise.all([
+            fetch("http://127.0.0.1:5000/heat-2026-prediction"),
+            fetch(`${BACKEND_URL}?year=2025`),
+          ]);
+          const [predictionData, locationData] = await Promise.all([
+            predictionResponse.json(),
+            locationResponse.json(),
+          ]);
+          if (!predictionResponse.ok || predictionData.status !== "success") {
+            throw new Error(predictionData.error || "2026 model estimates are unavailable.");
+          }
+          if (!locationResponse.ok) {
+            throw new Error("State locations required for the 2026 map are unavailable.");
+          }
+
+          const locationsByState = new Map(
+            (locationData.data || []).map((record) => [record.state, record])
+          );
+          const predictedRecords = (predictionData.states || []).map((prediction) => {
+            const location = locationsByState.get(prediction.state);
+            const rawLst = prediction.predicted_2026_lst;
+            if (!location || rawLst == null || rawLst === "" || !Number.isFinite(Number(rawLst))) return null;
+            return {
+              state: prediction.state,
+              year: 2026,
+              lst_celsius: Number(rawLst),
+              latitude: location.latitude,
+              longitude: location.longitude,
+            };
+          }).filter(Boolean);
+
+          if (!predictedRecords.length) {
+            throw new Error("2026 model estimates are unavailable for the state map.");
+          }
+
+          json = {
+            status: "success",
+            year: 2026,
+            count: predictedRecords.length,
+            average_lst: predictionData.summary?.predicted_national_average_lst ?? Number((
+              predictedRecords.reduce((total, record) => total + record.lst_celsius, 0) / predictedRecords.length
+            ).toFixed(2)),
+            source_file: "Model-estimated 2026 LST (not observed)",
+            data: predictedRecords,
+          };
+        } else {
+          const res = await fetch(`${BACKEND_URL}?year=${selectedYear}`);
+          json = await res.json();
+          if (!res.ok) {
+            throw new Error(json.error || `Data unavailable for year ${selectedYear}`);
+          }
         }
         if (isMounted) {
           setApiData(json);
@@ -75,12 +134,36 @@ export default function IndiaLSTMap() {
     };
   }, [selectedYear]);
 
-  const records = useMemo(() => apiData?.data || [], [apiData]);
-  const count = apiData?.count ?? 0;
+  const records = useMemo(() => {
+    const raw = apiData?.data || [];
+    return raw.map((item) => ({
+      ...item,
+      heat_risk: getIndiaHeatRisk(item.lst_celsius),
+    }));
+  }, [apiData]);
+
+  const count = apiData?.count ?? records.length;
   const averageLst = apiData?.average_lst != null ? `${Number(apiData.average_lst).toFixed(2)}°C` : "—";
-  const highestLst = apiData?.highest_lst;
-  const lowestLst = apiData?.lowest_lst;
-  const riskDist = apiData?.risk_distribution || {};
+
+  const highestLst = useMemo(() => {
+    if (!records.length) return null;
+    return records.reduce((max, cur) => (cur.lst_celsius > max.lst_celsius ? cur : max), records[0]);
+  }, [records]);
+
+  const lowestLst = useMemo(() => {
+    if (!records.length) return null;
+    return records.reduce((min, cur) => (cur.lst_celsius < min.lst_celsius ? cur : min), records[0]);
+  }, [records]);
+
+  const riskDist = useMemo(() => {
+    const dist = { Low: 0, Moderate: 0, High: 0, Critical: 0 };
+    for (const r of records) {
+      if (dist[r.heat_risk] !== undefined) {
+        dist[r.heat_risk] += 1;
+      }
+    }
+    return dist;
+  }, [records]);
 
   const filteredRecords = useMemo(() => {
     return records.filter((item) => {
@@ -100,14 +183,10 @@ export default function IndiaLSTMap() {
           <div className="india-lst-eyebrow">
             <span>🗺️</span> India LST Annual Heat Map
           </div>
-          <h2 className="india-lst-title">India Land Surface Temperature (2020–2025)</h2>
-          <p className="india-lst-subtitle">
-            Historical MODIS Land Surface Temperature (LST) observations across 34 Indian States &amp; Union Territories.
-            Select any year from 2020 to 2025 to visualize verified state-wise thermal distributions.
-          </p>
+          <h2 className="india-lst-title">India Land Surface Temperature (2020–2026)</h2>
           <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
             <span style={{ background: "var(--surface-alt)", padding: "3px 10px", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              📊 <strong>Data Source:</strong> Prepared historical LST dataset, 2020–2025
+              📊 <strong>Data Source:</strong> Historical observations (2020–2025) and model-estimated 2026 (not observed)
             </span>
             <span style={{ background: "var(--surface-alt)", padding: "3px 10px", borderRadius: "12px", border: "1px solid var(--border)" }}>
               🔬 <strong>Scientific Note:</strong> Land Surface Temperature (LST) measures radiative skin temperature and differs from ambient 2m air temperature.
@@ -129,7 +208,9 @@ export default function IndiaLSTMap() {
         <div className="india-data-empty-card" role="alert">
           <span>⚠️ {error}</span>
           <p style={{ marginTop: "6px", fontSize: "12px" }}>
-            The selected year does not contain verified records in the local dataset.
+            {selectedYear === 2026
+              ? "2026 model-estimated LST data is unavailable; no observed 2026 dataset is available."
+              : "The selected year does not contain verified records in the local dataset."}
           </p>
         </div>
       )}
@@ -218,11 +299,14 @@ export default function IndiaLSTMap() {
             <span className="risk-pill-count low" title="Low risk states (<30°C)">
               Low: {loading ? "—" : riskDist.Low ?? 0}
             </span>
-            <span className="risk-pill-count moderate" title="Moderate risk states (30-35°C)">
-              Moderate: {loading ? "—" : (riskDist.Moderate ?? riskDist.Medium ?? 0)}
+            <span className="risk-pill-count moderate" title="Moderate risk states (30°C – 36°C)">
+              Moderate: {loading ? "—" : riskDist.Moderate ?? 0}
             </span>
-            <span className="risk-pill-count high" title="High risk states (>=35°C)">
+            <span className="risk-pill-count high" title="High risk states (36°C – 40°C)">
               High: {loading ? "—" : riskDist.High ?? 0}
+            </span>
+            <span className="risk-pill-count critical" title="Critical risk states (>=40°C)">
+              Critical: {loading ? "—" : riskDist.Critical ?? 0}
             </span>
           </div>
           <div className="metric-sub">Classified by project thermal criteria</div>
@@ -244,11 +328,15 @@ export default function IndiaLSTMap() {
             </span>
             <span className="legend-item">
               <span className="legend-dot moderate" />
-              <span>Moderate (30°C – 35°C)</span>
+              <span>Moderate (30°C – 36°C)</span>
             </span>
             <span className="legend-item">
               <span className="legend-dot high" />
-              <span>High (&ge; 35°C)</span>
+              <span>High (36°C – 40°C)</span>
+            </span>
+            <span className="legend-item">
+              <span className="legend-dot critical" />
+              <span>Critical (&ge; 40°C)</span>
             </span>
           </div>
         </div>
@@ -313,9 +401,9 @@ export default function IndiaLSTMap() {
       <section className="india-table-card" aria-label="State-wise LST Dataset Table">
         <div className="india-table-header-controls">
           <div className="india-table-title-group">
-            <h3>State-Wise LST Observations ({selectedYear})</h3>
+            <h3>State-Wise LST {selectedYear === 2026 ? "Estimates" : "Observations"} ({selectedYear})</h3>
             <p>
-              Showing {filteredRecords.length} of {count} states & UTs from verified dataset
+              Showing {filteredRecords.length} of {count} states &amp; UTs {selectedYear === 2026 ? "from the existing 2026 regression model" : "from the verified dataset"}
             </p>
           </div>
 
@@ -330,7 +418,7 @@ export default function IndiaLSTMap() {
             />
 
             <div className="table-filter-pills" role="group" aria-label="Filter by Heat Risk">
-              {["all", "High", "Moderate", "Low"].map((lvl) => (
+              {["all", "Critical", "High", "Moderate", "Low"].map((lvl) => (
                 <button
                   key={lvl}
                   type="button"

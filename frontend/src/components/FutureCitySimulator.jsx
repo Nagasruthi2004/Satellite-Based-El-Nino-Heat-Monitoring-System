@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatTemperature, formatTemperatureDelta } from "../utils/temperature";
 
 const SIMULATION_FACTORS = [
   { id: "treeCover", label: "🌳 Tree Cover (%)" },
@@ -63,9 +64,9 @@ export default function FutureCitySimulator({ currentTemperature, onValuesChange
       buildingIncrease,
       waterReduction,
       plantationZones: [
-  { zone: "North Zone", cooling: "2.3°C" },
-  { zone: "East Zone", cooling: "1.8°C" },
-  { zone: "South Zone", cooling: "2.0°C" },
+  { zone: "North Zone", cooling: 2.3 },
+  { zone: "East Zone", cooling: 1.8 },
+  { zone: "South Zone", cooling: 2.0 },
 ],
     });
 
@@ -127,31 +128,31 @@ export default function FutureCitySimulator({ currentTemperature, onValuesChange
           <>
             <p>
               <strong>Current Temperature:</strong>{" "}
-              {result.baseTemperature.toFixed(1)}°C
+              {formatTemperature(result.baseTemperature)}
             </p>
 
             <h4>Simulation Impact</h4>
 
             <p>
               🌳 Tree Cover :
-              <strong> -{result.treeReduction.toFixed(1)}°C</strong>
+              <strong> {formatTemperatureDelta(-result.treeReduction)}</strong>
             </p>
 
             <p>
               🏢 Building Density :
-              <strong> +{result.buildingIncrease.toFixed(1)}°C</strong>
+              <strong> {formatTemperatureDelta(result.buildingIncrease)}</strong>
             </p>
 
             <p>
               💧 Water Bodies :
-              <strong> -{result.waterReduction.toFixed(1)}°C</strong>
+              <strong> {formatTemperatureDelta(-result.waterReduction)}</strong>
             </p>
 
             <hr />
 
             <p>
               <strong>Final Predicted Temperature:</strong>{" "}
-              {result.predictedTemperature.toFixed(1)}°C
+              {formatTemperature(result.predictedTemperature)}
             </p>
 
             <p>
@@ -170,7 +171,7 @@ export default function FutureCitySimulator({ currentTemperature, onValuesChange
     <strong>{item.zone}</strong>
     <br />
     🌡 Expected Cooling:
-    <strong> {item.cooling}</strong>
+    <strong> {formatTemperatureDelta(item.cooling)}</strong>
   </div>
 ))}
 

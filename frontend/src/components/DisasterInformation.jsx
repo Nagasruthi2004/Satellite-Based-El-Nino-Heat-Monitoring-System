@@ -10,7 +10,7 @@ const DISASTERS_DATA = [
     categoryTag: "Thermal Extreme",
     authority: "IMD & NDMA Guidelines",
     whatIsIt:
-      "A heatwave is an extended period of abnormally high ambient temperatures, often coupled with oppressive humidity. In India, the India Meteorological Department (IMD) declares a heatwave when the maximum temperature reaches at least 40°C in plains or 30°C in hilly regions, with departures from normal of 4.5°C to 6.4°C (or severe heatwave when departure exceeds 6.4°C, or absolute temperatures exceed 45°C).",
+      "A heatwave is an extended period of abnormally high ambient temperatures, often coupled with oppressive humidity. In India, the India Meteorological Department (IMD) declares a heatwave when the maximum temperature reaches at least 40°C / 104°F in plains or 30°C / 86°F in hilly regions, with departures from normal of 4.5°C / 8.1°F to 6.4°C / 11.5°F (or severe heatwave when departure exceeds 6.4°C / 11.5°F, or absolute temperatures exceed 45°C / 113°F).",
     warningSigns: [
       "Consecutive days of extreme temperatures soaring above normal seasonal baselines",
       "Persistent dry, hot afternoon winds (Loo) blowing across inland plains",
@@ -43,7 +43,7 @@ const DISASTERS_DATA = [
       "Prepare a summer emergency kit: ORS packets, cooling gel packs, and electrolyte sachets.",
       "Identify nearby public cooling centres, shaded community shelters, and primary health clinics.",
       "Install reflective roof coatings or green shading to lower indoor room temperatures.",
-      "Know how to distinguish heat exhaustion (heavy sweating, paleness) from critical heatstroke (confusion, cessation of sweating, fever > 40°C)."
+      "Know how to distinguish heat exhaustion (heavy sweating, paleness) from critical heatstroke (confusion, cessation of sweating, fever > 40°C / 104°F)."
     ],
     officialSources: [
       {
@@ -365,12 +365,11 @@ const OFFICIAL_DIRECTORIES = [
 ];
 
 export default function DisasterInformation({ currentHeatRisk, weather }) {
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [selectedDisaster, setSelectedDisaster] = useState(null);
 
-  const filteredDisasters =
-    activeFilter === "all"
-      ? DISASTERS_DATA
-      : DISASTERS_DATA.filter((d) => d.id === activeFilter);
+  const selectedDisasterData = selectedDisaster
+    ? DISASTERS_DATA.find((d) => d.id === selectedDisaster) || null
+    : null;
 
   const activeHeatRiskLevel =
     typeof currentHeatRisk === "object"
@@ -405,56 +404,118 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
         </div>
       </header>
 
-      {/* ── CATEGORY / FILTER SELECTOR ── */}
-      <nav className="disaster-filter-nav" aria-label="Disaster filter categories">
-        <button
-          type="button"
-          className={`disaster-filter-btn ${activeFilter === "all" ? "active" : ""}`}
-          onClick={() => setActiveFilter("all")}
-          id="filter-all-disasters"
-        >
-          <span>🌟</span>
-          <span>All Disasters (5)</span>
-        </button>
+      {/* ── 5 DISASTER SELECTION CARDS (Initial Selection View) ── */}
+      {!selectedDisasterData ? (
+        <section className="disaster-selection-section" aria-label="Disaster selection">
+          <div className="selection-intro">
+            <h3 className="selection-heading">Select a Natural Hazard to View Official Protocols</h3>
+            <p className="selection-subheading">
+              Choose any of the 5 disaster categories below to access life-safety guidelines, early warning indicators, emergency actions, and verified official advisories.
+            </p>
+          </div>
 
-        {DISASTERS_DATA.map((disaster) => (
-          <button
-            key={disaster.id}
-            type="button"
-            className={`disaster-filter-btn ${activeFilter === disaster.id ? "active" : ""}`}
-            onClick={() => setActiveFilter(disaster.id)}
-            id={`filter-${disaster.id}`}
-          >
-            <span>{disaster.icon}</span>
-            <span>{disaster.name}</span>
-          </button>
-        ))}
-      </nav>
+          <div className="disaster-selection-grid">
+            {DISASTERS_DATA.map((disaster) => (
+              <div
+                key={disaster.id}
+                role="button"
+                tabIndex={0}
+                className={`disaster-select-card ${disaster.classSuffix}`}
+                onClick={() => setSelectedDisaster(disaster.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedDisaster(disaster.id);
+                  }
+                }}
+                id={`select-disaster-${disaster.id}`}
+                aria-label={`View ${disaster.name} safety guidelines and information`}
+              >
+                <div className="select-card-top">
+                  <div className="disaster-icon-box" aria-hidden="true">
+                    {disaster.icon}
+                  </div>
+                  <span className="disaster-card-category-tag">{disaster.categoryTag}</span>
+                </div>
 
-      {/* ── DISASTER INFORMATION CARDS ── */}
-      <section className="disaster-cards-list" aria-label="Disaster information list">
-        {filteredDisasters.map((disaster) => (
+                <div className="select-card-body">
+                  <h3 className="select-card-name">{disaster.name}</h3>
+                  <p className="select-card-desc">
+                    {disaster.whatIsIt.length > 130
+                      ? `${disaster.whatIsIt.slice(0, 127)}...`
+                      : disaster.whatIsIt}
+                  </p>
+                </div>
+
+                <div className="select-card-footer">
+                  <div className="disaster-card-authority-badge">
+                    <span>🛡️</span>
+                    <span>{disaster.authority}</span>
+                    {disaster.id === "heatwave" && activeHeatRiskLevel && (
+                      <span style={{ marginLeft: "6px", fontWeight: "700" }}>
+                        • {activeHeatRiskLevel}
+                      </span>
+                    )}
+                  </div>
+                  <span className="select-card-action">
+                    View Safety Guidelines <span>→</span>
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        /* ── SELECTED DISASTER DETAIL VIEW ── */
+        <section className="disaster-detail-view" aria-label={`${selectedDisasterData.name} details`}>
+          <div className="disaster-detail-toolbar">
+            <button
+              type="button"
+              className="disaster-back-btn"
+              onClick={() => setSelectedDisaster(null)}
+              id="back-to-disasters-btn"
+            >
+              <span>←</span>
+              <span>Back to Disasters</span>
+            </button>
+
+            {/* Quick Switcher */}
+            <div className="disaster-quick-switch" aria-label="Switch disaster">
+              {DISASTERS_DATA.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  className={`disaster-quick-pill ${selectedDisaster === d.id ? "active" : ""}`}
+                  onClick={() => setSelectedDisaster(d.id)}
+                  id={`quick-switch-${d.id}`}
+                >
+                  <span>{d.icon}</span>
+                  <span>{d.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <article
-            key={disaster.id}
-            className={`disaster-card ${disaster.classSuffix}`}
-            id={`disaster-card-${disaster.id}`}
+            className={`disaster-card ${selectedDisasterData.classSuffix}`}
+            id={`disaster-card-${selectedDisasterData.id}`}
           >
             {/* Card Header */}
             <div className="disaster-card-header">
               <div className="disaster-card-title-group">
                 <div className="disaster-icon-box" aria-hidden="true">
-                  {disaster.icon}
+                  {selectedDisasterData.icon}
                 </div>
                 <div>
-                  <div className="disaster-card-category-tag">{disaster.categoryTag}</div>
-                  <h3 className="disaster-card-name">{disaster.name}</h3>
+                  <div className="disaster-card-category-tag">{selectedDisasterData.categoryTag}</div>
+                  <h3 className="disaster-card-name">{selectedDisasterData.name}</h3>
                 </div>
               </div>
 
               <div className="disaster-card-authority-badge">
                 <span>🛡️</span>
-                <span>{disaster.authority}</span>
-                {disaster.id === "heatwave" && activeHeatRiskLevel && (
+                <span>{selectedDisasterData.authority}</span>
+                {selectedDisasterData.id === "heatwave" && activeHeatRiskLevel && (
                   <span style={{ marginLeft: "6px", fontWeight: "700" }}>
                     • Monitored: {activeHeatRiskLevel}
                   </span>
@@ -467,7 +528,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
               {/* 1. What is it? */}
               <div className="disaster-overview-section">
                 <div className="section-label">1. What is it?</div>
-                <p className="disaster-description">{disaster.whatIsIt}</p>
+                <p className="disaster-description">{selectedDisasterData.whatIsIt}</p>
               </div>
 
               {/* 2. Common Warning Signs */}
@@ -477,7 +538,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
                   <span>2. Common Warning Signs & Conditions</span>
                 </h4>
                 <ul className="disaster-warning-list">
-                  {disaster.warningSigns.map((sign, idx) => (
+                  {selectedDisasterData.warningSigns.map((sign, idx) => (
                     <li key={idx}>
                       <span>•</span>
                       <span>{sign}</span>
@@ -495,7 +556,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
                     <span>3. Safety Precautions</span>
                   </h4>
                   <ul className="protocol-list">
-                    {disaster.precautions.map((item, idx) => (
+                    {selectedDisasterData.precautions.map((item, idx) => (
                       <li key={idx}>
                         <span className="protocol-bullet">✔</span>
                         <span>{item}</span>
@@ -511,7 +572,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
                     <span>4. What to Do During</span>
                   </h4>
                   <ul className="protocol-list">
-                    {disaster.during.map((item, idx) => (
+                    {selectedDisasterData.during.map((item, idx) => (
                       <li key={idx}>
                         <span className="protocol-bullet">✔</span>
                         <span>{item}</span>
@@ -527,7 +588,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
                     <span>5. What to Avoid</span>
                   </h4>
                   <ul className="protocol-list">
-                    {disaster.avoid.map((item, idx) => (
+                    {selectedDisasterData.avoid.map((item, idx) => (
                       <li key={idx}>
                         <span className="protocol-bullet">✖</span>
                         <span>{item}</span>
@@ -543,7 +604,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
                     <span>6. Preparedness Tips</span>
                   </h4>
                   <ul className="protocol-list">
-                    {disaster.preparednessTips.map((item, idx) => (
+                    {selectedDisasterData.preparednessTips.map((item, idx) => (
                       <li key={idx}>
                         <span className="protocol-bullet">★</span>
                         <span>{item}</span>
@@ -558,7 +619,7 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
             <div className="disaster-card-footer">
               <div className="official-sources-row">
                 <span className="official-source-label">7. Official Sources:</span>
-                {disaster.officialSources.map((source, idx) => (
+                {selectedDisasterData.officialSources.map((source, idx) => (
                   <a
                     key={idx}
                     href={source.url}
@@ -573,10 +634,23 @@ export default function DisasterInformation({ currentHeatRisk, weather }) {
                   </a>
                 ))}
               </div>
+
+              <button
+                type="button"
+                className="disaster-back-bottom-btn"
+                onClick={() => {
+                  setSelectedDisaster(null);
+                  const el = document.getElementById("disaster-information-module");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                <span>←</span>
+                <span>Back to Disasters</span>
+              </button>
             </div>
           </article>
-        ))}
-      </section>
+        </section>
+      )}
 
       {/* ── EMERGENCY PREPAREDNESS SECTION ── */}
       <section className="emergency-preparedness-section" id="emergency-preparedness-section">

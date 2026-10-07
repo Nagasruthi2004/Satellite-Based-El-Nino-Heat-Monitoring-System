@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatWindSpeedKmh } from '../utils/wind';
+import { formatTemperature } from '../utils/temperature';
 
 const REGION_ONLY_SEARCHES = new Set([
   'india',
@@ -113,7 +114,7 @@ function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm
           </div>
           <div className="search-result-item">
             <div className="sr-label">Temperature</div>
-            <div className="sr-value">{weather.temperature}°C</div>
+            <div className="sr-value">{formatTemperature(weather.temperature)}</div>
           </div>
           <div className="search-result-item">
             <div className="sr-label">Humidity</div>

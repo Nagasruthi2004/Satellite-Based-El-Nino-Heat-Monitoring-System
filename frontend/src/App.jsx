@@ -1,11 +1,10 @@
 import SatelliteTimeMachine from "./components/SatelliteTimeMachine";
 import ElNinoAnalyzer from "./components/ElNinoAnalyzer";
 import SatelliteChangeDetector from "./components/SatelliteChangeDetector";
-import EmailHeatAlerts from "./components/EmailHeatAlerts";
 import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
-import WorldHeatMap from "./components/WorldHeatMap";
+import SatelliteImageHeatAnalysis from "./components/SatelliteImageHeatAnalysis";
 import "./App.css";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "./components/Navbar";
@@ -32,8 +31,6 @@ import DisasterInformation from "./components/DisasterInformation";
 import IndiaLSTMap from "./components/IndiaLSTMap";
 import HeatAnalysis from "./components/HeatAnalysis";
 import Heat2026Prediction from "./components/Heat2026Prediction";
-import ElNinoAnalysis from "./components/ElNinoAnalysis";
-import EmergencyLocation from "./components/EmergencyLocation";
 import HomeDashboard from "./components/HomeDashboard";
 import HeatwaveEscapeRoute from "./components/HeatwaveEscapeRoute";
 import Footer from "./components/Footer";
@@ -41,6 +38,7 @@ import DashboardNavigation from "./components/DashboardNavigation";
 import { calculateElNinoImpact, getLatestOniData } from "./data/oniData";
 import { getDeterministicSatelliteFallback } from "./data/satelliteData";
 import { formatWindSpeedKmh } from "./utils/wind";
+import { formatTemperature } from "./utils/temperature";
 import { getHeatRiskExplanation } from "./utils/heatRisk";
 
 const getSystemTheme = () => window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -52,15 +50,13 @@ const NAVIGATION_GROUPS = [
     items: [
       { id: "home", label: "Home", icon: "🏠" },
       { id: "live", label: "Live Weather", icon: "📊" },
-      { id: "india-lst", label: "India Heat Map", icon: "🗺️" },
-      { id: "world-heatmap", label: "World Heat Map", icon: "🌍" },
+      { id: "india-lst", label: "India LST Heat Map", icon: "🗺️" },
     ],
   },
   {
     title: "ANALYSIS",
     items: [
       { id: "heat-analysis", label: "Heat Analysis", icon: "📈" },
-      { id: "enso-analysis", label: "El Niño & ENSO Analysis", icon: "🌊" },
       { id: "elnino", label: "Historical El Niño Cycle", icon: "🔄" },
       { id: "heat-2026", label: "2026 Heat Prediction", icon: "🔮" },
       { id: "elnino-news", label: "El Niño News Monitor", icon: "📰" },
@@ -85,14 +81,13 @@ const NAVIGATION_GROUPS = [
     items: [
       { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
       { id: "disaster-info", label: "Disaster Information", icon: "🚨" },
-      { id: "email-alerts", label: "Email Heat Alerts", icon: "📧" },
-      { id: "emergency-location", label: "Emergency & Nearby Help", icon: "🆘" },
     ],
   },
   {
     title: "SATELLITE",
     items: [
       { id: "satellite-monitor", label: "Satellite Monitoring", icon: "🛰️" },
+      { id: "satellite-image-heat-analysis", label: "Satellite Image Heat Analysis", icon: "📡" },
       { id: "change-detector", label: "Satellite Change Detection", icon: "🪐" },
       { id: "time-machine", label: "Satellite Time Machine", icon: "⏱️" },
     ],
@@ -104,9 +99,8 @@ const DASHBOARD_PAGES = NAVIGATION_GROUPS.flatMap((group) => group.items);
 const getPageFromHash = () => {
   const page = window.location.hash.replace(/^#/, "");
   if (!page || page === "home") return "home";
-  if (page === "elnino-analysis" || page === "enso-analysis") return "enso-analysis";
-  if (page === "emergency-location" || page === "emergency-help") return "emergency-location";
   if (page === "satellite" || page === "satellite-monitor") return "satellite-monitor";
+  if (page === "satellite-image-heat-analysis" || page === "satellite-image-analysis") return "satellite-image-heat-analysis";
   if (page === "escape" || page === "escape-route") return "escape-route";
   return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "home";
 };
@@ -119,6 +113,7 @@ function App() {
   const [weather, setWeather] = useState(null);
   const [satelliteCity, setSatelliteCity] = useState("");
   const [mapLocation, setMapLocation] = useState(null);
+  const [liveMapSelection, setLiveMapSelection] = useState(null);
   const [liveLocation, setLiveLocation] = useState("Coimbatore, Tamil Nadu, India");
   const [satellite, setSatellite] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -137,11 +132,10 @@ function App() {
   const latestOniData = getLatestOniData();
   const elNinoImpact = calculateElNinoImpact(latestOniData.oni, weather, satellite);
   const currentHeatRisk = weather?.current_heat_risk || null;
-  const displayedPredictionRisk = currentHeatRisk?.level || "Not available";
-  const riskClass = displayedPredictionRisk?.toLowerCase() || "";
 
   const fetchWeatherForCity = useCallback(async (city = "", cityCandidates = [], locationDetails = {}) => {
     const normalizedCity = (city || "").trim();
+    if (normalizedCity) setLiveMapSelection(null);
     if (!normalizedCity && (locationDetails.latitude == null || locationDetails.longitude == null)) {
       return null;
     }
@@ -248,6 +242,7 @@ function App() {
 
   const handleHoverLocationChange = useCallback(async (latitude, longitude) => {
     const reqId = ++weatherRequestIdRef.current;
+    setLiveMapSelection(null);
     try {
       setWeatherError("");
       let locationLabel = "";
@@ -288,6 +283,27 @@ function App() {
       console.error("Failed to fetch weather for hover location:", err);
     }
   }, [fetchWeatherForCity, reverseGeocodeLocation, determineLocationLabel]);
+
+  const handleMapClickLocation = useCallback(async (latitude, longitude) => {
+    const reqId = ++weatherRequestIdRef.current;
+    const detailedLocation = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+    setLiveMapSelection({ lat: latitude, lon: longitude });
+    setWeatherError("");
+
+    try {
+      const weatherData = await fetchWeatherForCity("", [], {
+        latitude,
+        longitude,
+        detailedLocation,
+      });
+      if (reqId !== weatherRequestIdRef.current) return;
+      if (weatherData?.city) setSatelliteCity(weatherData.city);
+    } catch (err) {
+      if (reqId === weatherRequestIdRef.current) {
+        console.error("Failed to fetch weather for clicked map location:", err);
+      }
+    }
+  }, [fetchWeatherForCity]);
 
   const handleMapCenterChange = handleHoverLocationChange;
 
@@ -387,55 +403,19 @@ function App() {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
+    if (!weather) return;
+    const payload = getPredictionPayload(weather);
+    setPredictionResult(null);
+    setPredictionError("");
 
-    const fetchPrediction = async () => {
-      await Promise.resolve();
-      if (!isMounted) return;
-
-      const payload = getPredictionPayload(weather);
-      setPredictionResult(null);
-      setPredictionError("");
-
-      if (!weather?.city) return;
-
+    if (payload) {
       setPredictionForm({
-        temperature: String(payload?.temperature ?? ""),
-        humidity: String(payload?.humidity ?? ""),
-        rainfall: String(payload?.rainfall ?? ""),
-        wind_speed: String(payload?.wind_speed ?? ""),
+        temperature: String(payload.temperature ?? ""),
+        humidity: String(payload.humidity ?? ""),
+        rainfall: String(payload.rainfall ?? ""),
+        wind_speed: String(payload.wind_speed ?? ""),
       });
-
-      if (!payload) {
-        setPredictionError("Heat risk prediction unavailable");
-        return;
-      }
-
-      try {
-        const response = await fetch("http://127.0.0.1:5000/predict", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-        const data = await response.json();
-        if (!response.ok || !data?.prediction?.heat_risk) throw new Error("Prediction unavailable");
-        if (isMounted) {
-          setPredictionResult(data);
-        }
-      } catch (error) {
-        if (error.name !== "AbortError" && isMounted) {
-          setPredictionError("Heat risk prediction unavailable");
-        }
-      }
-    };
-
-    fetchPrediction();
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
+    }
   }, [weather]);
 
   const handlePredict = async (event) => {
@@ -445,31 +425,209 @@ function App() {
     setPredictionResult(null);
 
     try {
-      const payload = {
-        temperature: Number(predictionForm.temperature),
-        humidity: Number(predictionForm.humidity),
-        rainfall: Number(predictionForm.rainfall),
-        wind_speed: Number(predictionForm.wind_speed)
-      };
+      const tempNum = Number(predictionForm.temperature);
+      const humidNum = Number(predictionForm.humidity);
+      const rainNum = Number(predictionForm.rainfall);
+      const windNum = Number(predictionForm.wind_speed);
 
-      if ([payload.temperature, payload.humidity, payload.rainfall, payload.wind_speed].some((value) => !Number.isFinite(value))) {
-        throw new Error("Heat risk prediction unavailable");
+      if (!Number.isFinite(tempNum) || !Number.isFinite(humidNum) || !Number.isFinite(rainNum) || !Number.isFinite(windNum)) {
+        throw new Error("Please enter valid numeric values for all meteorological fields.");
       }
+
+      if (humidNum < 0 || humidNum > 100) {
+        throw new Error("Humidity must be between 0% and 100%.");
+      }
+      if (rainNum < 0) {
+        throw new Error("Rainfall cannot be a negative value.");
+      }
+      if (windNum < 0) {
+        throw new Error("Wind speed cannot be a negative value.");
+      }
+
+      const payload = {
+        temperature: tempNum,
+        humidity: humidNum,
+        rainfall: rainNum,
+        wind_speed: windNum,
+      };
 
       const response = await fetch("http://127.0.0.1:5000/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      if (!response.ok || !data?.prediction?.heat_risk) throw new Error("Heat risk prediction unavailable");
+      if (!response.ok || !data?.prediction?.heat_risk) {
+        throw new Error(data?.error || "Heat risk prediction unavailable from ML model.");
+      }
       setPredictionResult(data);
     } catch (error) {
       setPredictionError(error.message || "Heat risk prediction unavailable");
     } finally {
       setPredictionLoading(false);
     }
+  };
+
+  const renderPredictionSection = () => {
+    const predictedRisk = predictionResult?.prediction?.heat_risk || null;
+    const predictedConfidence = predictionResult?.prediction?.confidence;
+    const riskStyleClass = predictedRisk ? predictedRisk.toLowerCase() : "";
+
+    return (
+      <section className="section">
+        <h2 className="section-title">🤖 Heat Risk Prediction</h2>
+        <div className="prediction-panel">
+          <div className="prediction-panel-header">
+            <div>
+              <p className="eyebrow">Machine Learning Live Forecasting</p>
+              <h2>Predict Heat Risk</h2>
+            </div>
+            <div className="prediction-badge">Flask API • ML Model</div>
+          </div>
+
+          <form className="prediction-form" onSubmit={handlePredict}>
+            <div className="input-grid">
+              <label className="prediction-field">
+                <span>Location / City</span>
+                <input
+                  type="text"
+                  name="city"
+                  value={weather?.city || "Coimbatore, India"}
+                  readOnly
+                  title="Current meteorological monitoring location"
+                  style={{ background: "var(--surface-alt)", cursor: "default" }}
+                />
+              </label>
+
+              <label className="prediction-field">
+                <span>Temperature (°C)</span>
+                <input
+                  type="number"
+                  name="temperature"
+                  value={predictionForm.temperature}
+                  onChange={handleInputChange}
+                  min="-50"
+                  max="60"
+                  step="any"
+                  placeholder="e.g. 34.2"
+                  required
+                />
+              </label>
+
+              <label className="prediction-field">
+                <span>Humidity (%)</span>
+                <input
+                  type="number"
+                  name="humidity"
+                  value={predictionForm.humidity}
+                  onChange={handleInputChange}
+                  min="0"
+                  max="100"
+                  step="any"
+                  placeholder="e.g. 52"
+                  required
+                />
+              </label>
+
+              <label className="prediction-field">
+                <span>Rainfall (mm)</span>
+                <input
+                  type="number"
+                  name="rainfall"
+                  value={predictionForm.rainfall}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="any"
+                  placeholder="e.g. 0.0"
+                  required
+                />
+              </label>
+
+              <label className="prediction-field">
+                <span>Wind Speed (km/h)</span>
+                <input
+                  type="number"
+                  name="wind_speed"
+                  value={predictionForm.wind_speed}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="any"
+                  placeholder="e.g. 14.5"
+                  required
+                />
+              </label>
+
+              <label className="prediction-field">
+                <span>El Niño / ENSO Status</span>
+                <input
+                  type="text"
+                  value={`${latestOniData?.status || "Neutral"} (ONI: ${latestOniData?.oni != null && latestOniData.oni > 0 ? "+" : ""}${latestOniData?.oni ?? "+0.3"}°C)`}
+                  readOnly
+                  title="NOAA Oceanic Niño Index condition"
+                  style={{ background: "var(--surface-alt)", cursor: "default" }}
+                />
+              </label>
+            </div>
+
+            <button className="predict-button" type="submit" disabled={predictionLoading}>
+              {predictionLoading ? "Predicting Heat Risk..." : "Predict Heat Risk"}
+            </button>
+          </form>
+
+          {predictionError && (
+            <div className="prediction-error" style={{ marginTop: "16px" }} role="alert">
+              ⚠️ {predictionError}
+            </div>
+          )}
+
+          {/* STEP 3: RESULT SECTION IS INITIALLY HIDDEN — ONLY SHOWN AFTER PREDICTION */}
+          {predictionResult && (
+            <div className="prediction-result-wrapper" style={{ marginTop: "24px" }}>
+              <div className={`prediction-result ${riskStyleClass}`}>
+                <div className="result-top">
+                  <div>
+                    <p className="result-label">Predicted Heat Risk</p>
+                    <h3>{predictedRisk}</h3>
+                  </div>
+                  <div className="confidence-pill">
+                    {predictedConfidence != null ? `${predictedConfidence}% confidence` : "ML Model Estimate"}
+                  </div>
+                </div>
+
+                <div
+                  className="prediction-details-strip"
+                  style={{
+                    display: "flex",
+                    gap: "16px",
+                    marginTop: "12px",
+                    paddingTop: "10px",
+                    borderTop: "1px solid rgba(0, 0, 0, 0.08)",
+                    flexWrap: "wrap",
+                    fontSize: "12.5px",
+                    color: "inherit",
+                  }}
+                >
+                  <span>📍 <strong>Location:</strong> {weather?.city || "Coimbatore"}</span>
+                  <span>🌡️ <strong>Temp:</strong> {formatTemperature(predictionResult.input_parameters?.temperature)}</span>
+                  <span>💧 <strong>Humidity:</strong> {predictionResult.input_parameters?.humidity}%</span>
+                  <span>🌧️ <strong>Rainfall:</strong> {predictionResult.input_parameters?.rainfall} mm</span>
+                  <span>💨 <strong>Wind:</strong> {predictionResult.input_parameters?.wind_speed} km/h</span>
+                </div>
+
+                <p style={{ marginTop: "12px", lineHeight: "1.5" }}>
+                  {predictionResult.prediction?.explanation || getHeatRiskExplanation(predictedRisk, predictedConfidence)}
+                </p>
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                <HeatRecommendation risk={predictedRisk} />
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    );
   };
 
   return (
@@ -492,6 +650,7 @@ function App() {
             <HomeDashboard
               weather={weather}
               currentHeatRisk={currentHeatRisk}
+              latestOniData={latestOniData}
               loading={loading}
               onNavigate={navigateToPage}
             />
@@ -502,10 +661,6 @@ function App() {
           <div className="hero-text">
             <span className="hero-eyebrow">🛰️ Satellite-Powered Intelligence</span>
             <h1 className="hero-title">El Niño Heat Monitoring System</h1>
-            <p className="hero-subtitle">
-              Real-time urban heat tracking using satellite imagery, weather data,
-              and AI-powered risk prediction.
-            </p>
           </div>
           <div className="hero-search">
             <div className="card" style={{ marginTop: 0 }}>
@@ -527,14 +682,16 @@ function App() {
                 <div className="search-result-item">
                   <div className="sr-label">Coordinates</div>
                   <div className="sr-value" style={{ fontSize: "13px" }}>
-                    {weather?.lat != null && weather?.lon != null
+                    {liveMapSelection
+                      ? `${liveMapSelection.lat.toFixed(4)}°, ${liveMapSelection.lon.toFixed(4)}°`
+                      : weather?.lat != null && weather?.lon != null
                       ? `${weather.lat.toFixed(4)}°, ${weather.lon.toFixed(4)}°`
                       : "Center of map"}
                   </div>
                 </div>
                 <div className="search-result-item">
                   <div className="sr-label">Temperature</div>
-                  <div className="sr-value">{weather?.temperature != null ? `${weather.temperature}°C` : (loading ? "Loading..." : "—")}</div>
+                  <div className="sr-value">{weather?.temperature != null ? formatTemperature(weather.temperature) : (loading ? "Loading..." : "—")}</div>
                 </div>
                 <div className="search-result-item">
                   <div className="sr-label">Heat Risk</div>
@@ -587,7 +744,9 @@ function App() {
             weather={weather}
             currentHeatRisk={currentHeatRisk}
             mapLocation={mapLocation}
+            selectedCoordinates={liveMapSelection}
             onHoverLocationChange={handleHoverLocationChange}
+            onMapClick={handleMapClickLocation}
             loading={loading}
             title="🗺️ Interactive Live Weather Map"
             subtitle="Hover your mouse cursor over any location on the map. Coordinates are detected automatically to update live weather and temperature."
@@ -623,70 +782,13 @@ function App() {
               heatRisk={loading ? "Loading..." : currentHeatRisk}
               temperature={weather?.temperature}
               landSurfaceTemperature={satellite?.land_surface_temperature}
-              thermalAnomaly={satellite?.thermal_anomaly}
             />
             <LSTCard lst={loading ? "Loading..." : satellite?.land_surface_temperature} />
-            <HeatIntensityCard heatIntensity={loading ? "Loading..." : satellite?.heat_intensity_level} />
-            <ThermalAnomalyCard thermalAnomaly={loading ? "Loading..." : satellite?.thermal_anomaly} />
           </div>
         </section>
 
         {/* ── HEAT RISK PREDICTION ── */}
-        <section className="section">
-          <h2 className="section-title">🤖 Heat Risk Prediction</h2>
-          <div className="prediction-panel">
-            <div className="prediction-panel-header">
-              <div>
-                <p className="eyebrow">Live forecasting</p>
-                <h2>Predict Heat Risk</h2>
-              </div>
-              <div className="prediction-badge">Flask API • ML Model</div>
-            </div>
-
-            <form className="prediction-form" onSubmit={handlePredict}>
-              <div className="input-grid">
-                <label className="prediction-field">
-                  <span>Temperature (°C)</span>
-                  <input type="number" name="temperature" value={predictionForm.temperature} onChange={handleInputChange} min="-50" max="60" step="any" />
-                </label>
-                <label className="prediction-field">
-                  <span>Humidity (%)</span>
-                  <input type="number" name="humidity" value={predictionForm.humidity} onChange={handleInputChange} min="0" max="100" step="any" />
-                </label>
-                <label className="prediction-field">
-                  <span>Rainfall (mm)</span>
-                  <input type="number" name="rainfall" value={predictionForm.rainfall} onChange={handleInputChange} min="0" step="any" />
-                </label>
-                <label className="prediction-field">
-                  <span>Wind Speed (km/h)</span>
-                  <input type="number" name="wind_speed" value={predictionForm.wind_speed} onChange={handleInputChange} min="0" step="any" />
-                </label>
-              </div>
-
-              <button className="predict-button" type="submit" disabled={predictionLoading}>
-                {predictionLoading ? "Predicting..." : "Predict Heat Risk"}
-              </button>
-            </form>
-
-            {predictionError ? <div className="prediction-error">{predictionError}</div> : null}
-
-            {predictionResult ? (
-              <div className={`prediction-result ${riskClass}`}>
-                <div className="result-top">
-                  <div>
-                    <p className="result-label">Heat Risk</p>
-                    <h3>{displayedPredictionRisk}</h3>
-                  </div>
-                  <div className="confidence-pill">{predictionResult?.prediction?.confidence ?? "Not available"}% confidence</div>
-                </div>
-                <p>{getHeatRiskExplanation(displayedPredictionRisk, predictionResult?.prediction?.confidence)}</p>
-              </div>
-            ) : null}
-            {predictionResult ? (
-  <HeatRecommendation risk={displayedPredictionRisk} />
-) : null}
-          </div>
-        </section>
+        {renderPredictionSection()}
         </>}
 
         {/* ── SMART HEAT AWARENESS ── */}
@@ -712,13 +814,6 @@ function App() {
           </section>
         )}
 
-        {/* ── EMERGENCY LOCATION & NEARBY HELP ── */}
-        {activePage === "emergency-location" && (
-          <section className="section">
-            <EmergencyLocation />
-          </section>
-        )}
-
         {/* ── INDIA LST HEAT MAP & YEAR SELECTOR ── */}
         {activePage === "india-lst" && (
           <section className="section">
@@ -740,22 +835,16 @@ function App() {
           </section>
         )}
 
-        {/* ── EL NIÑO & ENSO ANALYSIS MODULE ── */}
-        {activePage === "enso-analysis" && (
+        {/* ── SATELLITE IMAGE HEAT ANALYSIS ── */}
+        {activePage === "satellite-image-heat-analysis" && (
           <section className="section">
-            <ElNinoAnalysis />
-          </section>
-        )}
-
-        {/* ── WORLD HEAT MAP (NASA MODIS TERRA LST) ── */}
-        {activePage === "world-heatmap" && (
-          <section className="section">
-            <WorldHeatMap />
+            <SatelliteImageHeatAnalysis />
           </section>
         )}
 
         {/* ── HEAT MAP + PREDICTION GRAPH side by side ── */}
         {activePage === "analytics" && <>
+        {renderPredictionSection()}
         <section className="section">
           <h2 className="section-title">📈 Analytics</h2>
           <div className="two-col">
@@ -850,6 +939,14 @@ function App() {
                   type="button"
                   className="predict-button"
                   style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
+                  onClick={() => navigateToPage("satellite-image-heat-analysis")}
+                >
+                  📡 Satellite Image Heat Analysis
+                </button>
+                <button
+                  type="button"
+                  className="predict-button"
+                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
                   onClick={() => navigateToPage("india-lst")}
                 >
                   🗺️ India LST Heat Map (2020–2025)
@@ -861,7 +958,12 @@ function App() {
 
         {activePage === "time-machine" && <section className="section">
           <h2 className="section-title">🛰 Satellite Time Machine</h2>
-          <SatelliteTimeMachine city={satelliteCity || weather?.city} currentHeatRisk={currentHeatRisk} />
+          <SatelliteTimeMachine
+            city={satelliteCity || weather?.city}
+            latitude={weather?.lat}
+            longitude={weather?.lon}
+            currentHeatRisk={currentHeatRisk}
+          />
         </section>}
 
         {activePage === "change-detector" && <section className="section">
@@ -910,11 +1012,6 @@ function App() {
       alert(`Selected City: ${city}\n\nNext step we'll make this automatically load weather.`);
     }}
   />
-</section>}
-
-{/* ── EMAIL HEAT ALERTS ── */}
-{activePage === "email-alerts" && <section className="section">
-  <EmailHeatAlerts />
 </section>}
 
 {/* ── EL NIÑO NEWS MONITOR ── */}
