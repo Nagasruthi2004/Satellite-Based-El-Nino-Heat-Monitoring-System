@@ -32,7 +32,6 @@ import IndiaLSTMap from "./components/IndiaLSTMap";
 import HeatAnalysis from "./components/HeatAnalysis";
 import Heat2026Prediction from "./components/Heat2026Prediction";
 import HomeDashboard from "./components/HomeDashboard";
-import HeatwaveEscapeRoute from "./components/HeatwaveEscapeRoute";
 import Footer from "./components/Footer";
 import DashboardNavigation from "./components/DashboardNavigation";
 import { calculateElNinoImpact, getLatestOniData } from "./data/oniData";
@@ -70,7 +69,6 @@ const NAVIGATION_GROUPS = [
       { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
       { id: "preparedness", label: "Heat Preparedness Score", icon: "🛡️" },
       { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
-      { id: "escape-route", label: "Heatwave Escape Route", icon: "🧭" },
       { id: "climate-report", label: "AI Climate Report", icon: "📄" },
       { id: "compare", label: "Compare Cities", icon: "⚖️" },
       { id: "favourites", label: "Favourite Cities", icon: "⭐" },
@@ -101,7 +99,6 @@ const getPageFromHash = () => {
   if (!page || page === "home") return "home";
   if (page === "satellite" || page === "satellite-monitor") return "satellite-monitor";
   if (page === "satellite-image-heat-analysis" || page === "satellite-image-analysis") return "satellite-image-heat-analysis";
-  if (page === "escape" || page === "escape-route") return "escape-route";
   return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "home";
 };
 
@@ -128,6 +125,12 @@ function App() {
   const [predictionResult, setPredictionResult] = useState(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionError, setPredictionError] = useState("");
+  const [predictionLocation, setPredictionLocation] = useState(null);
+  const [predictionWeather, setPredictionWeather] = useState(null);
+  const [predictionWeatherLoading, setPredictionWeatherLoading] = useState(false);
+  const [predictionWeatherError, setPredictionWeatherError] = useState("");
+  const predictionLocationRequestIdRef = useRef(0);
+  const predictionRequestIdRef = useRef(0);
   const [simulatorValues, setSimulatorValues] = useState({ treeCover: 50, waterBodies: 50 });
   const latestOniData = getLatestOniData();
   const elNinoImpact = calculateElNinoImpact(latestOniData.oni, weather, satellite);
@@ -305,8 +308,6 @@ function App() {
     }
   }, [fetchWeatherForCity]);
 
-  const handleMapCenterChange = handleHoverLocationChange;
-
   const recenterToUserLocation = useCallback(() => {
     setLiveLocation("Coimbatore, Tamil Nadu, India");
     setMapLocation({ lat: 11.0168, lon: 76.9558, label: "Coimbatore" });
@@ -418,8 +419,51 @@ function App() {
     }
   }, [weather]);
 
+  const handlePredictionLocationClick = useCallback(async (latitude, longitude) => {
+    const requestId = ++predictionLocationRequestIdRef.current;
+    predictionRequestIdRef.current += 1;
+    setPredictionLocation({ lat: latitude, lon: longitude });
+    setPredictionWeather(null);
+    setPredictionWeatherLoading(true);
+    setPredictionWeatherError("");
+    setPredictionForm({ temperature: "", humidity: "", rainfall: "", wind_speed: "" });
+    setPredictionResult(null);
+    setPredictionError("");
+    setPredictionLoading(false);
+
+    try {
+      const locationWeather = await fetchWeatherForCity("", [], {
+        latitude,
+        longitude,
+        detailedLocation: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`,
+      });
+      if (requestId !== predictionLocationRequestIdRef.current) return;
+      const payload = getPredictionPayload(locationWeather);
+      if (!payload) {
+        throw new Error("Weather data is incomplete for the selected coordinates.");
+      }
+      setPredictionWeather(locationWeather);
+      setPredictionForm({
+        temperature: String(payload.temperature),
+        humidity: String(payload.humidity),
+        rainfall: String(payload.rainfall),
+        wind_speed: String(payload.wind_speed),
+      });
+    } catch (error) {
+      if (requestId === predictionLocationRequestIdRef.current) {
+        setPredictionWeatherError(error.message || "Unable to fetch weather for the selected location.");
+      }
+    } finally {
+      if (requestId === predictionLocationRequestIdRef.current) {
+        setPredictionWeatherLoading(false);
+      }
+    }
+  }, [fetchWeatherForCity]);
+
   const handlePredict = async (event) => {
     event.preventDefault();
+    if (!predictionLocation || !predictionWeather || predictionWeatherLoading) return;
+    const requestId = ++predictionRequestIdRef.current;
     setPredictionLoading(true);
     setPredictionError("");
     setPredictionResult(null);
@@ -461,15 +505,18 @@ function App() {
       if (!response.ok || !data?.prediction?.heat_risk) {
         throw new Error(data?.error || "Heat risk prediction unavailable from ML model.");
       }
-      setPredictionResult(data);
+      if (requestId === predictionRequestIdRef.current) setPredictionResult(data);
     } catch (error) {
-      setPredictionError(error.message || "Heat risk prediction unavailable");
+      if (requestId === predictionRequestIdRef.current) {
+        setPredictionError(error.message || "Heat risk prediction unavailable");
+      }
     } finally {
-      setPredictionLoading(false);
+      if (requestId === predictionRequestIdRef.current) setPredictionLoading(false);
     }
   };
 
   const renderPredictionSection = () => {
+    if (!predictionLocation) return null;
     const predictedRisk = predictionResult?.prediction?.heat_risk || null;
     const predictedConfidence = predictionResult?.prediction?.confidence;
     const riskStyleClass = predictedRisk ? predictedRisk.toLowerCase() : "";
@@ -482,9 +529,15 @@ function App() {
             <div>
               <p className="eyebrow">Machine Learning Live Forecasting</p>
               <h2>Predict Heat Risk</h2>
+              <p className="status-hint">
+                Selected location: {predictionWeather?.city || "Map location"} ({predictionLocation.lat.toFixed(4)}°, {predictionLocation.lon.toFixed(4)}°)
+              </p>
             </div>
             <div className="prediction-badge">Flask API • ML Model</div>
           </div>
+
+          {predictionWeatherLoading && <p className="status-hint">Loading weather for the selected coordinates…</p>}
+          {predictionWeatherError && <div className="prediction-error" role="alert">{predictionWeatherError}</div>}
 
           <form className="prediction-form" onSubmit={handlePredict}>
             <div className="input-grid">
@@ -493,9 +546,9 @@ function App() {
                 <input
                   type="text"
                   name="city"
-                  value={weather?.city || "Coimbatore, India"}
+                  value={predictionWeather?.city || `${predictionLocation.lat.toFixed(4)}°, ${predictionLocation.lon.toFixed(4)}°`}
                   readOnly
-                  title="Current meteorological monitoring location"
+                  title="Weather location resolved from the selected map coordinates"
                   style={{ background: "var(--surface-alt)", cursor: "default" }}
                 />
               </label>
@@ -570,8 +623,8 @@ function App() {
               </label>
             </div>
 
-            <button className="predict-button" type="submit" disabled={predictionLoading}>
-              {predictionLoading ? "Predicting Heat Risk..." : "Predict Heat Risk"}
+            <button className="predict-button" type="submit" disabled={predictionLoading || predictionWeatherLoading || !predictionWeather}>
+              {predictionLoading ? "Predicting Heat Risk..." : predictionWeatherLoading ? "Loading Selected Location..." : "Predict Heat Risk"}
             </button>
           </form>
 
@@ -608,7 +661,7 @@ function App() {
                     color: "inherit",
                   }}
                 >
-                  <span>📍 <strong>Location:</strong> {weather?.city || "Coimbatore"}</span>
+                  <span>📍 <strong>Location:</strong> {predictionWeather?.city || `${predictionLocation.lat.toFixed(4)}°, ${predictionLocation.lon.toFixed(4)}°`}</span>
                   <span>🌡️ <strong>Temp:</strong> {formatTemperature(predictionResult.input_parameters?.temperature)}</span>
                   <span>💧 <strong>Humidity:</strong> {predictionResult.input_parameters?.humidity}%</span>
                   <span>🌧️ <strong>Rainfall:</strong> {predictionResult.input_parameters?.rainfall} mm</span>
@@ -705,10 +758,7 @@ function App() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px", flexWrap: "wrap", gap: "8px" }}>
-                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>🖱️</span> Hover mouse cursor over any map location to detect coordinates and live weather
-                </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: "14px", flexWrap: "wrap", gap: "8px" }}>
                 <button
                   type="button"
                   onClick={recenterToUserLocation}
@@ -749,7 +799,6 @@ function App() {
             onMapClick={handleMapClickLocation}
             loading={loading}
             title="🗺️ Interactive Live Weather Map"
-            subtitle="Hover your mouse cursor over any location on the map. Coordinates are detected automatically to update live weather and temperature."
           />
         </section>
 
@@ -787,8 +836,6 @@ function App() {
           </div>
         </section>
 
-        {/* ── HEAT RISK PREDICTION ── */}
-        {renderPredictionSection()}
         </>}
 
         {/* ── SMART HEAT AWARENESS ── */}
@@ -842,21 +889,21 @@ function App() {
           </section>
         )}
 
-        {/* ── HEAT MAP + PREDICTION GRAPH side by side ── */}
+        {/* ── HEAT RISK PREDICTION ── */}
         {activePage === "analytics" && <>
-        {renderPredictionSection()}
         <section className="section">
-          <h2 className="section-title">📈 Analytics</h2>
-          <div className="two-col">
-            <HeatMap
-              weather={weather}
-              currentHeatRisk={currentHeatRisk}
-              mapLocation={mapLocation}
-              onCenterChange={handleMapCenterChange}
-              loading={loading}
-            />
-          </div>
+          <HeatMap
+            weather={predictionWeather}
+            currentHeatRisk={predictionWeather?.current_heat_risk}
+            selectedCoordinates={predictionLocation}
+            onMapClick={handlePredictionLocationClick}
+            loading={predictionWeatherLoading}
+            requireLocationSelection
+            title="Select a Location for Heat Risk Prediction"
+            subtitle="Click a point on the map to load its weather and enable prediction."
+          />
         </section>
+        {renderPredictionSection()}
 
         {/* ── ANALYTICS DASHBOARD ── */}
         <section className="section">
@@ -875,17 +922,6 @@ function App() {
         {activePage === "hotspots" && <section className="section">
           <HeatHotspotRanking city={weather?.city} currentTemperature={weather?.temperature} />
         </section>}
-
-        {/* ── HEATWAVE ESCAPE ROUTE ── */}
-        {activePage === "escape-route" && (
-          <section className="section">
-            <HeatwaveEscapeRoute
-              currentCity={weather?.city || "Coimbatore"}
-              currentTemperature={weather?.temperature}
-              currentHeatRisk={currentHeatRisk}
-            />
-          </section>
-        )}
 
         {/* ── SATELLITE MONITORING ── */}
         {activePage === "satellite-monitor" && (

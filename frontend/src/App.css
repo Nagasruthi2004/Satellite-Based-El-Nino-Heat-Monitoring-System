@@ -1332,10 +1332,6 @@ button { font-weight: var(--weight-medium); }
 .hotspot-risk.high { background: #fee2e2; color: #b91c1c; }
 .hotspot-risk.medium { background: #fef3c7; color: #b45309; }
 .hotspot-risk.low { background: #dcfce7; color: #15803d; }
-.hotspot-recommendation { background: #fff7ed; border: 1px solid #fed7aa; border-left: 4px solid #f97316; border-radius: var(--radius-sm); margin-top: 18px; padding: 16px 18px; }
-.hotspot-recommendation h3 { color: #9a3412; font-size: 15px; margin-bottom: 5px; }
-.hotspot-recommendation p { color: #9a3412; font-size: 14px; }
-
 /* SATELLITE CHANGE DETECTOR */
 .satellite-change-detector { border-top: 4px solid #4f46e5; margin-top: 24px; }
 .change-detector-heading, .change-report-title { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 20px; }
@@ -1652,9 +1648,6 @@ button, input, .weather-card {
 :root[data-theme="dark"] .future-city-results,
 :root[data-theme="dark"] .preparedness-panel,
 :root[data-theme="dark"] .change-metric { background: var(--secondary); border-color: var(--border); }
-:root[data-theme="dark"] .hotspot-recommendation { background: #352314; border-color: #804b17; }
-:root[data-theme="dark"] .hotspot-recommendation h3,
-:root[data-theme="dark"] .hotspot-recommendation p { color: #fed7aa; }
 :root[data-theme="dark"] .change-summary { background: #123527; border-color: #1d6b4d; }
 :root[data-theme="dark"] .change-summary h3,
 :root[data-theme="dark"] .change-summary p { color: #bbf7d0; }
@@ -1832,7 +1825,7 @@ button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
 
 .card h3, .analytics-chart-box h3, .future-city-results h3,
 .preparedness-panel h3, .elnino-chart-panel h3, .elnino-detail-panel h3,
-.elnino-summary h3, .hotspot-recommendation h3, .change-summary h3,
+.elnino-summary h3, .change-summary h3,
 .change-recommendation h3 {
   font-size: var(--type-card-title);
   line-height: 1.35;

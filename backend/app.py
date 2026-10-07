@@ -19,6 +19,7 @@ from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
 from heat_risk import classify_current_heat_risk, classify_forecast_heat_risk
 from elnino_news import fetch_elnino_news
+from disaster_risk import evaluate_disaster_risk
 
 try:
     from ml.inference import SatelliteCNNInference, extract_features_from_thermal_grid
@@ -669,6 +670,21 @@ def predict():
         return jsonify({
             "error": f"Prediction failed: {str(error)}"
         }), 500
+
+
+@app.route("/disaster-risk", methods=["GET"])
+def get_disaster_risk():
+    """
+    Endpoint for Disaster Risk Monitoring & Early Warning.
+    Accepts city, latitude, longitude, and optional disaster_type.
+    """
+    city = request.args.get("city", "").strip()
+    lat = request.args.get("latitude") or request.args.get("lat")
+    lon = request.args.get("longitude") or request.args.get("lon")
+    disaster_type = request.args.get("disaster_type", "").strip()
+
+    result = evaluate_disaster_risk(city=city, lat=lat, lon=lon, disaster_type=disaster_type)
+    return jsonify(result)
 
 
 @app.route("/", methods=["GET"])

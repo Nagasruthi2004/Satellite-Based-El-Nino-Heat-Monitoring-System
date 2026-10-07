@@ -83,6 +83,7 @@ def fetch_weather(city="Coimbatore", lat=None, lon=None, retries=3):
                 "el_nino_status": "Monitoring",
                 "lat": data.get("coord", {}).get("lat", lat),
                 "lon": data.get("coord", {}).get("lon", lon),
+                "pressure": data.get("main", {}).get("pressure"),
             }
 
         except requests.exceptions.Timeout as error:

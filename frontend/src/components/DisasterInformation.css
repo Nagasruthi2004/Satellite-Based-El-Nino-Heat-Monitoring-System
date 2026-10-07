@@ -944,3 +944,826 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   DISASTER RISK MONITORING & EARLY WARNING SECTION STYLES
+   ========================================================================== */
+
+.disaster-risk-monitoring-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--surface, var(--card, #ffffff));
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: var(--radius, 14px);
+  padding: 24px;
+  box-shadow: var(--shadow, 0 1px 3px rgba(23, 32, 51, 0.05));
+  animation: fadeInDisaster 0.3s ease-in-out;
+}
+
+.monitoring-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--border, #dce4ee);
+  padding-bottom: 16px;
+}
+
+.monitoring-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(29, 79, 145, 0.08);
+  color: var(--primary, #1d4f91);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  width: fit-content;
+}
+
+:root[data-theme="dark"] .monitoring-header-badge {
+  background: rgba(139, 185, 255, 0.15);
+  color: #8bb9ff;
+}
+
+.radar-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseDot 1.8s infinite;
+}
+
+@keyframes pulseDot {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.monitoring-section-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.monitoring-section-desc {
+  font-size: 0.9375rem;
+  color: var(--text-muted, #5f6f86);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── FLOW STEPS ── */
+.monitoring-flow-step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flow-step-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-badge {
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+:root[data-theme="dark"] .step-badge {
+  background: #3b82f6;
+  color: #0f172a;
+}
+
+.step-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text, #172033);
+}
+
+.verified-protocol-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #5f6f86);
+  background: var(--surface-alt, #f1f5f9);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* ── LOCATION BAR ── */
+.monitoring-location-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.location-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.location-input-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 16px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.monitoring-location-input {
+  width: 100%;
+  padding: 12px 38px 12px 42px;
+  border: 1.5px solid var(--border, #dce4ee);
+  border-radius: 10px;
+  background: var(--surface-alt, #f8fafc);
+  color: var(--text, #172033);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.monitoring-location-input:focus {
+  border-color: var(--primary, #1d4f91);
+  background: var(--surface, #ffffff);
+  box-shadow: 0 0 0 3px rgba(29, 79, 145, 0.12);
+}
+
+:root[data-theme="dark"] .monitoring-location-input {
+  background: #111a28;
+  border-color: #2a3a52;
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .monitoring-location-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+.clear-location-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.clear-location-btn:hover {
+  color: var(--text, #0f172a);
+}
+
+.monitoring-check-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--primary, #1d4f91);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(29, 79, 145, 0.2);
+}
+
+.monitoring-check-btn:hover:not(:disabled) {
+  background: #143a6d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(29, 79, 145, 0.25);
+}
+
+.monitoring-check-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+:root[data-theme="dark"] .monitoring-check-btn {
+  background: #3b82f6;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+:root[data-theme="dark"] .monitoring-check-btn:hover:not(:disabled) {
+  background: #60a5fa;
+}
+
+.monitoring-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Quick chips */
+.location-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.chips-label {
+  color: var(--text-muted, #5f6f86);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.location-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-alt, #f1f5f9);
+  border: 1px solid var(--border, #cbd5e1);
+  color: var(--text, #1e293b);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.location-chip:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.location-chip.active {
+  background: rgba(29, 79, 145, 0.12);
+  border-color: var(--primary, #1d4f91);
+  color: var(--primary, #1d4f91);
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .location-chip {
+  background: #152238;
+  border-color: #24354f;
+  color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .location-chip:hover {
+  background: #1e314f;
+  border-color: #3b82f6;
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .location-chip.active {
+  background: rgba(96, 165, 250, 0.2);
+  border-color: #60a5fa;
+  color: #93c5fd;
+}
+
+.chip-note {
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+/* ── STEP 2: HAZARD TABS GRID ── */
+.hazard-tabs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.hazard-tab-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1.5px solid var(--border, #dce4ee);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.hazard-tab-btn:hover {
+  transform: translateY(-2px);
+  border-color: #94a3b8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+.hazard-tab-btn.selected {
+  border-color: var(--primary, #1d4f91);
+  background: var(--surface, #ffffff);
+  box-shadow: 0 4px 12px rgba(29, 79, 145, 0.12);
+}
+
+.hazard-tab-btn.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--primary, #1d4f91);
+}
+
+:root[data-theme="dark"] .hazard-tab-btn {
+  background: #131d2e;
+  border-color: #24354f;
+}
+
+:root[data-theme="dark"] .hazard-tab-btn:hover {
+  border-color: #3b82f6;
+}
+
+:root[data-theme="dark"] .hazard-tab-btn.selected {
+  background: #18263d;
+  border-color: #60a5fa;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.15);
+}
+
+:root[data-theme="dark"] .hazard-tab-btn.selected::before {
+  background: #60a5fa;
+}
+
+.hazard-tab-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hazard-tab-icon {
+  font-size: 24px;
+}
+
+.hazard-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.hazard-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hazard-tab-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text, #172033);
+  line-height: 1.25;
+}
+
+.hazard-tab-method {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.3;
+}
+
+/* ── STEPS 3 & 4: RISK STATUS PANEL ── */
+.monitoring-result-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.risk-status-panel {
+  background: var(--surface-alt, #f8fafc);
+  border: 1.5px solid var(--border, #dce4ee);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.risk-status-panel.status-critical {
+  border-color: #ef4444;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, var(--surface-alt, #f8fafc) 100%);
+}
+
+.risk-status-panel.status-high {
+  border-color: #f97316;
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.05) 0%, var(--surface-alt, #f8fafc) 100%);
+}
+
+.risk-status-panel.status-moderate {
+  border-color: #f59e0b;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.05) 0%, var(--surface-alt, #f8fafc) 100%);
+}
+
+.risk-status-panel.status-low {
+  border-color: #10b981;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, var(--surface-alt, #f8fafc) 100%);
+}
+
+:root[data-theme="dark"] .risk-status-panel {
+  background: #111a28;
+  border-color: #24354f;
+}
+
+.risk-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.risk-location-tag {
+  font-size: 13px;
+  color: var(--text-muted, #5f6f86);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.risk-coords {
+  font-family: monospace;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.risk-hazard-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text, #172033);
+  margin: 0;
+}
+
+.risk-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Category Badges */
+.risk-category-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-verified-alert {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #f87171;
+}
+
+.badge-risk-monitoring {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.badge-no-verified-data {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+:root[data-theme="dark"] .badge-verified-alert {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+:root[data-theme="dark"] .badge-risk-monitoring {
+  background: rgba(14, 165, 233, 0.2);
+  color: #7dd3fc;
+  border-color: rgba(14, 165, 233, 0.4);
+}
+
+:root[data-theme="dark"] .badge-no-verified-data {
+  background: rgba(100, 116, 139, 0.2);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.4);
+}
+
+/* Status level colors */
+.risk-level-badge {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.status-critical {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.status-high {
+  background: #fff7ed;
+  color: #ea580c;
+  border-color: #fdba74;
+}
+
+.status-moderate {
+  background: #fffbeb;
+  color: #d97706;
+  border-color: #fcd34d;
+}
+
+.status-low {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #6ee7b7;
+}
+
+.status-muted {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .status-critical {
+  background: rgba(220, 38, 38, 0.25);
+  color: #f87171;
+  border-color: rgba(220, 38, 38, 0.5);
+}
+
+:root[data-theme="dark"] .status-high {
+  background: rgba(234, 88, 12, 0.25);
+  color: #fb923c;
+  border-color: rgba(234, 88, 12, 0.5);
+}
+
+:root[data-theme="dark"] .status-moderate {
+  background: rgba(217, 119, 6, 0.25);
+  color: #fbbf24;
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+:root[data-theme="dark"] .status-low {
+  background: rgba(5, 150, 105, 0.25);
+  color: #34d399;
+  border-color: rgba(5, 150, 105, 0.5);
+}
+
+:root[data-theme="dark"] .status-muted {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.risk-message-box {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
+  color: var(--text, #172033);
+  line-height: 1.5;
+}
+
+:root[data-theme="dark"] .risk-message-box {
+  background: #0f172a;
+  border-color: #24354f;
+  color: #e2e8f0;
+}
+
+.scientific-disclaimer-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text, #172033);
+  line-height: 1.5;
+}
+
+:root[data-theme="dark"] .scientific-disclaimer-callout {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+}
+
+.callout-icon {
+  font-size: 18px;
+  margin-top: 2px;
+}
+
+/* ── METRICS GRID ── */
+.risk-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.metric-cell {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #dce4ee);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-cell-full {
+  grid-column: 1 / -1;
+}
+
+:root[data-theme="dark"] .metric-cell {
+  background: #0f172a;
+  border-color: #24354f;
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #64748b);
+}
+
+.metric-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+
+:root[data-theme="dark"] .metric-value {
+  color: #f8fafc;
+}
+
+.metric-value-muted {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.recent-event-card {
+  margin-top: 4px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text, #172033);
+}
+
+:root[data-theme="dark"] .recent-event-card {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+/* ── RISK FOOTER META ── */
+.risk-footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #dce4ee);
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  flex-wrap: wrap;
+}
+
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-source strong,
+.meta-timestamp strong {
+  color: var(--text, #172033);
+}
+
+.meta-source-none {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.meta-disclaimer-note {
+  font-size: 11px;
+  opacity: 0.85;
+  line-height: 1.4;
+  max-width: 500px;
+}
+
+.risk-loading-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 36px;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px dashed var(--border, #cbd5e1);
+  border-radius: 12px;
+  color: var(--text-muted, #64748b);
+  font-size: 0.95rem;
+}
+
+/* ── STEPS 5 & 6: PROTOCOLS FLOW ── */
+.monitoring-protocols-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #dce4ee);
+}
+
+.protocol-flow-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .disaster-risk-monitoring-section {
+    padding: 16px;
+  }
+
+  .monitoring-location-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .monitoring-check-btn {
+    justify-content: center;
+  }
+
+  .hazard-tabs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .risk-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .risk-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .risk-footer-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

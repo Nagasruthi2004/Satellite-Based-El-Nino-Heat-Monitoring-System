@@ -221,16 +221,22 @@ function HeatMap({
   onMapClick,
   onCenterChange,
   loading = false,
+  requireLocationSelection = false,
   title = "🗺️ Interactive Live Weather Map",
-  subtitle = "Hover mouse cursor over any location on the map. Coordinates are detected automatically to update live weather and temperature.",
+  subtitle = "",
 }) {
   const triggerLocationChange = onHoverLocationChange || onCenterChange;
 
   const hasWeatherLocation = weather?.lat != null && weather?.lon != null;
-  const initialLat = hasWeatherLocation ? weather.lat : (mapLocation?.lat ?? 13.0827);
-  const initialLon = hasWeatherLocation ? weather.lon : (mapLocation?.lon ?? 80.2707);
+  const initialCoordinates = hasWeatherLocation
+    ? { lat: weather.lat, lon: weather.lon }
+    : mapLocation
+      ? { lat: mapLocation.lat, lon: mapLocation.lon }
+      : requireLocationSelection
+        ? null
+        : { lat: 13.0827, lon: 80.2707 };
 
-  const [hoverCoords, setHoverCoords] = useState({ lat: initialLat, lon: initialLon });
+  const [hoverCoords, setHoverCoords] = useState(initialCoordinates);
   const [isHovering, setIsHovering] = useState(false);
   const [isDebouncing, setIsDebouncing] = useState(false);
 
@@ -240,7 +246,7 @@ function HeatMap({
     const syncCoords = async () => {
       await Promise.resolve();
       if (!isMounted) return;
-      if (weather?.lat != null && weather?.lon != null && !isHovering && !isDebouncing) {
+      if (weather?.lat != null && weather?.lon != null && !isHovering && !isDebouncing && !(requireLocationSelection && selectedCoordinates)) {
         setHoverCoords({ lat: weather.lat, lon: weather.lon });
       }
     };
@@ -248,7 +254,7 @@ function HeatMap({
     return () => {
       isMounted = false;
     };
-  }, [weather?.lat, weather?.lon, isHovering, isDebouncing]);
+  }, [weather?.lat, weather?.lon, isHovering, isDebouncing, requireLocationSelection, selectedCoordinates]);
 
   const handleHoverMove = useCallback((lat, lon) => {
     setIsHovering(true);
@@ -469,10 +475,14 @@ function HeatMap({
           />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
             {isHovering
-              ? `Cursor: ${hoverCoords.lat.toFixed(4)}°, ${hoverCoords.lon.toFixed(4)}°`
+              ? hoverCoords
+                ? `Cursor: ${hoverCoords.lat.toFixed(4)}°, ${hoverCoords.lon.toFixed(4)}°`
+                : "Move over the map to inspect coordinates"
               : isDebouncing || loading
-              ? `Detecting weather (${hoverCoords.lat.toFixed(4)}°, ${hoverCoords.lon.toFixed(4)}°)...`
-              : `${weather?.city || markerLabel}: ${hoverCoords.lat.toFixed(4)}°, ${hoverCoords.lon.toFixed(4)}°`}
+                ? `Detecting weather${hoverCoords ? ` (${hoverCoords.lat.toFixed(4)}°, ${hoverCoords.lon.toFixed(4)}°)` : "..."}`
+                : hoverCoords
+                  ? `${weather?.city || markerLabel}: ${hoverCoords.lat.toFixed(4)}°, ${hoverCoords.lon.toFixed(4)}°`
+                  : "Click the map to select a location"}
           </span>
           {weather?.temperature != null && !isHovering && !isDebouncing && !loading && (
             <span
@@ -490,27 +500,29 @@ function HeatMap({
         </div>
 
         {/* ── BOTTOM HELPER INSTRUCTION ── */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "12px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 1000,
-            pointerEvents: "none",
-            background: "rgba(15, 23, 42, 0.78)",
-            backdropFilter: "blur(6px)",
-            color: "#e2e8f0",
-            padding: "5px 16px",
-            borderRadius: "20px",
-            fontSize: "12px",
-            fontWeight: "500",
-            border: "1px solid rgba(255,255,255,0.12)",
-            letterSpacing: "0.2px",
-          }}
-        >
-          🖱️ Hover mouse cursor over any map location to detect coordinates and live weather
-        </div>
+        {requireLocationSelection && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "12px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 1000,
+              pointerEvents: "none",
+              background: "rgba(15, 23, 42, 0.78)",
+              backdropFilter: "blur(6px)",
+              color: "#e2e8f0",
+              padding: "5px 16px",
+              borderRadius: "20px",
+              fontSize: "12px",
+              fontWeight: "500",
+              border: "1px solid rgba(255,255,255,0.12)",
+              letterSpacing: "0.2px",
+            }}
+          >
+            Click a map location to select it for prediction
+          </div>
+        )}
       </div>
     </div>
   );
