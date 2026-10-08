@@ -33,7 +33,7 @@ export default function HomeDashboard({
       <section className="home-hero">
         <div className="home-hero-text">
           <h1 className="home-hero-title">
-            Satellite-Based El Niño Heat Monitoring System
+            Smart El Niño Heat Monitoring System
           </h1>
           <p className="home-hero-subtitle">
             Satellite, weather and ENSO data for heat-risk monitoring and early warning.

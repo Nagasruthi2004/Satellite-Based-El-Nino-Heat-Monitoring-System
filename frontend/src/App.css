@@ -1672,7 +1672,21 @@ button, input, .weather-card {
 .future-city-risk.high { color: var(--danger); }
 .future-city-risk.medium { color: var(--warning); }
 .future-city-risk.low { color: var(--success); }
-.plantation-zone { background: var(--success-surface); border: 1px solid var(--success); border-radius: 8px; margin-bottom: 10px; padding: 10px; }
+.future-city-infra-section { margin-top: 18px; }
+.future-city-infra-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.future-city-infra-header h4 { color: var(--text); font-size: 15px; font-weight: 700; margin: 0; }
+.simulated-count-badge { background: var(--card); border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: 11px; font-weight: 600; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.future-city-infra-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.future-city-infra-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.future-city-infra-title { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.future-city-infra-icon { font-size: 18px; line-height: 1; }
+.future-city-infra-details { display: flex; flex-direction: column; gap: 4px; }
+.future-city-infra-line { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; color: var(--text-muted); }
+.future-city-infra-line .infra-label { color: var(--text-muted); }
+.future-city-infra-line .infra-val { color: var(--text); font-size: 14px; }
+.future-city-infra-line.recommended .recommended-val { color: #10b981; font-weight: 700; }
+:root[data-theme="dark"] .future-city-infra-card { background: var(--secondary); border-color: var(--border); }
+:root[data-theme="dark"] .future-city-infra-line.recommended .recommended-val { color: #34d399; }
 .satellite-time-machine-details { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: 20px; padding: 20px; }
 .satellite-heat-trend { color: var(--danger); }
 

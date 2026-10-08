@@ -184,14 +184,6 @@ export default function IndiaLSTMap() {
             <span>🗺️</span> India LST Annual Heat Map
           </div>
           <h2 className="india-lst-title">India Land Surface Temperature (2020–2026)</h2>
-          <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
-            <span style={{ background: "var(--surface-alt)", padding: "3px 10px", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              📊 <strong>Data Source:</strong> Historical observations (2020–2025) and model-estimated 2026 (not observed)
-            </span>
-            <span style={{ background: "var(--surface-alt)", padding: "3px 10px", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              🔬 <strong>Scientific Note:</strong> Land Surface Temperature (LST) measures radiative skin temperature and differs from ambient 2m air temperature.
-            </span>
-          </div>
         </div>
 
         {/* Reusable Year Selector */}

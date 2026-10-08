@@ -144,13 +144,7 @@
   border-left-color: #dc2626;
 }
 
-.ha-estimate-label {
-  margin-top: 4px;
-  color: var(--warning, #b45309);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
+
 
 .ha-pill-badge {
   font-size: 0.75rem;
@@ -182,56 +176,7 @@
   border-color: rgba(245, 158, 11, 0.25);
 }
 
-/* ── SECTION 1: YEARLY STRIP ── */
-.ha-yearly-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 12px;
-  margin-top: 10px;
-}
 
-.ha-yearly-strip-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 10px;
-  background: var(--surface-hover, #f8fafc);
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.ha-yearly-strip-item:hover {
-  background: rgba(29, 79, 145, 0.06);
-  border-color: var(--primary, #1d4f91);
-}
-
-.ha-yearly-strip-item.selected {
-  background: rgba(29, 79, 145, 0.12);
-  border-color: var(--primary, #1d4f91);
-  box-shadow: 0 0 0 1px var(--primary, #1d4f91);
-}
-
-.ha-strip-year {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--primary, #1d4f91);
-}
-
-.ha-strip-temp {
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: var(--text, #172033);
-  margin: 2px 0;
-}
-
-.ha-strip-range {
-  font-size: 0.75rem;
-  color: var(--text-muted, #64748b);
-}
 
 .ha-year-summary-callout {
   display: flex;
@@ -439,83 +384,7 @@
   margin-bottom: 2px;
 }
 
-/* ── SECTION 6: STATE HISTORICAL DETAIL ── */
-.ha-state-select-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-.ha-state-stats-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.ha-state-stat-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: var(--surface-hover, #f8fafc);
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 8px;
-  font-size: 0.875rem;
-}
-
-.ha-stat-pill-label {
-  color: var(--text-muted, #64748b);
-}
-
-.ha-stat-pill-value {
-  color: var(--text, #172033);
-  font-weight: 700;
-}
-
-.ha-risk-years-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  background: var(--surface-hover, #f8fafc);
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 10px;
-}
-
-.ha-risk-year-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-}
-
-.ha-risk-badge-tag {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-.ha-risk-badge-tag.high {
-  background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
-}
-
-.ha-risk-badge-tag.moderate {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-}
-
-.ha-risk-badge-tag.low {
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-}
-
-.ha-risk-years-list {
-  font-weight: 600;
-  color: var(--text, #172033);
-}
 
 /* ── RECHARTS CUSTOM TOOLTIP ── */
 .ha-custom-tooltip {
@@ -724,30 +593,22 @@
 
 :root[data-theme="dark"] .ha-page-title,
 :root[data-theme="dark"] .ha-card-title,
-:root[data-theme="dark"] .ha-strip-temp,
 :root[data-theme="dark"] .ha-comp-state-name,
-:root[data-theme="dark"] .ha-stat-pill-value,
-:root[data-theme="dark"] .ha-risk-years-list,
 :root[data-theme="dark"] .ha-loading-title {
   color: #f1f5f9;
 }
 
 :root[data-theme="dark"] .ha-page-desc,
 :root[data-theme="dark"] .ha-card-subtitle,
-:root[data-theme="dark"] .ha-strip-range,
 :root[data-theme="dark"] .ha-dist-focus-sub,
 :root[data-theme="dark"] .ha-comp-stat-lbl,
-:root[data-theme="dark"] .ha-stat-pill-label,
 :root[data-theme="dark"] .ha-tooltip-name,
 :root[data-theme="dark"] .ha-loading-sub {
   color: #94a3b8;
 }
 
-:root[data-theme="dark"] .ha-yearly-strip-item,
 :root[data-theme="dark"] .ha-dist-focus-box,
-:root[data-theme="dark"] .ha-compare-selectors,
-:root[data-theme="dark"] .ha-state-stat-pill,
-:root[data-theme="dark"] .ha-risk-years-row {
+:root[data-theme="dark"] .ha-compare-selectors {
   background: #0d1526;
   border-color: #1e293b;
 }

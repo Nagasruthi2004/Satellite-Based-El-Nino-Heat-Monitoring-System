@@ -56,12 +56,10 @@ export default function HeatAnalysis() {
   const [selectedYear, setSelectedYear] = useState(2025);
   const [stateA, setStateA] = useState("Tamil Nadu");
   const [stateB, setStateB] = useState("Rajasthan");
-  const [historicalState, setHistoricalState] = useState("Tamil Nadu");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const stateASelectId = useId();
   const stateBSelectId = useId();
-  const historicalStateSelectId = useId();
 
   const handleRetry = useCallback(() => {
     setLoading(true);
@@ -101,7 +99,6 @@ export default function HeatAnalysis() {
           if (availableStates.length > 0) {
             if (!availableStates.includes("Tamil Nadu")) {
               setStateA(availableStates[0]);
-              setHistoricalState(availableStates[0]);
             }
             if (!availableStates.includes("Rajasthan")) {
               setStateB(availableStates[1] || availableStates[0]);
@@ -245,26 +242,7 @@ export default function HeatAnalysis() {
     };
   });
 
-  // State Historical Trend Data
-  const selectedStateHistory = state_history[historicalState] || {
-    yearly_data: [],
-    average_lst: 0,
-    highest_lst: { year: "-", lst_celsius: 0 },
-    lowest_lst: { year: "-", lst_celsius: 0 },
-    risk_counts: { Low: 0, Moderate: 0, High: 0 },
-    years_by_risk: { Low: [], Moderate: [], High: [] },
-  };
 
-  const stateHistoricalChartData = [...selectedStateHistory.yearly_data.map((d) => ({
-    year: d.year,
-    lst: d.lst_celsius,
-    risk: d.heat_risk,
-  })), ...(predictedByState.has(historicalState) ? [{
-    year: 2026,
-    lst: predictedByState.get(historicalState).lst_celsius,
-    risk: predictedByState.get(historicalState).heat_risk,
-    is_estimated: true,
-  }] : [])];
 
   return (
     <div className="ha-container">
@@ -314,7 +292,7 @@ export default function HeatAnalysis() {
             </div>
           </div>
 
-          <div className="ha-chart-wrap" style={{ height: 320 }}>
+          <div className="ha-chart-wrap" style={{ height: 350 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={yearlyTrendData} margin={{ top: 16, right: 24, left: 10, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
@@ -344,30 +322,6 @@ export default function HeatAnalysis() {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
-
-          {/* Quick Year Pill Bar */}
-          <div className="ha-yearly-strip">
-            {yearlyTrendData.map((yt) => {
-              const isSelected = yt.year === selectedYear;
-              return (
-                <div
-                  key={yt.year}
-                  className={`ha-yearly-strip-item ${isSelected ? "selected" : ""}`}
-                  onClick={() => setSelectedYear(yt.year)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && setSelectedYear(yt.year)}
-                >
-                  <span className="ha-strip-year">{yt.year}</span>
-                  <strong className="ha-strip-temp">{formatCelsius(yt.average_lst)}</strong>
-                  <span className="ha-strip-range">
-                    {yt.min_lst}° – {yt.max_lst}°
-                  </span>
-                  {yt.is_estimated && <span className="ha-estimate-label">Model Estimated</span>}
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>
@@ -710,130 +664,6 @@ export default function HeatAnalysis() {
                   strokeWidth={3}
                   activeDot={{ r: 7 }}
                   dot={{ r: 5, fill: "#f97316" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 6: STATE HISTORICAL TREND (SINGLE STATE DETAIL) ── */}
-      <section className="ha-section" aria-labelledby="ha-single-state-heading">
-        <div className="ha-card ha-chart-card">
-          <div className="ha-card-header">
-            <div>
-              <h2 id="ha-single-state-heading" className="ha-card-title">
-                <span>📍</span> State Historical Trend & Risk Profile
-              </h2>
-              <p className="ha-card-subtitle">
-                Select a state to inspect observed annual LST values through 2025 and its model-estimated 2026 value.
-              </p>
-            </div>
-            <div className="ha-state-select-wrap">
-              <label htmlFor={historicalStateSelectId} className="ha-select-label">
-                Select State:
-              </label>
-              <select
-                id={historicalStateSelectId}
-                className="ha-state-select"
-                value={historicalState}
-                onChange={(e) => setHistoricalState(e.target.value)}
-              >
-                {available_states.map((st) => (
-                  <option key={`single-${st}`} value={st}>
-                    {st}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Historical Stat Badges */}
-          <div className="ha-state-stats-row">
-            <div className="ha-state-stat-pill">
-              <span className="ha-stat-pill-label">Average LST:</span>
-              <strong className="ha-stat-pill-value">
-                {formatCelsius(selectedStateHistory.average_lst)}
-              </strong>
-            </div>
-
-            <div className="ha-state-stat-pill">
-              <span className="ha-stat-pill-label">Highest Recorded LST:</span>
-              <strong className="ha-stat-pill-value">
-                {formatCelsius(selectedStateHistory.highest_lst?.lst_celsius)} (
-                {selectedStateHistory.highest_lst?.year})
-              </strong>
-            </div>
-
-            <div className="ha-state-stat-pill">
-              <span className="ha-stat-pill-label">Lowest Recorded LST:</span>
-              <strong className="ha-stat-pill-value">
-                {formatCelsius(selectedStateHistory.lowest_lst?.lst_celsius)} (
-                {selectedStateHistory.lowest_lst?.year})
-              </strong>
-            </div>
-          </div>
-
-          {/* Risk Years Categorization Tags */}
-          <div className="ha-risk-years-row">
-            <div className="ha-risk-year-group">
-              <span className="ha-risk-badge-tag high">High Risk Years:</span>
-              <span className="ha-risk-years-list">
-                {selectedStateHistory.years_by_risk?.High?.length > 0
-                  ? selectedStateHistory.years_by_risk.High.join(", ")
-                  : "None recorded"}
-              </span>
-            </div>
-
-            <div className="ha-risk-year-group">
-              <span className="ha-risk-badge-tag moderate">Moderate Risk Years:</span>
-              <span className="ha-risk-years-list">
-                {selectedStateHistory.years_by_risk?.Moderate?.length > 0
-                  ? selectedStateHistory.years_by_risk.Moderate.join(", ")
-                  : "None recorded"}
-              </span>
-            </div>
-
-            <div className="ha-risk-year-group">
-              <span className="ha-risk-badge-tag low">Low Risk Years:</span>
-              <span className="ha-risk-years-list">
-                {selectedStateHistory.years_by_risk?.Low?.length > 0
-                  ? selectedStateHistory.years_by_risk.Low.join(", ")
-                  : "None recorded"}
-              </span>
-            </div>
-          </div>
-
-          {/* Single State Line Chart */}
-          <div className="ha-chart-wrap" style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={stateHistoricalChartData}
-                margin={{ top: 16, right: 24, left: 10, bottom: 8 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
-                <XAxis dataKey="year" tick={{ fill: "var(--text-muted, #64748b)", fontSize: 13 }} />
-                <YAxis
-                  unit="°C"
-                  tick={{ fill: "var(--text-muted, #64748b)", fontSize: 12 }}
-                />
-                <Tooltip
-                  content={
-                    <CustomChartTooltip
-                      unit="°C"
-                      label="Year"
-                    />
-                  }
-                />
-                <Legend verticalAlign="top" height={36} />
-                <Line
-                  type="monotone"
-                  name={`${historicalState} LST`}
-                  dataKey="lst"
-                  stroke="var(--primary, #1d4f91)"
-                  strokeWidth={3}
-                  activeDot={{ r: 7 }}
-                  dot={{ r: 5, fill: "var(--primary, #1d4f91)" }}
                 />
               </LineChart>
             </ResponsiveContainer>

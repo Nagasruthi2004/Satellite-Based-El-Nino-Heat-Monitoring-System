@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const FILTER_TABS = [
-  { id: "all", label: "All", icon: "🌐" },
-  { id: "india", label: "India", icon: "🇮🇳" },
+  { id: "india", label: "In India", icon: "🇮🇳" },
   { id: "global", label: "Global", icon: "🌍" },
   { id: "climate", label: "Climate", icon: "🌡️" },
   { id: "impacts", label: "El Niño Impacts", icon: "⚠️" },
 ];
 
+const CATEGORY_DISPLAY_MAP = {
+  india: "In India",
+  global: "Global",
+  climate: "Climate",
+  impacts: "El Niño Impacts",
+};
+
 function ElNinoNewsMonitor() {
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("india");
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -17,7 +23,7 @@ function ElNinoNewsMonitor() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const abortControllerRef = useRef(null);
 
-  const fetchNews = useCallback(async (category = "all", isRefresh = false) => {
+  const fetchNews = useCallback(async (category = "india", isRefresh = false) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -79,6 +85,14 @@ function ElNinoNewsMonitor() {
   const handleRefresh = () => {
     fetchNews(activeFilter, true);
   };
+
+  // Strict category filtering: each section contains ONLY news relevant to that category
+  const visibleArticles = articles.filter((item) => {
+    if (Array.isArray(item.categories) && item.categories.length > 0) {
+      return item.categories.includes(activeFilter);
+    }
+    return !item.category || item.category.toLowerCase().includes(activeFilter);
+  });
 
   return (
     <div className="elnino-news-container">
@@ -165,38 +179,45 @@ function ElNinoNewsMonitor() {
             <span>🔄</span> Try Again
           </button>
         </div>
-      ) : articles.length === 0 ? (
+      ) : visibleArticles.length === 0 ? (
         <div className="card elnino-news-status-card">
           <span style={{ fontSize: "36px" }}>📭</span>
           <h3 style={{ margin: "12px 0 6px", fontSize: "17px" }}>No Relevant Articles Found</h3>
           <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "14px" }}>
-            No recent El Niño news matches the selected filter. Try choosing "All" or refresh the feed.
+            No relevant news available for this category.
           </p>
           <button
             type="button"
             className="elnino-news-retry-btn"
-            onClick={() => setActiveFilter("all")}
+            onClick={handleRefresh}
           >
-            Show All News
+            <span>🔄</span> Refresh Category
           </button>
         </div>
       ) : (
         <>
           <div className="elnino-news-count-banner">
-            <span>Showing <strong>{articles.length}</strong> latest verified El Niño articles</span>
+            <span>Showing <strong>{visibleArticles.length}</strong> verified {CATEGORY_DISPLAY_MAP[activeFilter] || "El Niño"} articles</span>
             <span className="elnino-news-quality-note">⚡ Real-time automated verification • No hardcoded news</span>
           </div>
 
           <div className="elnino-news-grid">
-            {articles.map((item, index) => {
+            {visibleArticles.map((item, index) => {
               const isOfficial = item.source_type === "Official Agency";
               const isReputed = item.source_type === "Reputed Source";
 
               return (
                 <article key={item.id || index} className="card elnino-news-card">
                   <div className="elnino-news-card-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <span className="elnino-news-category-badge">{item.category || "Climate"}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      {(Array.isArray(item.categories) && item.categories.length > 0
+                        ? item.categories
+                        : [activeFilter]
+                      ).map((catId) => (
+                        <span key={catId} className="elnino-news-category-badge">
+                          {CATEGORY_DISPLAY_MAP[catId] || item.category || catId}
+                        </span>
+                      ))}
                       <span
                         className={`elnino-news-source-tag ${
                           isOfficial ? "official" : isReputed ? "reputed" : ""

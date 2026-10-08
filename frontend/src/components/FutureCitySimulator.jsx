@@ -56,6 +56,73 @@ export default function FutureCitySimulator({ currentTemperature, onValuesChange
       heatRisk = "Medium";
     }
 
+    // Calculate sector-level simulated infrastructure and environmental counts
+    // Based on the simulator's tree cover, building density, and water bodies factors
+    const treeCover = factors.treeCover;
+    const buildingDensity = factors.buildingDensity;
+    const waterBodies = factors.waterBodies;
+
+    // 1. Trees: simulated sector tree population
+    const currentTrees = Math.round(40 + (treeCover / 100) * 2400);
+    const targetTreeCover = heatRisk === "High" ? 75 : heatRisk === "Medium" ? 65 : 55;
+    const treeDeficit = Math.max(0, targetTreeCover - treeCover);
+    const recommendedTrees = treeDeficit > 0 ? Math.round((treeDeficit / 100) * 2333) : 0;
+
+    // 2. Water Bodies: ponds, retention lakes, cooling reservoirs
+    const currentWaterBodies = Math.round((waterBodies / 100) * 16);
+    const targetWaterBodies = heatRisk === "High" ? 70 : heatRisk === "Medium" ? 65 : 50;
+    const waterDeficit = Math.max(0, targetWaterBodies - waterBodies);
+    const recommendedWaterBodies = waterDeficit > 0 ? Math.max(1, Math.round((waterDeficit / 100) * 20)) : 0;
+
+    // 3. Buildings: structural built-up count
+    const currentBuildings = Math.round(350 + (buildingDensity / 100) * 5000);
+
+    // 4. Roads: road network segments
+    const currentRoads = Math.round(120 + (buildingDensity / 100) * 600);
+
+    // 5. Green Spaces: public parks, open vegetated zones
+    const currentGreenSpaces = Math.round(10 + (treeCover / 100) * 50);
+    const greenSpaceDeficit = Math.max(0, targetTreeCover - treeCover);
+    const recommendedGreenSpaces = greenSpaceDeficit > 0 ? Math.round((greenSpaceDeficit / 100) * 66.6) : 0;
+
+    const infrastructure = [
+      {
+        id: "trees",
+        label: "Trees",
+        icon: "🌳",
+        current: currentTrees,
+        recommended: recommendedTrees,
+      },
+      {
+        id: "waterBodies",
+        label: "Water Bodies",
+        icon: "💧",
+        current: currentWaterBodies,
+        recommended: recommendedWaterBodies,
+      },
+      {
+        id: "buildings",
+        label: "Buildings",
+        icon: "🏢",
+        current: currentBuildings,
+        recommended: null,
+      },
+      {
+        id: "roads",
+        label: "Roads",
+        icon: "🛣️",
+        current: currentRoads,
+        recommended: null,
+      },
+      {
+        id: "greenSpaces",
+        label: "Green Spaces",
+        icon: "🌿",
+        current: currentGreenSpaces,
+        recommended: recommendedGreenSpaces,
+      },
+    ];
+
     setResult({
       baseTemperature,
       predictedTemperature,
@@ -63,11 +130,7 @@ export default function FutureCitySimulator({ currentTemperature, onValuesChange
       treeReduction,
       buildingIncrease,
       waterReduction,
-      plantationZones: [
-  { zone: "North Zone", cooling: 2.3 },
-  { zone: "East Zone", cooling: 1.8 },
-  { zone: "South Zone", cooling: 2.0 },
-],
+      infrastructure,
     });
 
     setSuccess("✅ Simulation completed successfully.");
@@ -164,17 +227,39 @@ export default function FutureCitySimulator({ currentTemperature, onValuesChange
 
             <hr />
 
-<h4>🌳 AI Best Tree Plantation Zones</h4>
+            <div className="future-city-infra-section">
+              <div className="future-city-infra-header">
+                <h4>Future City Infrastructure & Green Cover</h4>
+                <span className="simulated-count-badge">Simulated Count</span>
+              </div>
 
-{result.plantationZones.map((item, index) => (
-  <div key={index} className="plantation-zone">
-    <strong>{item.zone}</strong>
-    <br />
-    🌡 Expected Cooling:
-    <strong> {formatTemperatureDelta(item.cooling)}</strong>
-  </div>
-))}
+              <div className="future-city-infra-grid">
+                {result.infrastructure.map((item) => (
+                  <div key={item.id} className="future-city-infra-card">
+                    <div className="future-city-infra-title">
+                      <span className="future-city-infra-icon">{item.icon}</span>
+                      <strong>{item.label}</strong>
+                    </div>
 
+                    <div className="future-city-infra-details">
+                      <div className="future-city-infra-line">
+                        <span className="infra-label">Current:</span>
+                        <strong className="infra-val">{item.current.toLocaleString()}</strong>
+                      </div>
+
+                      {item.recommended !== null && (
+                        <div className="future-city-infra-line recommended">
+                          <span className="infra-label">Recommended:</span>
+                          <strong className="infra-val recommended-val">
+                            +{item.recommended.toLocaleString()}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </>
         )}
       </div>

@@ -725,11 +725,11 @@ def get_elnino_news():
     """
     Endpoint to fetch real, recent El Niño and ENSO news.
     Query parameters:
-        category: 'all' | 'india' | 'global' | 'climate' | 'impacts' (default: 'all')
+        category: 'india' | 'global' | 'climate' | 'impacts' | 'all' (default: 'india')
         refresh: 'true' | 'false' (forces fresh fetch, bypassing cache)
     """
     try:
-        category = request.args.get("category", "all").strip().lower()
+        category = request.args.get("category", "india").strip().lower()
         refresh_arg = request.args.get("refresh", "").strip().lower()
         force_refresh = refresh_arg in ("true", "1", "yes")
 

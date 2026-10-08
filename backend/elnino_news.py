@@ -58,11 +58,95 @@ IRRELEVANT_KEYWORDS = {
 
 CATEGORY_QUERIES = {
     "all": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (weather OR climate OR ocean OR monsoon OR temperature)",
-    "india": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (India OR monsoon OR IMD OR \"Indian Ocean\" OR drought OR rainfall)",
-    "global": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (global OR world OR NOAA OR WMO OR Pacific OR international)",
-    "climate": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (\"climate change\" OR \"global warming\" OR \"ocean warming\" OR temperature)",
-    "impacts": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (impact OR heatwave OR drought OR rainfall OR agriculture OR flood)"
+    "india": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (India OR Indian OR monsoon OR IMD OR \"Tamil Nadu\" OR Delhi OR Mumbai OR rainfall OR drought)",
+    "global": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (global OR Pacific OR NOAA OR WMO OR Australia OR \"South America\" OR Peru OR international OR worldwide)",
+    "climate": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (\"climate change\" OR \"global warming\" OR \"ocean warming\" OR \"sea surface temperature\" OR \"record heat\" OR \"climate science\")",
+    "impacts": "(\"El Niño\" OR \"El Nino\" OR \"ENSO\") (impact OR impacts OR heatwave OR drought OR flood OR floods OR agriculture OR crop OR crops OR fisheries OR \"water crisis\")"
 }
+
+CATEGORY_DISPLAY_NAMES = {
+    "india": "In India",
+    "global": "Global",
+    "climate": "Climate",
+    "impacts": "El Niño Impacts"
+}
+
+INDIA_PATTERNS = [
+    r"\bindia\b", r"\bindian\b", r"\bindians\b", r"\bbharat\b", r"\bhindustan\b",
+    r"\btamil\s*nadu\b", r"\bkerala\b", r"\bkarnataka\b", r"\bandhra(?:\s*pradesh)?\b",
+    r"\btelangana\b", r"\bmaharashtra\b", r"\bgujarat\b", r"\brajasthan\b",
+    r"\bpunjab\b", r"\bharyana\b", r"\buttar\s*pradesh\b", r"\bmadhya\s*pradesh\b",
+    r"\bbihar\b", r"\b(?:west\s*)?bengal\b", r"\bodisha\b", r"\borissa\b",
+    r"\bassam\b", r"\bjharkhand\b", r"\bchhattisgarh\b", r"\buttarakhand\b",
+    r"\bhimachal(?:\s*pradesh)?\b", r"\bjammu\b", r"\bkashmir\b", r"\bladakh\b", r"\bgoa\b",
+    r"\bdelhi\b", r"\bnew\s*delhi\b", r"\bmumbai\b", r"\bbombay\b", r"\bchennai\b",
+    r"\bmadras\b", r"\bkolkata\b", r"\bcalcutta\b", r"\bbengaluru\b", r"\bbangalore\b",
+    r"\bhyderabad\b", r"\bpune\b", r"\bahmedabad\b", r"\bjaipur\b", r"\blucknow\b",
+    r"\bkanpur\b", r"\bnagpur\b", r"\bpatna\b", r"\bbhopal\b", r"\bcoimbatore\b",
+    r"\bkochi\b", r"\bcochin\b", r"\bthiruvananthapuram\b", r"\bchandigarh\b",
+    r"\bguwahati\b", r"\bbhubaneswar\b", r"\bvisakhapatnam\b", r"\bvizag\b",
+    r"\bsurat\b", r"\bindore\b", r"\bvadodara\b", r"\bvaranasi\b", r"\bmysuru\b",
+    r"\btrichy\b", r"\bsalem\b", r"\bmadurai\b",
+    r"\bimd\b", r"\bindia\s*meteorological\s*department\b", r"\bskymet\b",
+    r"\b(?:south-?west|north-?east|indian)\s*monsoon\b",
+    r"\bmonsoon\b", r"\bkharif\b", r"\brabi\b",
+    r"\bcauvery\b", r"\bganga\b", r"\byamuna\b", r"\bgodavari\b"
+]
+
+GLOBAL_EXPLICIT_FOREIGN = [
+    r"\bpacific(?:\s*ocean)?\b", r"\btropical\s*pacific\b", r"\bequatorial\s*pacific\b",
+    r"\bsouth\s*america\b", r"\blatin\s*america\b", r"\bperu(?:vian)?\b", r"\becuador\b",
+    r"\bchile\b", r"\bcolombia\b", r"\bbrazil\b", r"\bargentina\b", r"\bbolivia\b",
+    r"\baustralia\b", r"\bqueensland\b", r"\bnew\s*zealand\b",
+    r"\bjapan\b", r"\btokyo\b", r"\bphilippines\b", r"\bindonesia\b", r"\bmalaysia\b",
+    r"\bpapua\s*new\s*guinea\b", r"\bfiji\b", r"\bvietnam\b", r"\bthailand\b",
+    r"\bafrica\b", r"\bkenya\b", r"\bsomalia\b", r"\bethiopia\b", r"\bzimbabwe\b",
+    r"\bzambia\b", r"\bhorn\s*of\s*africa\b",
+    r"\bunited\s*states\b", r"\busa\b", r"\bcalifornia\b", r"\bflorida\b", r"\btexas\b",
+    r"\bnorth\s*america\b", r"\beurope\b", r"\bspain\b", r"\buk\b", r"\bbritain\b", r"\bcanada\b",
+    r"\bnoaa\b", r"\bwmo\b", r"\bworld\s*meteorological\s*organization\b",
+    r"\bbureau\s*of\s*meteorology\b", r"\bbom\b", r"\bcopernicus\b", r"\becmwf\b",
+    r"\bclimate\s*prediction\s*center\b", r"\bcpc\b", r"\bjma\b", r"\bjapan\s*meteorological\s*agency\b"
+]
+
+GLOBAL_SCOPE = [
+    r"\bworld(?:wide)?\b", r"\bplanet(?:ary)?\b", r"\binternational\b",
+    r"\bhemisphere\b", r"\bacross\s+the\s+globe\b",
+    r"\bglob(?:al|ally)\s+(?!warming|climate|temperature|boiling|heat|record)"
+]
+
+CLIMATE_PATTERNS = [
+    r"\bclimate\s*change\b", r"\bglobal\s*warming\b", r"\bclimate\s*crisis\b",
+    r"\bclimate\s*emergency\b", r"\bclimate\s*science\b", r"\bclimatolog",
+    r"\bclimate\s*model(?:s|ing)?\b", r"\bclimate\s*scientist(?:s)?\b",
+    r"\bclimate\s*research\b", r"\bclimate\s*report\b", r"\bclimate\s*trend(?:s)?\b",
+    r"\bclimate\s*policy\b", r"\bclimate\s*target(?:s)?\b", r"\bclimate\s*action\b",
+    r"\bipcc\b", r"\bparis\s*agreement\b", r"\bcop(?:2[89]|30)\b",
+    r"\bgreenhouse\s*gas(?:es)?\b", r"\bcarbon\s*emission(?:s)?\b", r"\batmospheric\s*co2\b",
+    r"\bocean\s*warming\b", r"\bocean\s*heat\s*content\b",
+    r"\bsea\s*surface\s*temperature\b", r"\bsst\s*anomaly\b",
+    r"\brecord\s*(?:warm|warmest|temperature|temperatures|heat)\b",
+    r"\bhottest\s*(?:year|month|summer|record)\b",
+    r"\btemperature\s*anomal(?:y|ies)\b", r"\bthermal\s*anomaly\b",
+    r"\bmarine\s*heatwave\b", r"\bclimate\s*variability\b", r"\banthropogenic\b",
+    r"\bclimate\s*shift\b", r"\benvironmental\s*research\b"
+]
+
+IMPACT_PATTERNS = [
+    r"\bheat\s*wave(?:s)?\b", r"\bextreme\s*heat\b", r"\bsevere\s*heat\b",
+    r"\bdrought(?:s)?\b", r"\bdry\s*spell(?:s)?\b", r"\bwater\s*cris(?:is|es)\b",
+    r"\bwater\s*(?:shortage|scarcity)\b", r"\bdepleted\s*reservoir(?:s)?\b",
+    r"\bflood(?:s|ing)?\b", r"\bflash\s*flood(?:s)?\b", r"\btorrential\s*rain(?:s)?\b",
+    r"\brainfall\b", r"\bdeficit\s*rain(?:fall)?\b", r"\bfailed\s*monsoon\b",
+    r"\bmonsoon\s*(?:deficit|changes?|shift|delay|failure|variabilit|disrupt)\b",
+    r"\bwildfire(?:s)?\b", r"\bbushfire(?:s)?\b", r"\bcrop(?:s)?\b", r"\bharvest\b",
+    r"\bfarmer(?:s)?\b", r"\bfood\s*security\b", r"\bcrop\s*yield(?:s)?\b",
+    r"\bfood\s*inflation\b", r"\bcoral\s*bleaching\b", r"\bfisher(?:y|ies)\b",
+    r"\bpower\s*(?:crisis|shortage|outage|grid)\b", r"\beconomic\s*(?:impact|toll|loss|losses)\b",
+    r"\bcost\s*of\s*living\b", r"\bhealth\s*impact(?:s)?\b", r"\bdisaster(?:s)?\b",
+    r"\binfrastructure\b", r"\bshortage\b", r"\bimpact(?:s|ed|ing)?\b",
+    r"\beffect(?:s)?\b", r"\bdisrupt(?:s|ed|ing|ion)?\b"
+]
 
 
 def _clean_html(text: str) -> str:
@@ -113,17 +197,49 @@ def _is_relevant_el_nino_article(title: str, description: str) -> bool:
     return has_meteo
 
 
-def _categorize_article(title: str, description: str, requested_category: str) -> str:
-    """Categorizes the article into India, Climate, Impacts, or Global."""
+def _classify_article_categories(title: str, description: str, source: str = "") -> list:
+    """
+    Classifies an article into zero, one, or more categories:
+    ['india', 'global', 'climate', 'impacts'] based on strict topic & location rules.
+    """
     text = f"{title} {description}".lower()
 
-    if any(k in text for k in ["india", "monsoon", "imd", "delhi", "tamil nadu", "bengal", "kerala", "mumbai"]):
-        return "India"
-    if any(k in text for k in ["heatwave", "drought", "rainfall", "flood", "impact", "agriculture", "crop", "water crisis", "economy"]):
-        return "El Niño Impacts"
-    if any(k in text for k in ["climate change", "global warming", "carbon", "paris agreement", "ocean warming"]):
-        return "Climate"
-    return "Global"
+    # 1. India detection
+    is_india = any(re.search(p, text) for p in INDIA_PATTERNS)
+
+    # 2. Global detection: Has international or global scope, and not an India-only local report
+    has_foreign = any(re.search(p, text) for p in GLOBAL_EXPLICIT_FOREIGN)
+    has_global_scope = any(re.search(p, text) for p in GLOBAL_SCOPE)
+    is_global = (has_foreign or has_global_scope) and (not is_india or has_foreign)
+
+    # 3. Climate detection: Primary focus on climate change, global warming, or ocean heat
+    is_climate = any(re.search(p, text) for p in CLIMATE_PATTERNS)
+
+    # 4. El Niño Impacts detection: Specific reported consequence (heatwave, drought, flood, crops, etc.)
+    is_impact = any(re.search(p, text) for p in IMPACT_PATTERNS) or (
+        "rainfall" in text and any(w in text for w in ["disrupt", "affect", "impact", "deficit", "excess", "drop", "failure"])
+    )
+
+    cats = []
+    if is_india:
+        cats.append("india")
+    if is_global:
+        cats.append("global")
+    if is_climate:
+        cats.append("climate")
+    if is_impact:
+        cats.append("impacts")
+
+    return sorted(cats)
+
+
+def _get_display_category(categories: list, requested_cat: str = "") -> str:
+    """Returns a primary user-friendly display name for the article."""
+    if requested_cat and requested_cat in categories:
+        return CATEGORY_DISPLAY_NAMES.get(requested_cat, "Climate")
+    if categories:
+        return CATEGORY_DISPLAY_NAMES.get(categories[0], "Climate")
+    return "Climate"
 
 
 def _classify_source(source_name: str) -> str:
@@ -158,14 +274,15 @@ def _format_time_ago(dt: datetime) -> str:
     return dt.strftime("%d %b %Y")
 
 
-def fetch_elnino_news(category: str = "all", force_refresh: bool = False, limit: int = 15):
+def fetch_elnino_news(category: str = "india", force_refresh: bool = False, limit: int = 15):
     """
-    Fetches latest El Niño articles from live RSS feeds.
+    Fetches latest El Niño articles from live RSS feeds and strictly classifies them into:
+    'india', 'global', 'climate', 'impacts' (or 'all').
     Returns: dict with status, category, count, last_updated, and articles list.
     """
-    cat_key = (category or "all").lower().strip()
+    cat_key = (category or "india").lower().strip()
     if cat_key not in CATEGORY_QUERIES:
-        cat_key = "all"
+        cat_key = "india"
 
     # Check cache first if not force_refresh
     now = time.time()
@@ -237,8 +354,16 @@ def fetch_elnino_news(category: str = "all", force_refresh: bool = False, limit:
         if not clean_desc or clean_desc.lower() == clean_title.lower():
             clean_desc = f"Latest meteorological and climate report regarding El Niño conditions and trends from {source_name}."
 
-        # Filter out irrelevant articles
+        # Filter out irrelevant non-meteorological articles (e.g. sports or entertainment)
         if not _is_relevant_el_nino_article(clean_title, clean_desc):
+            continue
+
+        # Classify categories
+        article_categories = _classify_article_categories(clean_title, clean_desc, source_name)
+
+        # STRICT FILTERING: When a specific category is requested (e.g. india, global, climate, impacts),
+        # only include articles that genuinely match that category!
+        if cat_key != "all" and cat_key not in article_categories:
             continue
 
         # Deduplicate
@@ -262,7 +387,7 @@ def fetch_elnino_news(category: str = "all", force_refresh: bool = False, limit:
         pub_date_formatted = dt.strftime("%d %b %Y, %I:%M %p") if dt else "Recent"
         time_ago = _format_time_ago(dt)
 
-        article_cat = _categorize_article(clean_title, clean_desc, cat_key)
+        display_cat = _get_display_category(article_categories, cat_key)
         source_badge = _classify_source(source_name)
 
         articles.append({
@@ -276,7 +401,8 @@ def fetch_elnino_news(category: str = "all", force_refresh: bool = False, limit:
             "timestamp": item_timestamp,
             "description": clean_desc,
             "url": link,
-            "category": article_cat,
+            "category": display_cat,
+            "categories": article_categories,
         })
 
     # Sort latest first (newest timestamp)
