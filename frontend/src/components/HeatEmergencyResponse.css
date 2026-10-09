@@ -1,0 +1,638 @@
+/* ==========================================================================
+   Heat Emergency Response Center Styles
+   ========================================================================== */
+
+.herc-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Header & Emergency Notice */
+.herc-header {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.herc-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.herc-title-group h2 {
+  font-size: 24px;
+  font-weight: var(--weight-heading);
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.herc-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 780px;
+}
+
+.herc-disclaimer-banner {
+  background: var(--danger-surface);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.herc-disclaimer-banner .disclaimer-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.herc-disclaimer-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.herc-disclaimer-text strong {
+  color: var(--danger);
+}
+
+/* Hotlines Quick Action Bar */
+.herc-hotlines-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.herc-hotline-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: var(--transition);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.herc-hotline-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-hover);
+}
+
+.herc-hotline-card.critical {
+  border-color: rgba(220, 38, 38, 0.35);
+  background: linear-gradient(135deg, var(--card) 0%, rgba(220, 38, 38, 0.05) 100%);
+}
+
+.herc-hotline-card.critical:hover {
+  border-color: var(--danger);
+}
+
+.herc-hotline-number {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.herc-hotline-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.herc-hotline-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.herc-hotline-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Location Selector Bar */
+.herc-location-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow);
+}
+
+.herc-location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.herc-current-loc-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.herc-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.herc-status-chip.verified {
+  background: var(--success-surface);
+  color: var(--success);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.herc-status-chip.unavailable {
+  background: var(--warning-surface);
+  color: var(--warning);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.herc-city-selector-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.herc-pill-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.herc-city-pill {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.herc-city-pill:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.herc-city-pill.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary-dark);
+}
+
+.herc-search-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.herc-search-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 220px;
+}
+
+.herc-search-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.herc-search-btn:hover {
+  background: var(--primary-dark);
+}
+
+/* Tabs */
+.herc-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 4px;
+  overflow-x: auto;
+}
+
+.herc-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition);
+  margin-bottom: -6px;
+}
+
+.herc-tab-btn:hover {
+  color: var(--text);
+}
+
+.herc-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.herc-tab-count {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+/* Map Section */
+.herc-map-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.herc-map-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.herc-map-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.herc-map-wrapper {
+  height: 440px;
+  width: 100%;
+  position: relative;
+}
+
+/* Custom Marker Styling */
+.herc-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+/* Facility Directory Grid */
+.herc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.herc-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.herc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+}
+
+.herc-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.herc-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.herc-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.herc-card-type {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: var(--secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.herc-card-address {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.herc-features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.herc-feature-chip {
+  font-size: 11px;
+  background: rgba(2, 132, 199, 0.08);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.herc-card-details {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.herc-detail-item {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+}
+
+.herc-detail-item strong {
+  color: var(--text);
+}
+
+.herc-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+}
+
+.herc-auth-badge {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.herc-action-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.herc-action-btn:hover {
+  background: var(--primary-dark);
+}
+
+/* Unavailable State */
+.herc-unavailable-card {
+  background: var(--card);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.herc-unavailable-icon {
+  font-size: 42px;
+}
+
+.herc-unavailable-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.herc-unavailable-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.herc-emergency-fallback-box {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 24px;
+  margin-top: 8px;
+  max-width: 600px;
+  width: 100%;
+  text-align: left;
+}
+
+/* Action Protocols */
+.herc-action-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.herc-action-level-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  border-left: 6px solid var(--primary);
+}
+
+.herc-action-level-card.green { border-left-color: var(--risk-low); }
+.herc-action-level-card.yellow { border-left-color: var(--warning); }
+.herc-action-level-card.orange { border-left-color: #ea580c; }
+.herc-action-level-card.red { border-left-color: var(--risk-high); }
+
+.herc-level-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.herc-level-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.herc-level-trigger {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--secondary);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.herc-actions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.herc-actions-list li {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.herc-actions-list li::before {
+  content: "✓";
+  color: var(--primary);
+  font-weight: 800;
+}
+
+/* Checklist Section */
+.herc-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.herc-checklist-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.herc-checklist-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.herc-checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.herc-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.herc-check-item input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}

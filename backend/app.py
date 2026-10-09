@@ -1829,6 +1829,112 @@ def get_heat_reduction_actions_endpoint():
         }), 500
 
 
+# ── 1. HEAT EMERGENCY RESPONSE CENTER API ──
+@app.route("/api/cooling-centers", methods=["GET"])
+def get_cooling_centers_endpoint():
+    """
+    Endpoint for Heat Emergency Response Center.
+    Returns verified cooling centers, emergency hospitals, water points, and hotlines.
+    Shows honest unavailable state when location is uncataloged.
+    """
+    try:
+        from heat_emergency_and_planning import get_emergency_facilities_for_location
+        city = request.args.get("city")
+        lat = request.args.get("lat")
+        lon = request.args.get("lon")
+        result = get_emergency_facilities_for_location(city_query=city, lat=lat, lon=lon)
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/cooling-centers: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve cooling centers",
+            "details": str(exc),
+        }), 500
+
+
+# ── 2. HEATWAVE IMPACT SIMULATOR API ──
+@app.route("/api/heatwave-simulate", methods=["POST"])
+def post_heatwave_simulate_endpoint():
+    """
+    Endpoint for Heatwave Impact Simulator.
+    Simulates baseline vs preparedness thermal strain for school, office, outdoor work, or elder care.
+    """
+    try:
+        from heat_emergency_and_planning import simulate_heatwave_impact
+        payload = request.get_json(silent=True) or {}
+        temperature = payload.get("temperature", 38.0)
+        humidity = payload.get("humidity", 50.0)
+        duration_days = payload.get("duration_days", 3)
+        scenario = payload.get("scenario", "outdoor_work")
+        active_actions = payload.get("protective_actions", [])
+
+        result = simulate_heatwave_impact(
+            temperature=temperature,
+            humidity=humidity,
+            duration_days=duration_days,
+            scenario=scenario,
+            active_actions=active_actions,
+        )
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/heatwave-simulate: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to simulate heatwave impact",
+            "details": str(exc),
+        }), 500
+
+
+# ── 3. SMART COOLING PROJECT PLANNER API ──
+@app.route("/api/smart-cooling-plan", methods=["POST"])
+def post_smart_cooling_plan_endpoint():
+    """
+    Endpoint for Smart Cooling Project Planner.
+    Reuses existing UHI simulation engine to compute phased implementation roadmaps and indicative budgets.
+    """
+    try:
+        from heat_emergency_and_planning import generate_smart_cooling_plan
+        payload = request.get_json(silent=True) or {}
+        city_id = payload.get("city_id")
+        baseline_temp = payload.get("baseline_temp")
+        user_targets = payload.get("targets", {})
+
+        result = generate_smart_cooling_plan(
+            city_id=city_id,
+            baseline_temp=baseline_temp,
+            user_targets=user_targets,
+        )
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/smart-cooling-plan: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to generate smart cooling plan",
+            "details": str(exc),
+        }), 500
+
+
+# ── 4. HEAT SAFETY CHALLENGE & AWARENESS API ──
+@app.route("/api/heat-safety-quizzes", methods=["GET"])
+def get_heat_safety_quizzes_endpoint():
+    """
+    Endpoint for Heat Safety Challenge & Awareness Center.
+    Returns evidence-based quiz questions, myth-vs-fact cards, and scenario challenges with authoritative sources.
+    """
+    try:
+        from heat_emergency_and_planning import get_heat_safety_challenge_data
+        result = get_heat_safety_challenge_data()
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/heat-safety-quizzes: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve heat safety challenges",
+            "details": str(exc),
+        }), 500
+
+
 if __name__ == "__main__":
     # Run Flask server on localhost:5000
     app.run(debug=True, host="127.0.0.1", port=5000)

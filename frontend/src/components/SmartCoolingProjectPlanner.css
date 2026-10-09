@@ -1,0 +1,405 @@
+/* ==========================================================================
+   Smart Cooling Project Planner Styles
+   ========================================================================== */
+
+.scpp-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Header */
+.scpp-header {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.scpp-header h2 {
+  font-size: 24px;
+  font-weight: var(--weight-heading);
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scpp-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 820px;
+}
+
+/* 3-Pillar Data Separation Banner */
+.scpp-data-separation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.scpp-pillar-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.scpp-pillar-card.measured {
+  border-top: 4px solid #0284c7;
+}
+
+.scpp-pillar-card.assumptions {
+  border-top: 4px solid #d97706;
+}
+
+.scpp-pillar-card.estimates {
+  border-top: 4px solid #16a34a;
+}
+
+.scpp-pillar-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scpp-pillar-tag.blue { color: #0284c7; }
+.scpp-pillar-tag.amber { color: #d97706; }
+.scpp-pillar-tag.green { color: #16a34a; }
+
+.scpp-pillar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.scpp-pillar-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.scpp-pillar-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* City & Preset Bar */
+.scpp-toolbar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: var(--shadow);
+}
+
+.scpp-city-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scpp-city-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.scpp-city-btn {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.scpp-city-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.scpp-city-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary-dark);
+}
+
+.scpp-preset-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Sliders Section */
+.scpp-sliders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.scpp-slider-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: var(--transition);
+}
+
+.scpp-slider-card:hover {
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-hover);
+}
+
+.scpp-slider-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.scpp-slider-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scpp-slider-val-badge {
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.scpp-slider-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Phased Roadmap */
+.scpp-roadmap-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scpp-section-header {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scpp-phases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 18px;
+}
+
+.scpp-phase-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+
+.scpp-phase-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.scpp-phase-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.scpp-phase-actions {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.scpp-phase-actions li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.scpp-phase-actions li::before {
+  content: "➔";
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.scpp-phase-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Indicative Budget Table */
+.scpp-budget-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scpp-budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.scpp-total-budget-badge {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  text-align: right;
+}
+
+.scpp-total-budget-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.scpp-total-budget-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.scpp-budget-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.scpp-budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.scpp-budget-table th {
+  background: var(--secondary);
+  color: var(--text-muted);
+  padding: 10px 14px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.scpp-budget-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.scpp-budget-table tr:hover td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.scpp-prio-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.scpp-prio-tag.immediate {
+  background: var(--danger-surface);
+  color: var(--danger);
+}
+
+.scpp-prio-tag.high {
+  background: var(--warning-surface);
+  color: var(--warning);
+}
+
+.scpp-prio-tag.medium {
+  background: var(--success-surface);
+  color: var(--success);
+}
+
+.scpp-budget-caveat {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  background: var(--secondary);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--warning);
+}

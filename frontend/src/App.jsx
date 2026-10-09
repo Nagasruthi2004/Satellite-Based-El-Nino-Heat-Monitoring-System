@@ -5,6 +5,10 @@ import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
 import SatelliteImageHeatAnalysis from "./components/SatelliteImageHeatAnalysis";
+import HeatEmergencyResponse from "./components/HeatEmergencyResponse";
+import HeatwaveImpactSimulator from "./components/HeatwaveImpactSimulator";
+import SmartCoolingProjectPlanner from "./components/SmartCoolingProjectPlanner";
+import HeatSafetyChallenge from "./components/HeatSafetyChallenge";
 import "./App.css";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "./components/Navbar";
@@ -66,6 +70,8 @@ const NAVIGATION_GROUPS = [
     items: [
       { id: "analytics", label: "Heat Risk Prediction", icon: "🎯" },
       { id: "assistant", label: "AI Heatwave Assistant", icon: "🤖" },
+      { id: "heatwave-simulator", label: "Heatwave Impact Simulator", icon: "⚡" },
+      { id: "cooling-planner", label: "Smart Cooling Project Planner", icon: "📐" },
       { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
       { id: "preparedness", label: "Heat Preparedness Score", icon: "🛡️" },
       { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
@@ -77,6 +83,8 @@ const NAVIGATION_GROUPS = [
   {
     title: "SAFETY",
     items: [
+      { id: "emergency-response", label: "Heat Emergency Response Center", icon: "🏥" },
+      { id: "safety-challenge", label: "Heat Safety Challenge & Awareness", icon: "🏆" },
       { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
       { id: "disaster-info", label: "Disaster Information", icon: "🚨" },
     ],
@@ -861,6 +869,24 @@ function App() {
           </section>
         )}
 
+        {/* ── HEAT EMERGENCY RESPONSE CENTER ── */}
+        {activePage === "emergency-response" && (
+          <section className="section">
+            <HeatEmergencyResponse
+              initialCity={weather?.city || "Coimbatore"}
+              initialLat={weather?.lat}
+              initialLon={weather?.lon}
+            />
+          </section>
+        )}
+
+        {/* ── HEAT SAFETY CHALLENGE & AWARENESS ── */}
+        {activePage === "safety-challenge" && (
+          <section className="section">
+            <HeatSafetyChallenge />
+          </section>
+        )}
+
         {/* ── INDIA LST HEAT MAP & YEAR SELECTOR ── */}
         {activePage === "india-lst" && (
           <section className="section">
@@ -910,6 +936,25 @@ function App() {
           <AnalyticsDashboard weather={weather} currentHeatRisk={currentHeatRisk} />
         </section>
         </>}
+
+        {/* ── HEATWAVE IMPACT SIMULATOR ── */}
+        {activePage === "heatwave-simulator" && (
+          <section className="section">
+            <HeatwaveImpactSimulator
+              initialTemperature={weather?.temperature}
+            />
+          </section>
+        )}
+
+        {/* ── SMART COOLING PROJECT PLANNER ── */}
+        {activePage === "cooling-planner" && (
+          <section className="section">
+            <SmartCoolingProjectPlanner
+              initialCity={weather?.city || "Coimbatore"}
+              initialBaselineTemp={satellite?.land_surface_temperature || weather?.temperature}
+            />
+          </section>
+        )}
 
         {activePage === "simulator" && <section className="section">
           <FutureCitySimulator currentTemperature={weather?.temperature} onValuesChange={setSimulatorValues} />
