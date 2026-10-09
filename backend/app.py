@@ -1668,6 +1668,169 @@ def satellite_ml_inference():
         }), 500
 
 
+# ── FEATURE 1: GLOBAL EL NIÑO IMPACT INTELLIGENCE ──
+@app.route("/api/enso-global-intelligence", methods=["GET"])
+def get_enso_global_intelligence():
+    """
+    Endpoint for Global El Niño Impact Intelligence.
+    Returns latest official NOAA CPC ENSO status, publication date, ONI/RONI trend,
+    Pacific SST anomaly regions, global teleconnection indicators, and official links.
+    """
+    try:
+        from global_heat_intelligence import fetch_noaa_cpc_enso_status
+        live_only = request.args.get("live_only", "false").lower() == "true"
+        result = fetch_noaa_cpc_enso_status(live_only=live_only)
+        if result.get("status") == "unavailable":
+            return jsonify(result), 503
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/enso-global-intelligence: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve ENSO global intelligence",
+            "details": str(exc),
+            "official_sources": [
+                {"name": "NOAA CPC ENSO Diagnostic Discussion", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml"}
+            ]
+        }), 500
+
+
+# ── FEATURE 2: HISTORICAL VS CURRENT GLOBAL HEAT COMPARISON ──
+@app.route("/api/historical-heat-comparison", methods=["GET"])
+def get_historical_heat_comparison():
+    """
+    Endpoint for Historical vs Current Global Heat Comparison.
+    Compares 2015-16, 2023-24, and current events.
+    Returns satellite LST observations (MODIS) vs model-estimated values with coverage distinction.
+    """
+    try:
+        from global_heat_intelligence import get_historical_heat_comparison_data
+        event_key = request.args.get("event", "2023-2024").strip()
+        result = get_historical_heat_comparison_data(event_key=event_key)
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/historical-heat-comparison: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve historical heat comparison",
+            "details": str(exc),
+        }), 500
+
+
+# ── FEATURE 3: GLOBAL HEAT MITIGATION WHAT-IF SIMULATOR ──
+@app.route("/api/heat-mitigation-cities", methods=["GET"])
+def get_heat_mitigation_cities():
+    """
+    Returns list of supported world cities with calibrated baseline temperatures and factors.
+    """
+    try:
+        from global_heat_intelligence import SUPPORTED_SIMULATOR_CITIES
+        return jsonify({
+            "status": "success",
+            "count": len(SUPPORTED_SIMULATOR_CITIES),
+            "cities": SUPPORTED_SIMULATOR_CITIES,
+        }), 200
+    except Exception as exc:
+        logger.error("Error in /api/heat-mitigation-cities: %s", exc)
+        return jsonify({"status": "error", "error": str(exc)}), 500
+
+
+@app.route("/api/heat-mitigation-simulate", methods=["POST"])
+def post_heat_mitigation_simulate():
+    """
+    Endpoint for Global Heat Mitigation What-If Simulator.
+    Simulates urban microclimate shifts given trees, green cover, water bodies, buildings, and roads.
+    Results are explicitly labeled as illustrative scenario estimates.
+    """
+    try:
+        from global_heat_intelligence import calculate_mitigation_simulation
+        payload = request.get_json(silent=True) or {}
+        baseline_temp = payload.get("baseline_temp", 32.0)
+        factors = payload.get("factors", {})
+        location_name = payload.get("location_name", "Selected Region")
+
+        result = calculate_mitigation_simulation(
+            baseline_temp=baseline_temp,
+            factors=factors,
+            location_name=location_name,
+        )
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/heat-mitigation-simulate: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to compute heat mitigation simulation",
+            "details": str(exc),
+        }), 500
+
+
+# ── FEATURE 1: HEAT VULNERABILITY MAP DATA ──
+@app.route("/api/heat-vulnerability-data", methods=["GET"])
+def get_heat_vulnerability_data_endpoint():
+    """
+    Endpoint for Heat Vulnerability Map.
+    Returns multi-dimensional environmental heat hazard data across monitored locations.
+    Clearly distinguishes satellite-observed, weather-observed, model-estimated, and unavailable data.
+    Does not infer health vulnerability from temperature alone.
+    """
+    try:
+        from global_heat_intelligence import get_heat_vulnerability_data
+        result = get_heat_vulnerability_data()
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/heat-vulnerability-data: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve heat vulnerability data",
+            "details": str(exc),
+        }), 500
+
+
+# ── FEATURE 2: COOLING PRIORITY ZONES ──
+@app.route("/api/cooling-priority-zones", methods=["GET"])
+def get_cooling_priority_zones_endpoint():
+    """
+    Endpoint for Cooling Priority Zones ranking.
+    Ranks available map regions using a transparent heat-priority score (0-100).
+    Displays contributing factors, clear rationale, and labels the score as a planning-priority estimate.
+    """
+    try:
+        from global_heat_intelligence import get_cooling_priority_zones
+        result = get_cooling_priority_zones()
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/cooling-priority-zones: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to rank cooling priority zones",
+            "details": str(exc),
+        }), 500
+
+
+# ── FEATURE 3: HEAT REDUCTION ACTION PLANNER ──
+@app.route("/api/heat-reduction-actions", methods=["GET"])
+def get_heat_reduction_actions_endpoint():
+    """
+    Endpoint for Heat Reduction Action Planner.
+    Returns suitable heat mitigation interventions (tree canopy, cool roofs, green spaces, etc.)
+    with empirical mechanisms and co-benefits.
+    """
+    try:
+        from global_heat_intelligence import get_heat_reduction_actions
+        location_id = request.args.get("location_id")
+        result = get_heat_reduction_actions(location_id=location_id)
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/heat-reduction-actions: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve heat reduction actions",
+            "details": str(exc),
+        }), 500
+
+
 if __name__ == "__main__":
     # Run Flask server on localhost:5000
     app.run(debug=True, host="127.0.0.1", port=5000)
+
+
