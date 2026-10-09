@@ -33,7 +33,7 @@ class GlobalHeatIntelligenceTests(unittest.TestCase):
         self.assertTrue(any("noaa.gov" in u for u in urls))
 
     def test_enso_pacific_sst_regions(self):
-        """Test Pacific SST anomaly regions include Niño 1+2, Niño 3, Niño 3.4, and Niño 4."""
+        """Test Pacific SST anomaly regions include Niño 1+2, Niño 3, Niño 3.4, and Niño 4 with projection-safe bounds."""
         res = self.client.get("/api/enso-global-intelligence")
         data = res.get_json()
         sst_regions = data.get("pacific_sst_regions", [])
@@ -47,10 +47,67 @@ class GlobalHeatIntelligenceTests(unittest.TestCase):
 
         for r in sst_regions:
             self.assertIn("bounds", r)
+            self.assertIn("bounds_segments", r)
             self.assertIn("center", r)
             self.assertIn("baseline_sst", r)
             self.assertIn("sst_anomaly", r)
             self.assertIn("mechanism", r)
+            self.assertIn("color", r)
+            self.assertIn("fill_color", r)
+
+            # Ensure all segments are projection-safe: south <= north, west <= east
+            # and no single segment spans > 180° longitude (prevents 310° band across globe)
+            for seg in r["bounds_segments"]:
+                self.assertEqual(len(seg), 2)
+                south, west = seg[0]
+                north, east = seg[1]
+                self.assertLessEqual(south, north, f"South {south} must be <= North {north}")
+                self.assertLessEqual(west, east, f"West {west} must be <= East {east}")
+                lon_span = east - west
+                self.assertLessEqual(lon_span, 180.0, f"Segment span {lon_span}° must be <= 180° to avoid worldwide banding")
+
+        # Specific check: Niño 4 must cross the antimeridian and decompose into 2 segments
+        nino4 = next(r for r in sst_regions if r["id"] == "nino4")
+        self.assertTrue(nino4.get("crosses_antimeridian"))
+        self.assertEqual(len(nino4["bounds_segments"]), 2)
+        # Segment 1: 160E to 180
+        self.assertEqual(nino4["bounds_segments"][0], [[-5.0, 160.0], [5.0, 180.0]])
+        # Segment 2: -180 to -150W
+        self.assertEqual(nino4["bounds_segments"][1], [[-5.0, -180.0], [5.0, -150.0]])
+
+    def test_overlay_bounds_validation_utility(self):
+        """Test validate_overlay_bounds validates coordinates and decomposes antimeridian-crossing bounds."""
+        from global_heat_intelligence import validate_overlay_bounds
+
+        # 1. Standard valid box (Niño 3)
+        res3 = validate_overlay_bounds([[-5.0, -150.0], [5.0, -90.0]])
+        self.assertTrue(res3["is_valid"])
+        self.assertFalse(res3["crosses_antimeridian"])
+        self.assertEqual(len(res3["safe_segments"]), 1)
+        self.assertEqual(res3["safe_segments"][0], [[-5.0, -150.0], [5.0, -90.0]])
+
+        # 2. Antimeridian crossing box (160E to 150W)
+        res4 = validate_overlay_bounds([[-5.0, 160.0], [5.0, -150.0]])
+        self.assertTrue(res4["is_valid"])
+        self.assertTrue(res4["crosses_antimeridian"])
+        self.assertEqual(len(res4["safe_segments"]), 2)
+        self.assertEqual(res4["safe_segments"][0], [[-5.0, 160.0], [5.0, 180.0]])
+        self.assertEqual(res4["safe_segments"][1], [[-5.0, -180.0], [5.0, -150.0]])
+
+        # 3. Invalid latitudes (out of [-90, 90])
+        res_bad_lat = validate_overlay_bounds([[-95.0, -120.0], [5.0, -90.0]])
+        self.assertFalse(res_bad_lat["is_valid"])
+        self.assertIn("Latitude out of bounds", res_bad_lat["error"])
+
+        # 4. Invalid longitudes (out of [-180, 180])
+        res_bad_lon = validate_overlay_bounds([[-5.0, -200.0], [5.0, -90.0]])
+        self.assertFalse(res_bad_lon["is_valid"])
+        self.assertIn("Longitude out of bounds", res_bad_lon["error"])
+
+        # 5. Malformed inputs
+        self.assertFalse(validate_overlay_bounds(None)["is_valid"])
+        self.assertFalse(validate_overlay_bounds([])["is_valid"])
+        self.assertFalse(validate_overlay_bounds(["bad", "data"])["is_valid"])
 
     def test_enso_global_teleconnection_regions(self):
         """Test global teleconnection regions provide climate impacts and indicators."""

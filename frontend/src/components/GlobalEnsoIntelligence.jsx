@@ -8,6 +8,7 @@ export default function GlobalEnsoIntelligence({
   onSelectRegion,
   onFocusPacific,
   onRetry,
+  selectedBasinId = "all",
 }) {
   const [activeRegionTab, setActiveRegionTab] = useState(null);
 
@@ -162,7 +163,7 @@ export default function GlobalEnsoIntelligence({
           <button
             type="button"
             className="siha-focus-pacific-btn"
-            onClick={onFocusPacific}
+            onClick={() => onFocusPacific?.([0, -145], "all")}
             title="Recenter World Map on the Equatorial Pacific Ocean"
           >
             🌊 Center Map on Pacific SST Basin
@@ -173,8 +174,8 @@ export default function GlobalEnsoIntelligence({
           {sstRegions.map((reg) => (
             <div
               key={reg.id}
-              className={`siha-sst-card ${reg.id === "nino34" ? "primary-nino" : ""}`}
-              onClick={() => onFocusPacific?.(reg.center)}
+              className={`siha-sst-card ${reg.id === "nino34" ? "primary-nino" : ""} ${selectedBasinId === reg.id ? "active-basin" : ""}`}
+              onClick={() => onFocusPacific?.(reg.center, reg.id)}
             >
               <div className="siha-sst-card-top">
                 <span className="siha-sst-id">{reg.id.toUpperCase()}</span>

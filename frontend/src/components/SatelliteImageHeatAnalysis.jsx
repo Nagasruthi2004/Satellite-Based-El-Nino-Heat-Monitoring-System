@@ -117,6 +117,37 @@ function MapRecenterController({ center, zoom }) {
   return null;
 }
 
+/**
+ * Decomposes an overlay bounding box into projection-safe segments.
+ * Solves the Antimeridian wrapping issue where longitudes crossing 180°
+ * (e.g. 160°E to 150°W in Niño 4) would otherwise stretch 310° across the globe.
+ */
+export function getProjectionSafeBounds(reg) {
+  if (reg?.bounds_segments && Array.isArray(reg.bounds_segments) && reg.bounds_segments.length > 0) {
+    return reg.bounds_segments;
+  }
+  if (!reg?.bounds || !Array.isArray(reg.bounds) || reg.bounds.length !== 2) {
+    return [];
+  }
+  const [[lat1, lon1], [lat2, lon2]] = reg.bounds;
+  if (
+    typeof lat1 !== "number" || typeof lat2 !== "number" ||
+    typeof lon1 !== "number" || typeof lon2 !== "number"
+  ) {
+    return [];
+  }
+  const south = Math.min(lat1, lat2);
+  const north = Math.max(lat1, lat2);
+  // Crosses antimeridian: 160°E to 150°W (lon1 > lon2)
+  if (lon1 > lon2) {
+    return [
+      [[south, lon1], [north, 180.0]],
+      [[south, -180.0], [north, lon2]],
+    ];
+  }
+  return [[[south, lon1], [north, lon2]]];
+}
+
 export default function SatelliteImageHeatAnalysis() {
   // ── FEATURE SELECTOR TABS ──
   // "original-satellite" | "enso-intelligence" | "historical-comparison" | "mitigation-simulator"
@@ -147,6 +178,17 @@ export default function SatelliteImageHeatAnalysis() {
   const [ensoLoading, setEnsoLoading] = useState(false);
   const [ensoError, setEnsoError] = useState("");
   const [selectedTeleRegion, setSelectedTeleRegion] = useState(null);
+  const [selectedSstBasinId, setSelectedSstBasinId] = useState("all");
+
+  const visibleSstRegions = useMemo(() => {
+    const regions = ensoData?.pacific_sst_regions || [];
+    if (!regions.length) return [];
+    if (selectedSstBasinId === "all") return regions;
+    if (selectedSstBasinId === "contiguous") {
+      return regions.filter((r) => r.category === "basin" || r.id !== "nino34");
+    }
+    return regions.filter((r) => r.id === selectedSstBasinId);
+  }, [ensoData?.pacific_sst_regions, selectedSstBasinId]);
 
   // ── TAB 3: HISTORICAL COMPARISON STATE ──
   const [historicalData, setHistoricalData] = useState(null);
@@ -471,7 +513,10 @@ export default function SatelliteImageHeatAnalysis() {
   };
 
   // Center on Pacific Basin (Tab 2)
-  const handleFocusPacific = (centerCoords) => {
+  const handleFocusPacific = (centerCoords, basinId) => {
+    if (basinId) {
+      setSelectedSstBasinId(basinId);
+    }
     if (centerCoords && Array.isArray(centerCoords)) {
       setMapCenter(centerCoords);
       setMapZoom(4);
@@ -1373,10 +1418,58 @@ export default function SatelliteImageHeatAnalysis() {
               <button
                 type="button"
                 className="siha-comparison-toggle active"
-                onClick={() => handleFocusPacific()}
+                onClick={() => handleFocusPacific([0, -145], "all")}
               >
                 🌊 Center on Pacific Basin
               </button>
+            </div>
+
+            {/* Basin Filter Pills */}
+            <div className="siha-quick-bar" style={{ marginBottom: "12px" }}>
+              <span className="siha-quick-title">Basin Overlay Filter:</span>
+              <div className="siha-quick-items">
+                <button
+                  type="button"
+                  className={`siha-quick-btn ${selectedSstBasinId === "all" ? "selected" : ""}`}
+                  onClick={() => setSelectedSstBasinId("all")}
+                >
+                  🌐 All Basins
+                </button>
+                <button
+                  type="button"
+                  className={`siha-quick-btn ${selectedSstBasinId === "nino34" ? "selected" : ""}`}
+                  style={selectedSstBasinId === "nino34" ? { background: "#dc2626", color: "#fff", borderColor: "#b91c1c" } : {}}
+                  onClick={() => {
+                    setSelectedSstBasinId("nino34");
+                    handleFocusPacific([0, -145], "nino34");
+                  }}
+                >
+                  🎯 Niño 3.4 (Primary ONI Benchmark)
+                </button>
+                <button
+                  type="button"
+                  className={`siha-quick-btn ${selectedSstBasinId === "contiguous" ? "selected" : ""}`}
+                  onClick={() => {
+                    setSelectedSstBasinId("contiguous");
+                    handleFocusPacific([0, -135], "contiguous");
+                  }}
+                >
+                  🔗 Contiguous Non-Overlapping Basins (1+2, 3, 4)
+                </button>
+                {ensoData?.pacific_sst_regions?.map((reg) => (
+                  <button
+                    key={reg.id}
+                    type="button"
+                    className={`siha-quick-btn ${selectedSstBasinId === reg.id ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelectedSstBasinId(reg.id);
+                      handleFocusPacific(reg.center, reg.id);
+                    }}
+                  >
+                    {reg.name.split(" ")[0]} ({reg.id.toUpperCase()})
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="siha-map-box">
@@ -1397,35 +1490,55 @@ export default function SatelliteImageHeatAnalysis() {
                 <MapClickListener onSelectCoords={handleMapClick} />
                 <MapRecenterController center={mapCenter} zoom={mapZoom} />
 
-                {/* Pacific SST Rectangles */}
-                {ensoData?.pacific_sst_regions?.map((reg) => (
-                  <Rectangle
-                    key={reg.id}
-                    bounds={reg.bounds}
-                    pathOptions={{
-                      color: reg.id === "nino34" ? "#dc2626" : "#ea580c",
-                      fillColor: reg.id === "nino34" ? "#ef4444" : "#f97316",
-                      fillOpacity: 0.35,
-                      weight: reg.id === "nino34" ? 3 : 2,
-                      dashArray: reg.id === "nino34" ? undefined : "4 4",
-                    }}
-                  >
-                    <Tooltip sticky>
-                      <strong>{reg.name}</strong><br />
-                      SST Anomaly: <strong>+{reg.sst_anomaly}°C</strong><br />
-                      Status: {reg.status}
-                    </Tooltip>
-                    <Popup>
-                      <div className="siha-map-popup">
-                        <h4>{reg.name}</h4>
-                        <div className="siha-popup-badge warm">SST Anomaly: +{reg.sst_anomaly}°C</div>
-                        <p><strong>Baseline SST:</strong> {reg.baseline_sst}°C</p>
-                        <p><strong>Status:</strong> {reg.status}</p>
-                        <p className="siha-popup-mech">{reg.mechanism}</p>
-                      </div>
-                    </Popup>
-                  </Rectangle>
-                ))}
+                {/* Pacific SST Rectangles (Projection-Safe & Clean Transparent Styling) */}
+                {visibleSstRegions.map((reg) => {
+                  const safeSegments = getProjectionSafeBounds(reg);
+                  const isSelected = selectedSstBasinId === reg.id || (selectedSstBasinId === "nino34" && reg.id === "nino34");
+                  const isMuted = selectedSstBasinId !== "all" && selectedSstBasinId !== "contiguous" && !isSelected;
+
+                  const strokeColor = reg.color || (reg.id === "nino34" ? "#dc2626" : "#ea580c");
+                  const fillColor = reg.fill_color || (reg.id === "nino34" ? "#ef4444" : "#f97316");
+
+                  // Clean transparent styling that never obscures the geographic map
+                  const fillOpacity = isSelected ? 0.22 : isMuted ? 0.05 : reg.id === "nino34" ? 0.16 : 0.12;
+                  const weight = isSelected ? 2.5 : isMuted ? 1 : reg.id === "nino34" ? 2 : 1.5;
+
+                  return safeSegments.map((segmentBounds, sIdx) => (
+                    <Rectangle
+                      key={`${reg.id}-seg-${sIdx}`}
+                      bounds={segmentBounds}
+                      pathOptions={{
+                        color: strokeColor,
+                        fillColor: fillColor,
+                        fillOpacity: fillOpacity,
+                        weight: weight,
+                        dashArray: isSelected ? undefined : reg.id === "nino34" ? undefined : "3 3",
+                      }}
+                      eventHandlers={{
+                        click: () => {
+                          setSelectedSstBasinId(reg.id);
+                          handleFocusPacific(reg.center, reg.id);
+                        },
+                      }}
+                    >
+                      <Tooltip sticky>
+                        <strong>{reg.name}</strong><br />
+                        SST Anomaly: <strong>+{reg.sst_anomaly}°C</strong><br />
+                        Status: {reg.status}
+                      </Tooltip>
+                      <Popup>
+                        <div className="siha-map-popup">
+                          <h4>{reg.name}</h4>
+                          <div className="siha-popup-badge warm">SST Anomaly: +{reg.sst_anomaly}°C</div>
+                          <p><strong>Baseline SST:</strong> {reg.baseline_sst}°C</p>
+                          <p><strong>Observed SST:</strong> {(reg.baseline_sst + reg.sst_anomaly).toFixed(1)}°C</p>
+                          <p><strong>Status:</strong> {reg.status}</p>
+                          <p className="siha-popup-mech">{reg.mechanism}</p>
+                        </div>
+                      </Popup>
+                    </Rectangle>
+                  ));
+                })}
 
                 {/* Global Teleconnection Impact Regional Markers */}
                 {ensoData?.teleconnection_regions?.map((treg) => {
@@ -1499,6 +1612,7 @@ export default function SatelliteImageHeatAnalysis() {
             loading={ensoLoading}
             error={ensoError}
             selectedRegion={selectedTeleRegion}
+            selectedBasinId={selectedSstBasinId}
             onSelectRegion={handleSelectTeleRegion}
             onFocusPacific={handleFocusPacific}
             onRetry={() => fetchEnsoData(false)}

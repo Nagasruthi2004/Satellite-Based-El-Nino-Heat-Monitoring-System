@@ -28,11 +28,21 @@ ENSO_CACHE_TTL_SECONDS = 900  # 15 minutes
 
 
 # ── PACIFIC SST ANOMALY BOUNDING REGIONS (OFFICIAL NOAA DEFINITIONS) ──
+# Note: Coordinate order is [[south_lat, west_lon], [north_lat, east_lon]].
+# For regions crossing the 180° Antimeridian (Niño 4: 160°E to 150°W),
+# bounds_segments decomposes the continuous geographic zone into projection-safe
+# bounding boxes (160°E to 180°, and -180° to 150°W) to prevent 310° horizontal
+# band rendering artifacts on standard cylindrical Web Mercator map projections.
 PACIFIC_SST_REGIONS = [
     {
         "id": "nino12",
         "name": "Niño 1+2 (Far-Eastern Equatorial Pacific)",
         "bounds": [[-10.0, -90.0], [0.0, -80.0]],
+        "bounds_segments": [[[-10.0, -90.0], [0.0, -80.0]]],
+        "crosses_antimeridian": False,
+        "category": "basin",
+        "color": "#db2777",
+        "fill_color": "#f43f5e",
         "center": [-5.0, -85.0],
         "baseline_sst": 23.8,
         "sst_anomaly": 1.9,
@@ -43,6 +53,11 @@ PACIFIC_SST_REGIONS = [
         "id": "nino3",
         "name": "Niño 3 (Eastern Equatorial Pacific)",
         "bounds": [[-5.0, -150.0], [5.0, -90.0]],
+        "bounds_segments": [[[-5.0, -150.0], [5.0, -90.0]]],
+        "crosses_antimeridian": False,
+        "category": "basin",
+        "color": "#ea580c",
+        "fill_color": "#f97316",
         "center": [0.0, -120.0],
         "baseline_sst": 25.6,
         "sst_anomaly": 1.7,
@@ -53,6 +68,11 @@ PACIFIC_SST_REGIONS = [
         "id": "nino34",
         "name": "Niño 3.4 (East-Central Pacific - Primary ONI Metric)",
         "bounds": [[-5.0, -170.0], [5.0, -120.0]],
+        "bounds_segments": [[[-5.0, -170.0], [5.0, -120.0]]],
+        "crosses_antimeridian": False,
+        "category": "benchmark",
+        "color": "#dc2626",
+        "fill_color": "#ef4444",
         "center": [0.0, -145.0],
         "baseline_sst": 26.9,
         "sst_anomaly": 1.8,
@@ -63,6 +83,14 @@ PACIFIC_SST_REGIONS = [
         "id": "nino4",
         "name": "Niño 4 (Central-Western Equatorial Pacific)",
         "bounds": [[-5.0, 160.0], [5.0, -150.0]],
+        "bounds_segments": [
+            [[-5.0, 160.0], [5.0, 180.0]],
+            [[-5.0, -180.0], [5.0, -150.0]]
+        ],
+        "crosses_antimeridian": True,
+        "category": "basin",
+        "color": "#0284c7",
+        "fill_color": "#38bdf8",
         "center": [0.0, -175.0],
         "baseline_sst": 28.3,
         "sst_anomaly": 1.2,
@@ -70,6 +98,57 @@ PACIFIC_SST_REGIONS = [
         "mechanism": "Western Pacific warm pool border; thermal shifts trigger Modoki / Central-Pacific pattern teleconnections across the Indo-Pacific basin."
     }
 ]
+
+
+def validate_overlay_bounds(bounds):
+    """
+    Validates geographic coordinates for Leaflet overlay layers.
+    Ensures:
+    1. Bounds format is [[south, west], [north, east]]
+    2. Latitude is within [-90.0, 90.0] and south <= north
+    3. Longitude is within [-180.0, 180.0]
+    4. Handles antimeridian crossing (when west > east) by decomposing
+       into projection-safe segment boxes [[south, west], [north, 180.0]]
+       and [[south, -180.0], [north, east]].
+    Returns:
+        dict with:
+            is_valid (bool)
+            crosses_antimeridian (bool)
+            safe_segments (list of [[south, west], [north, east]])
+            error (str or None)
+    """
+    if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
+        return {"is_valid": False, "crosses_antimeridian": False, "safe_segments": [], "error": "Bounds must be a list of two coordinate pairs"}
+
+    p1, p2 = bounds
+    if not isinstance(p1, (list, tuple)) or not isinstance(p2, (list, tuple)) or len(p1) < 2 or len(p2) < 2:
+        return {"is_valid": False, "crosses_antimeridian": False, "safe_segments": [], "error": "Each bound coordinate must have [latitude, longitude]"}
+
+    try:
+        lat1, lon1 = float(p1[0]), float(p1[1])
+        lat2, lon2 = float(p2[0]), float(p2[1])
+    except (ValueError, TypeError):
+        return {"is_valid": False, "crosses_antimeridian": False, "safe_segments": [], "error": "Coordinates must be numeric"}
+
+    if not (-90.0 <= lat1 <= 90.0 and -90.0 <= lat2 <= 90.0):
+        return {"is_valid": False, "crosses_antimeridian": False, "safe_segments": [], "error": f"Latitude out of bounds [-90, 90]: {lat1}, {lat2}"}
+
+    if not (-180.0 <= lon1 <= 180.0 and -180.0 <= lon2 <= 180.0):
+        return {"is_valid": False, "crosses_antimeridian": False, "safe_segments": [], "error": f"Longitude out of bounds [-180, 180]: {lon1}, {lon2}"}
+
+    south = min(lat1, lat2)
+    north = max(lat1, lat2)
+
+    # Check for antimeridian crossing (e.g. 160°E to 150°W)
+    if lon1 > lon2:
+        segments = [
+            [[south, lon1], [north, 180.0]],
+            [[south, -180.0], [north, lon2]]
+        ]
+        return {"is_valid": True, "crosses_antimeridian": True, "safe_segments": segments, "error": None}
+
+    return {"is_valid": True, "crosses_antimeridian": False, "safe_segments": [[[south, lon1], [north, lon2]]], "error": None}
+
 
 # ── GLOBAL TELECONNECTION INDICATOR REGIONS ──
 GLOBAL_TELECONNECTION_REGIONS = [

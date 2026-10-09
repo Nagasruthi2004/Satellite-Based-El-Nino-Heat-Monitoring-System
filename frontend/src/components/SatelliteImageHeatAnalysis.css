@@ -1992,6 +1992,12 @@
   background: linear-gradient(180deg, rgba(220, 38, 38, 0.03), transparent);
 }
 
+.siha-sst-card.active-basin {
+  border-color: var(--primary, #2563eb);
+  box-shadow: 0 0 0 2px var(--primary, #2563eb), 0 6px 18px rgba(37, 99, 235, 0.18);
+  transform: translateY(-2px);
+}
+
 .siha-sst-card-top {
   display: flex;
   justify-content: space-between;
