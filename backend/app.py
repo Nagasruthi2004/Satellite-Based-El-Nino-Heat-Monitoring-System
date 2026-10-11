@@ -4,22 +4,31 @@ Provides weather, satellite monitoring, and ML-based heat prediction endpoints
 """
 try:
     from research_generator import generate_research
-except ImportError:
+except Exception:
     generate_research = None
 
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from dotenv import load_dotenv
+
+# Ensure backend .env is loaded from absolute path
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+DOTENV_PATH = os.path.join(BACKEND_DIR, ".env")
+load_dotenv(dotenv_path=DOTENV_PATH)
+
 import pandas as pd
 import requests
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
-from weather import fetch_weather
+from weather import fetch_weather, search_locations, reverse_geocode
 from satellite import get_satellite_data, get_satellite_alert
 from heat_prediction import predict_heat_risk, get_prediction_explanation
 from heat_risk import classify_current_heat_risk, classify_forecast_heat_risk
 from elnino_news import fetch_elnino_news
 from disaster_risk import evaluate_disaster_risk
+import email_service
+
 
 try:
     from ml.inference import SatelliteCNNInference, extract_features_from_thermal_grid
@@ -96,23 +105,25 @@ def get_weather():
     if not candidates and (latitude is None or longitude is None):
         return jsonify({"error": "A valid city or town is required"}), 400
 
-    city = candidates[0] if candidates else "Selected Location"
+    city = requested_city or (candidates[0] if candidates else "Selected Location")
     weather_data = None
-    for candidate in candidates:
-        weather_data = fetch_weather(candidate)
-        if weather_data is not None:
-            city = candidate
-            logger.info("Resolved weather city used | city=%s", city)
-            break
 
-    if weather_data is None and latitude is not None and longitude is not None:
+    if latitude is not None and longitude is not None:
         try:
-            weather_data = fetch_weather(lat=float(latitude), lon=float(longitude))
+            weather_data = fetch_weather(city=requested_city or None, lat=float(latitude), lon=float(longitude))
             if weather_data is not None:
-                city = weather_data.get("city") or city
+                city = requested_city or weather_data.get("city") or city
                 logger.info("Resolved weather coordinate used | lat=%s | lon=%s | city=%s", latitude, longitude, city)
         except (ValueError, TypeError) as coord_err:
-            logger.warning("Coordinate weather fallback failed: %s", coord_err)
+            logger.warning("Coordinate weather fetch failed: %s", coord_err)
+
+    if weather_data is None and candidates:
+        for candidate in candidates:
+            weather_data = fetch_weather(candidate)
+            if weather_data is not None:
+                city = candidate
+                logger.info("Resolved weather city used | city=%s", city)
+                break
 
     if weather_data is None:
         logger.error("/weather failed | city=%s | fetch_weather returned None", city)
@@ -1935,8 +1946,429 @@ def get_heat_safety_quizzes_endpoint():
         }), 500
 
 
+# ── 5. HEAT ALERTS API & BACKGROUND WORKER ──
+
+def start_background_worker() -> bool:
+    """
+    Start the background heat alert monitor worker automatically with the backend.
+    Ensures active subscriptions are continuously checked in the background.
+    """
+    try:
+        if not email_service.background_monitor.is_running():
+            email_service.background_monitor.start()
+            logger.info("Heat Alert background worker started automatically with backend.")
+            return True
+        return False
+    except Exception as exc:
+        logger.error("Failed to start background heat alert worker: %s", exc)
+        return False
+
+
+@app.before_request
+def _auto_start_worker_hook():
+    """
+    Startup hook ensuring the background monitoring worker is running when live backend
+    requests arrive (e.g., when executed through WSGI servers like gunicorn, waitress, or flask run).
+    Bypassed during automated unit test runs.
+    """
+    import sys
+    if not app.testing and not os.environ.get("TESTING") and "unittest" not in sys.modules:
+        start_background_worker()
+
+
+@app.route("/api/locations/search", methods=["GET"])
+def get_locations_search_endpoint():
+    """
+    Search worldwide locations (city, town, region, coordinates) dynamically.
+    Query param: q (search string or 'lat, lon'), limit (optional, default 6)
+    """
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify({"query": "", "results": []}), 200
+
+    try:
+        limit = int(request.args.get("limit", 6))
+    except (ValueError, TypeError):
+        limit = 6
+    limit = max(1, min(limit, 20))
+
+    try:
+        results = search_locations(query, limit=limit)
+        return jsonify({"query": query, "results": results}), 200
+    except Exception as exc:
+        logger.error("Error in /api/locations/search: %s", exc)
+        return jsonify({
+            "error": "Failed to search locations",
+            "details": str(exc),
+            "results": [],
+        }), 500
+
+
+@app.route("/api/locations/reverse", methods=["GET"])
+def get_locations_reverse_endpoint():
+    """
+    Reverse geocode latitude and longitude into human-readable place name.
+    Query params: lat, lon
+    """
+    lat = request.args.get("lat")
+    lon = request.args.get("lon")
+    if lat is None or lon is None:
+        return jsonify({"error": "Latitude ('lat') and longitude ('lon') are required."}), 400
+
+    try:
+        f_lat = float(lat)
+        f_lon = float(lon)
+        result = reverse_geocode(f_lat, f_lon)
+        return jsonify({
+            "lat": f_lat,
+            "lon": f_lon,
+            **result,
+        }), 200
+    except (ValueError, TypeError) as val_err:
+        return jsonify({"error": f"Invalid coordinates: {val_err}"}), 400
+    except Exception as exc:
+        logger.error("Error in /api/locations/reverse: %s", exc)
+        return jsonify({
+            "error": "Failed to reverse geocode coordinates",
+            "details": str(exc),
+        }), 500
+
+
+@app.route("/api/alerts/config", methods=["GET"])
+def get_alert_config_endpoint():
+    """
+    Endpoint for Heat Alerts configuration & status.
+    Returns safe central SMTP status (no passwords), total subscriber count,
+    subscriber info if email is passed as a query param,
+    last delivery state, and background monitoring status.
+    """
+    try:
+        import sys
+        if not app.testing and not os.environ.get("TESTING") and "unittest" not in sys.modules:
+            start_background_worker()
+
+        query_email = (request.args.get("email") or "").strip()
+        smtp_status = email_service.get_public_smtp_status()
+        subscriber_counts = email_service.subscribers_manager.count_subscribers()
+        subscriber = email_service.subscribers_manager.get_subscriber(query_email) if query_email else None
+        prefs = email_service.preferences_manager.load()
+        state = email_service.state_manager.load()
+        monitor = email_service.background_monitor.get_status()
+
+        if not subscriber and query_email and prefs.get("email", "").strip().lower() == query_email.lower() and prefs.get("city"):
+            subscriber = {
+                "email": query_email.lower(),
+                "city": prefs.get("city", "").strip(),
+                "latitude": prefs.get("latitude"),
+                "longitude": prefs.get("longitude"),
+                "threshold": email_service.normalize_threshold(prefs.get("threshold", "High")),
+                "enabled": bool(prefs.get("enabled", False)),
+                "registered_at": prefs.get("last_updated"),
+                "last_updated": prefs.get("last_updated"),
+            }
+
+        # Check per-subscriber check history for telemetry isolation
+        sub_hist = email_service.state_manager.get_subscriber_history(query_email) if query_email else None
+        subscriber_data = None
+        if subscriber:
+            subscriber_data = dict(subscriber)
+            if sub_hist:
+                subscriber_data["history"] = sub_hist
+
+        # Resolve subscriber-specific delivery message if available
+        if sub_hist and sub_hist.get("last_check_message"):
+            last_delivery_message = sub_hist.get("last_check_message")
+        else:
+            last_delivery_message = state.get("last_alert_message")
+
+        # Sanitize delivery message: if SMTP is unconfigured or no alerts were ever sent,
+        # ensure last_delivery_message reflects the actual status accurately without fake claims.
+        if not smtp_status.get("configured"):
+            has_alert = (sub_hist and sub_hist.get("last_alert_time")) or (state.get("last_alert_time") and state.get("last_alert_status") == "sent")
+            if not has_alert:
+                last_delivery_message = "Email delivery is not configured yet. Alerts will be dispatched once backend credentials are set."
+            else:
+                last_delivery_message = f"Email service is currently unconfigured. Previous log: {last_delivery_message or ''}".strip()
+        elif not last_delivery_message:
+            last_delivery_message = "No alert activity recorded yet."
+
+        return jsonify({
+            "status": "success",
+            "configured": smtp_status.get("configured", False),
+            "email_delivery_configured": smtp_status.get("configured", False),
+            "delivery_provider": "Central SMTP Mail Server" if smtp_status.get("configured") else "Unconfigured",
+            "smtp_host": smtp_status.get("host", ""),
+            "smtp_port": smtp_status.get("port", 587),
+            "subscribers_count": subscriber_counts.get("total", 0),
+            "active_subscribers_count": subscriber_counts.get("active", 0),
+            "subscriber": subscriber_data,
+            "background_worker_running": monitor.get("is_running", False) or monitor.get("running", False),
+            "last_test_status": state.get("last_test_status"),
+            "last_test_time": state.get("last_test_time"),
+            "last_test_error": state.get("last_test_error"),
+            "last_delivery_message": last_delivery_message,
+            "missing_fields": smtp_status.get("missing_fields", []),
+            "smtp": smtp_status,
+            "supported_thresholds": ["Low", "Medium", "High", "Critical"],
+            "preferences": prefs,
+            "state": state,
+            "monitor": monitor,
+        }), 200
+    except Exception as exc:
+        logger.error("Error in /api/alerts/config: %s", exc, exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to retrieve alert configuration",
+            "details": str(exc),
+        }), 500
+
+
+@app.route("/api/alerts/register", methods=["POST"])
+def post_alert_register_endpoint():
+    """
+    Endpoint for users to register or update their email address and heat alert preferences.
+    Stores registration securely in backend/data/subscribers.json without asking for user credentials.
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        email = (payload.get("email") or "").strip()
+        city = (payload.get("city") or "").strip()
+        threshold = payload.get("threshold", "High")
+        enabled = bool(payload.get("enabled", True))
+        lat = payload.get("latitude", payload.get("lat"))
+        lon = payload.get("longitude", payload.get("lon"))
+
+        if not email:
+            return jsonify({
+                "status": "error",
+                "error": "Email address is required to register for heat alerts.",
+            }), 400
+
+        valid, err_msg = email_service.validate_email_address(email)
+        if not valid:
+            return jsonify({
+                "status": "error",
+                "error": f"Invalid email address: {err_msg}",
+            }), 400
+
+        if not city:
+            return jsonify({
+                "status": "error",
+                "error": "Monitored city cannot be blank.",
+            }), 400
+
+        threshold = email_service.normalize_threshold(threshold)
+
+        success, subscriber, message, is_new = email_service.subscribers_manager.register_subscriber(
+            email=email,
+            city=city,
+            threshold=threshold,
+            enabled=enabled,
+            lat=lat,
+            lon=lon,
+        )
+
+        if not success:
+            return jsonify({
+                "status": "error",
+                "error": message,
+            }), 400
+
+        # Start background monitor if enabled
+        if enabled:
+            email_service.background_monitor.start()
+
+        return jsonify({
+            "status": "success",
+            "message": message,
+            "is_new": is_new,
+            "subscriber": subscriber,
+            "monitor": email_service.background_monitor.get_status(),
+        }), 200
+
+    except Exception as exc:
+        logger.error("Error in /api/alerts/register: %s", exc, exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to register for alerts",
+            "details": str(exc),
+        }), 500
+
+
+@app.route("/api/alerts/unsubscribe", methods=["POST"])
+def post_alert_unsubscribe_endpoint():
+    """
+    Endpoint for users to unsubscribe from heat alerts.
+    Removes their registration record from backend/data/subscribers.json.
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        email = (payload.get("email") or "").strip()
+
+        if not email:
+            return jsonify({
+                "status": "error",
+                "error": "Please provide the email address to unsubscribe.",
+            }), 400
+
+        valid, err_msg = email_service.validate_email_address(email)
+        if not valid:
+            return jsonify({
+                "status": "error",
+                "error": f"Invalid email address: {err_msg}",
+            }), 400
+
+        success, message = email_service.subscribers_manager.unsubscribe_subscriber(email)
+        if not success:
+            return jsonify({
+                "status": "error",
+                "error": message,
+            }), 404
+
+        return jsonify({
+            "status": "success",
+            "message": message,
+            "email": email.lower(),
+        }), 200
+
+    except Exception as exc:
+        logger.error("Error in /api/alerts/unsubscribe: %s", exc, exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to unsubscribe",
+            "details": str(exc),
+        }), 500
+
+
+@app.route("/api/alerts/preferences", methods=["POST"])
+def post_alert_preferences_endpoint():
+    """
+    Legacy preferences endpoint mapped to register_subscriber for backwards compatibility.
+    """
+    return post_alert_register_endpoint()
+
+
+@app.route("/api/alerts/test", methods=["POST"])
+def post_send_test_email_endpoint():
+    """
+    Endpoint to send a verification test email via the central SMTP gateway.
+    Reports real delivery success or detailed failure diagnostics.
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        email = (payload.get("email") or "").strip()
+
+        # Fallback to saved preferences or subscriber if no email in payload
+        if not email:
+            prefs = email_service.preferences_manager.load()
+            email = prefs.get("email", "").strip()
+
+        if not email:
+            return jsonify({
+                "status": "error",
+                "error": "Please provide a recipient email address.",
+                "error_type": "validation_error",
+            }), 400
+
+        valid, err_msg = email_service.validate_email_address(email)
+        if not valid:
+            return jsonify({
+                "status": "error",
+                "error": f"Invalid recipient email: {err_msg}",
+                "error_type": "validation_error",
+            }), 400
+
+        configured, missing = email_service.is_smtp_configured()
+        if not configured:
+            err = f"Email delivery is not configured yet. Missing in backend/.env: {', '.join(missing)}"
+            email_service.state_manager.update({
+                "last_test_time": datetime.now(timezone.utc).isoformat(),
+                "last_test_status": "failed",
+                "last_test_error": err,
+            })
+            return jsonify({
+                "status": "error",
+                "error": err,
+                "error_type": "configuration_missing",
+            }), 503
+
+        res = email_service.send_test_email(email)
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        if res["success"]:
+            email_service.state_manager.update({
+                "last_test_time": now_iso,
+                "last_test_status": "success",
+                "last_test_error": None,
+            })
+            return jsonify({
+                "status": "success",
+                "message": res["message"],
+                "timestamp": res["timestamp"],
+            }), 200
+        else:
+            email_service.state_manager.update({
+                "last_test_time": now_iso,
+                "last_test_status": "failed",
+                "last_test_error": res.get("error"),
+            })
+            return jsonify({
+                "status": "error",
+                "error": res.get("error"),
+                "error_type": res.get("error_type", "smtp_failure"),
+                "timestamp": res.get("timestamp"),
+            }), 502
+
+    except Exception as exc:
+        logger.error("Error in /api/alerts/test: %s", exc, exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error": f"Unexpected server error sending test email: {exc}",
+            "details": str(exc),
+        }), 500
+
+
+@app.route("/api/alerts/check", methods=["POST"])
+def post_check_heat_alert_endpoint():
+    """
+    Endpoint to evaluate live heat risk against thresholds and trigger alert dispatch on demand.
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        city = payload.get("city")
+        email = payload.get("email")
+        threshold = email_service.normalize_threshold(payload.get("threshold")) if payload.get("threshold") else "Low"
+        force_send = bool(payload.get("force_send", True))
+        lat = payload.get("latitude", payload.get("lat"))
+        lon = payload.get("longitude", payload.get("lon"))
+
+        result = email_service.evaluate_and_send_heat_alert(
+            city=city,
+            email=email,
+            threshold=threshold,
+            force_send=force_send,
+            check_type="manual",
+            lat=lat,
+            lon=lon,
+        )
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("Error in /api/alerts/check: %s", exc, exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error": "Failed to evaluate heat risk alert",
+            "details": str(exc),
+        }), 500
+
+
 if __name__ == "__main__":
+    # Start the background heat alert worker automatically with the backend server
+    # (avoid duplicate launch in Werkzeug reload supervisor process)
+    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        start_background_worker()
+
     # Run Flask server on localhost:5000
     app.run(debug=True, host="127.0.0.1", port=5000)
+
 
 

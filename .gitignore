@@ -220,3 +220,7 @@ __marimo__/
 # Local Alert Configuration
 alert_config*.json
 backend/alert_config*.json
+alert_preferences*.json
+backend/data/
+alert_state*.json
+

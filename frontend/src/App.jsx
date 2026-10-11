@@ -9,6 +9,7 @@ import HeatEmergencyResponse from "./components/HeatEmergencyResponse";
 import HeatwaveImpactSimulator from "./components/HeatwaveImpactSimulator";
 import SmartCoolingProjectPlanner from "./components/SmartCoolingProjectPlanner";
 import HeatSafetyChallenge from "./components/HeatSafetyChallenge";
+import EmailHeatAlerts from "./components/EmailHeatAlerts";
 import "./App.css";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "./components/Navbar";
@@ -83,6 +84,7 @@ const NAVIGATION_GROUPS = [
   {
     title: "SAFETY",
     items: [
+      { id: "email-alerts", label: "Heat Alerts", icon: "🔔" },
       { id: "emergency-response", label: "Heat Emergency Response Center", icon: "🏥" },
       { id: "safety-challenge", label: "Heat Safety Challenge & Awareness", icon: "🏆" },
       { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
@@ -105,6 +107,7 @@ const DASHBOARD_PAGES = NAVIGATION_GROUPS.flatMap((group) => group.items);
 const getPageFromHash = () => {
   const page = window.location.hash.replace(/^#/, "");
   if (!page || page === "home") return "home";
+  if (page === "heat-alerts" || page === "alerts") return "email-alerts";
   if (page === "satellite" || page === "satellite-monitor") return "satellite-monitor";
   if (page === "satellite-image-heat-analysis" || page === "satellite-image-analysis") return "satellite-image-heat-analysis";
   return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "home";
@@ -845,6 +848,13 @@ function App() {
         </section>
 
         </>}
+
+        {/* ── HEAT ALERTS ── */}
+        {activePage === "email-alerts" && (
+          <section className="section">
+            <EmailHeatAlerts />
+          </section>
+        )}
 
         {/* ── SMART HEAT AWARENESS ── */}
         {activePage === "smart-awareness" && (
