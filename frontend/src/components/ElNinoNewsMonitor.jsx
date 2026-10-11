@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const FILTER_TABS = [
-  { id: "india", label: "In India", icon: "🇮🇳" },
+  { id: "india", label: "In India" },
   { id: "global", label: "Global", icon: "🌍" },
   { id: "climate", label: "Climate", icon: "🌡️" },
   { id: "impacts", label: "El Niño Impacts", icon: "⚠️" },
@@ -145,7 +145,7 @@ function ElNinoNewsMonitor() {
                 className={`elnino-news-filter-tab ${isActive ? "active" : ""}`}
                 onClick={() => setActiveFilter(tab.id)}
               >
-                <span>{tab.icon}</span>
+                {tab.icon && <span>{tab.icon}</span>}
                 <span>{tab.label}</span>
               </button>
             );

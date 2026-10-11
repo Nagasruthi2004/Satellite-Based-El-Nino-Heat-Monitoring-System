@@ -232,9 +232,7 @@ function HeatMap({
     ? { lat: weather.lat, lon: weather.lon }
     : mapLocation
       ? { lat: mapLocation.lat, lon: mapLocation.lon }
-      : requireLocationSelection
-        ? null
-        : { lat: 13.0827, lon: 80.2707 };
+      : null;
 
   const [hoverCoords, setHoverCoords] = useState(initialCoordinates);
   const [isHovering, setIsHovering] = useState(false);

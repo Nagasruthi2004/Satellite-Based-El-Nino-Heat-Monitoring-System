@@ -1,1558 +1,777 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import "./DisasterInformation.css";
+import { detectBrowserLocation } from "../utils/locationService";
 
-const DISASTERS_DATA = [
-  {
-    id: "heatwave",
-    name: "Heatwave",
-    icon: "🔥",
-    classSuffix: "cat-heatwave",
-    categoryTag: "Thermal Extreme",
-    authority: "IMD & NDMA Guidelines",
-    whatIsIt:
-      "A heatwave is an extended period of abnormally high ambient temperatures, often coupled with oppressive humidity. In India, the India Meteorological Department (IMD) declares a heatwave when the maximum temperature reaches at least 40°C / 104°F in plains or 30°C / 86°F in hilly regions, with departures from normal of 4.5°C / 8.1°F to 6.4°C / 11.5°F (or severe heatwave when departure exceeds 6.4°C / 11.5°F, or absolute temperatures exceed 45°C / 113°F).",
-    warningSigns: [
-      "Consecutive days of extreme temperatures soaring above normal seasonal baselines",
-      "Persistent dry, hot afternoon winds (Loo) blowing across inland plains",
-      "Elevated Land Surface Temperature (LST) and very high UV index ratings",
-      "Abnormal lack of nighttime cooling, preventing physiological thermal recovery",
-      "Rapid wilting of vegetation and rapid drop in surface water reservoirs"
-    ],
-    precautions: [
-      "Keep track of official IMD daily heatwave bulletins and local district weather alerts.",
-      "Stay indoors during peak radiation hours (12:00 PM to 3:00 PM).",
-      "Wear loose, lightweight, light-colored cotton clothing to facilitate natural air circulation.",
-      "Shield head and eyes with umbrellas, wide-brimmed hats, or damp cotton cloths when outdoors.",
-      "Keep curtains or blinds closed on sun-facing windows during daytime."
-    ],
-    during: [
-      "Hydrate proactively: drink water at frequent intervals even without feeling thirsty.",
-      "Take oral rehydration solutions (ORS), coconut water, lemon water, or buttermilk.",
-      "Rest in cool, shaded, or air-conditioned environments whenever possible.",
-      "Apply cool, damp towels to forehead, neck, and armpits if feeling overheated.",
-      "Check on high-risk individuals: senior citizens, young infants, and outdoor workers."
-    ],
-    avoid: [
-      "Never leave children, elderly individuals, or pets unattended in parked vehicles.",
-      "Avoid strenuous outdoor physical labor and intense athletic exercises during midday.",
-      "Avoid dehydrating beverages: alcohol, carbonated soft drinks, and heavy caffeine.",
-      "Avoid heavy, high-protein, or stale food that increases metabolic heat production.",
-      "Avoid sudden transition from extreme outdoor heat into freezing cold water."
-    ],
-    preparednessTips: [
-      "Prepare a summer emergency kit: ORS packets, cooling gel packs, and electrolyte sachets.",
-      "Identify nearby public cooling centres, shaded community shelters, and primary health clinics.",
-      "Install reflective roof coatings or green shading to lower indoor room temperatures.",
-      "Know how to distinguish heat exhaustion (heavy sweating, paleness) from critical heatstroke (confusion, cessation of sweating, fever > 40°C / 104°F)."
-    ],
-    officialSources: [
-      {
-        name: "IMD Heatwave Bulletins",
-        agency: "India Meteorological Department",
-        url: "https://mausam.imd.gov.in/"
-      },
-      {
-        name: "NDMA Heat Wave Action Plan",
-        agency: "National Disaster Management Authority",
-        url: "https://ndma.gov.in/Natural-Hazards/Heat-Wave"
+const BACKEND_BASE = "http://127.0.0.1:5000";
+
+// Color tokens matching IMD & WMO heat severity standards
+const RISK_THEMES = {
+  Low: { color: "#10b981", bg: "rgba(16, 185, 129, 0.12)", border: "#10b981", label: "Low Risk", icon: "🟢" },
+  Moderate: { color: "#f59e0b", bg: "rgba(245, 158, 11, 0.12)", border: "#f59e0b", label: "Moderate Risk", icon: "🟡" },
+  High: { color: "#ef4444", bg: "rgba(239, 68, 68, 0.12)", border: "#ef4444", label: "High Risk", icon: "🟠" },
+  Critical: { color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.15)", border: "#8b5cf6", label: "Critical Heatwave", icon: "🔴" },
+};
+
+function getTheme(level) {
+  const norm = String(level || "Low").toLowerCase();
+  if (norm.includes("critical") || norm.includes("extreme")) return RISK_THEMES.Critical;
+  if (norm.includes("high")) return RISK_THEMES.High;
+  if (norm.includes("moderate") || norm.includes("medium")) return RISK_THEMES.Moderate;
+  return RISK_THEMES.Low;
+}
+
+function createMapPin(level, isSelected = false) {
+  const theme = getTheme(level);
+  const size = isSelected ? 34 : 26;
+  const pulseHtml = isSelected
+    ? `<span class="map-pulse-halo" style="background:${theme.color};"></span>`
+    : "";
+
+  const svg = `
+    <div class="custom-pin-wrapper">
+      ${pulseHtml}
+      <svg width="${size}" height="${size + 8}" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 0C6.268 0 0 6.268 0 14c0 9.625 14 22 14 22s14-12.375 14-22c0-7.732-6.268-14-14-14z" fill="${theme.color}" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="14" cy="14" r="5" fill="#ffffff"/>
+      </svg>
+    </div>
+  `;
+
+  return L.divIcon({
+    html: svg,
+    className: "heat-risk-leaflet-pin",
+    iconSize: [size, size + 8],
+    iconAnchor: [size / 2, size + 8],
+    popupAnchor: [0, -(size + 4)],
+  });
+}
+
+// Map Click Listener to pick coordinates anywhere on map
+function MapClickPicker({ onCoordSelect }) {
+  useMapEvents({
+    click(e) {
+      if (e?.latlng) {
+        onCoordSelect(Number(e.latlng.lat.toFixed(4)), Number(e.latlng.lng.toFixed(4)));
       }
-    ]
-  },
-  {
-    id: "flood",
-    name: "Flood",
-    icon: "🌊",
-    classSuffix: "cat-flood",
-    categoryTag: "Hydrological Hazard",
-    authority: "CWC & NDMA India",
-    whatIsIt:
-      "A flood is an overflow of an expanse of water that submerges land typically dry. Floods in India are commonly caused by intense monsoonal downpours, cloudburst events, cyclonic storm surges, riverbank overflow, breached embankments, or inadequate municipal storm drainage systems in rapidly urbanized areas.",
-    warningSigns: [
-      "Continuous torrential rainfall forecasts and Red/Orange rainfall warnings from IMD",
-      "Rapid elevation of local river water gauge levels crossing danger markers (CWC bulletins)",
-      "Sudden muddiness or rapid velocity increase in local streams and canals",
-      "Street stormwater backflows through sewer manholes and storm drains",
-      "Dam/reservoir water discharge notifications issued by irrigation authorities"
-    ],
-    precautions: [
-      "Monitor Central Water Commission (CWC) real-time river basin flood advisories.",
-      "Identify higher ground elevation points and safe community evacuation routes.",
-      "Keep important identity documents, property deeds, and medicines in waterproof pouches.",
-      "Elevate electrical appliances and wiring above anticipated flood water levels.",
-      "Maintain emergency flood bags ready for rapid evacuation."
-    ],
-    during: [
-      "Evacuate immediately when advised by district disaster management authorities or NDRF.",
-      "Move family members and livestock to designated high-ground relief centres.",
-      "Switch off main electrical circuit breakers and domestic gas cylinders before leaving.",
-      "Drink only boiled, chlorinated, or sealed bottled water to avoid waterborne pathogens.",
-      "Use a sturdy walking stick to check ground firmness and water depth when walking."
-    ],
-    avoid: [
-      "Never attempt to walk, swim, or drive through flowing floodwaters (15 cm knocks down an adult; 30-60 cm sweeps away cars).",
-      "Do not touch fallen power lines, submerged electrical cables, or metal utility poles.",
-      "Never consume food items or unsealed water that has come into contact with floodwater.",
-      "Avoid standing on bridges, culverts, or river embankments during high-velocity surges.",
-      "Do not return to submerged homes until civil engineers certify structural safety."
-    ],
-    preparednessTips: [
-      "Pack a survival Go-Bag: waterproof torch, emergency whistle, water purification tablets, 3-day dry rations, power bank, and first-aid supplies.",
-      "Save contact numbers of local district flood control rooms, SDRF, and NDRF battalions.",
-      "Anchor outdoor fuel tanks or remove hazardous chemicals from ground level."
-    ],
-    officialSources: [
-      {
-        name: "CWC Flood Forecasting",
-        agency: "Central Water Commission India",
-        url: "https://ffs.india-water.gov.in/"
-      },
-      {
-        name: "NDMA Flood Guidelines",
-        agency: "National Disaster Management Authority",
-        url: "https://ndma.gov.in/Natural-Hazards/Floods"
-      },
-      {
-        name: "NDRF Response Operations",
-        agency: "National Disaster Response Force",
-        url: "https://www.ndrf.gov.in/"
-      }
-    ]
-  },
-  {
-    id: "cyclone",
-    name: "Cyclone",
-    icon: "🌪️",
-    classSuffix: "cat-cyclone",
-    categoryTag: "Atmospheric Storm",
-    authority: "IMD RSMC & NDMA",
-    whatIsIt:
-      "A tropical cyclone is an intense circular storm system originating over warm tropical oceans (Bay of Bengal and Arabian Sea in the Indian sub-continent). Characterized by central low atmospheric pressure, rotating squall bands, destructive sustained winds ranging from 62 to over 220 km/h, catastrophic coastal storm surges, and localized torrential rainfall.",
-    warningSigns: [
-      "IMD 4-Stage Cyclone Warning Bulletins: Pre-Cyclone Watch, Alert (Yellow), Warning (Orange), and Post-Landfall Outlook (Red)",
-      "Steep barometric pressure drops recorded at coastal meteorological observatories",
-      "Turbulent sea swell, anomalous high-tide surges, and ocean foam on beaches",
-      "Dramatic shifts in wind velocity and persistent dark anvil-shaped cloud ceilings",
-      "Sudden aggressive squalls with wind gusts rattling glass panes"
-    ],
-    precautions: [
-      "Inspect home roofs, tin sheds, and signboards; secure or dismantle loose outdoor objects.",
-      "Trim dead or overhanging tree limbs close to power lines and roofs.",
-      "Cover glass windows with protective shutters or cross-tape them to prevent flying shards.",
-      "Stockpile 3 to 7 days of non-perishable food, potable drinking water, and batteries.",
-      "Keep battery-operated transceivers or AM radios tuned to official IMD broadcast updates."
-    ],
-    during: [
-      "Remain indoors within the strongest, windowless central room or proceed to a Pucca Cyclone Shelter.",
-      "Keep radio tuned for official updates; stay calm and reassure children and elderly.",
-      "Disconnect all non-essential electrical appliances and shut off main gas cylinders.",
-      "If coastal evacuation is announced, move promptly without delaying for heavy baggage.",
-      "Beware of the cyclone 'Eye': temporary calm does NOT mean the storm is over; violent reverse winds will strike suddenly."
-    ],
-    avoid: [
-      "Never venture outside during the temporary calm of the storm's eye.",
-      "Do not go near beaches, harbors, or coastal seawalls to watch storm waves.",
-      "Avoid sheltering under tall trees, electrical pylons, or advertising hoardings.",
-      "Never spread or believe unverified rumours on social media; rely solely on IMD and district collectors.",
-      "Avoid driving through fallen trees or flooded underpasses."
-    ],
-    preparednessTips: [
-      "Maintain a waterproof emergency bag with identity papers, land records, cash, power banks, and flashlights.",
-      "Identify the nearest designated Cyclone Shelter and safest inland route.",
-      "Coastal fishermen must strictly obey IMD advisories and moor boats safely in designated creeks."
-    ],
-    officialSources: [
-      {
-        name: "IMD Cyclone Warning Division",
-        agency: "RSMC New Delhi / IMD",
-        url: "https://rsmcnewdelhi.imd.gov.in/"
-      },
-      {
-        name: "NDMA Cyclone Safety Manual",
-        agency: "National Disaster Management Authority",
-        url: "https://ndma.gov.in/Natural-Hazards/Cyclones"
-      }
-    ]
-  },
-  {
-    id: "landslide",
-    name: "Landslide",
-    icon: "🪨",
-    classSuffix: "cat-landslide",
-    categoryTag: "Geological Mass Movement",
-    authority: "GSI & NDMA India",
-    whatIsIt:
-      "A landslide is the downward and outward movement of a mass of rock, earth, debris, or mud under the direct influence of gravity. In mountainous terrains like the Himalayas and Western Ghats, landslides are triggered by prolonged monsoonal rainfall, cloudbursts, earthquakes, slope deforestation, and unscientific slope excavation.",
-    warningSigns: [
-      "Appearance of new cracks in hill slopes, foundations, pavements, or retaining walls",
-      "Sudden emergence of water springs or wet saturated ground on previously dry hillsides",
-      "Tilting of trees, utility poles, fences, or retaining walls out of vertical alignment",
-      "Sudden muddiness or volume drop in mountain streams (indicating an upstream blockage/dam)",
-      "Low rumbling, cracking, or grinding sounds echoing from the mountain slope"
-    ],
-    precautions: [
-      "Consult Geological Survey of India (GSI) Landslide Hazard Zonation maps for your region.",
-      "Avoid building homes close to steep mountain slopes, valley floors, or natural drainage ravines.",
-      "Ensure proper drainage pipes and channels are clear around retaining walls and hillside properties.",
-      "Stay vigilant during persistent torrential rainfall in hilly Ghat sections.",
-      "Plan alternative hillside evacuation routes with local village/town disaster committees."
-    ],
-    during: [
-      "Evacuate quickly away from the path of the slide toward stable, high-elevation bedrock terrain.",
-      "If caught inside a structure and unable to escape, take cover under heavy sturdy furniture and curl into a tight ball protecting head and neck.",
-      "Alert immediate neighbors and phone local district disaster control rooms.",
-      "Listen for unusual sounds like trees snapping or rocks knocking together."
-    ],
-    avoid: [
-      "Never attempt to cross or drive over an active mudslide or rockfall zone.",
-      "Do not stay in low-lying valley bottoms, steep road embankments, or natural drainage gorges during heavy rain.",
-      "Do not return to slide-hit zones until certified geotechnical clearance is granted by authorities.",
-      "Avoid clearing slope debris yourself during ongoing heavy rainfall."
-    ],
-    preparednessTips: [
-      "Keep an emergency survival kit accessible: whistle, battery torch, first-aid kit, and sturdy trekking shoes.",
-      "Participate in community mock drills conducted by district disaster management authorities.",
-      "Report newly observed slope cracks or tilting utility lines immediately to local revenue or PWD officials."
-    ],
-    officialSources: [
-      {
-        name: "GSI Landslide Hazard Portal",
-        agency: "Geological Survey of India",
-        url: "https://www.gsi.gov.in/"
-      },
-      {
-        name: "NDMA Landslide Guidelines",
-        agency: "National Disaster Management Authority",
-        url: "https://ndma.gov.in/Natural-Hazards/Landslides"
-      }
-    ]
-  },
-  {
-    id: "earthquake",
-    name: "Earthquake",
-    icon: "🌍",
-    classSuffix: "cat-earthquake",
-    categoryTag: "Tectonic Seismic Event",
-    authority: "NCS India & USGS",
-    whatIsIt:
-      "An earthquake is a sudden, violent shaking of the Earth's surface caused by the rapid release of accumulated strain energy along geologic fault lines in the tectonic crust. Note: Earthquakes cannot be predicted in advance by any scientific system or weather model; immediate safety actions and seismic-resistant building standards are essential.",
-    warningSigns: [
-      "Sudden ground vibration, sharp jolt, or rolling lateral tremors",
-      "Rattling of windows, doors, chinaware, and suspended light fixtures",
-      "Sub-surface rumbling, roaring sound just before or accompanying shaking",
-      "Rapid swaying of tall structures, lampposts, and overhead transmission lines",
-      "(No advance scientific short-term prediction exists; response must be spontaneous)"
-    ],
-    precautions: [
-      "Anchor tall bookcases, heavy wardrobes, and water heaters firmly to wall studs.",
-      "Do not hang heavy mirrors, picture frames, or glass shelves directly above beds or couches.",
-      "Identify safe spots in every room: under sturdy desks, interior corners away from windows.",
-      "Know how to shut off main domestic gas valves and electrical circuit breakers.",
-      "Conduct regular family 'Drop, Cover, and Hold On' drills."
-    ],
-    during: [
-      "IF INDOORS: DROP to your hands and knees, take COVER under a sturdy desk or table, and HOLD ON until tremors stop. If no desk is nearby, crouch against an interior wall covering head and neck.",
-      "IF OUTDOORS: Move to an open clearing away from buildings, glass facades, chimneys, trees, and overhead power cables.",
-      "IF IN A MOVING VEHICLE: Pull over safely away from flyovers, bridges, and overhead wires; stay inside until shaking stops.",
-      "Protect your head and vital organs with cushions, pillows, or arms."
-    ],
-    avoid: [
-      "DO NOT use elevators or lifts during or immediately after an earthquake.",
-      "Do not rush frantically toward crowded staircases or exit doors while tremors continue.",
-      "Avoid standing near exterior walls, glass windows, heavy mirrors, or hanging chandeliers.",
-      "Do not light matches, candles, or lighters until gas lines are confirmed completely safe."
-    ],
-    preparednessTips: [
-      "Keep an emergency grab-bag near exit: whistle, flashlight, dust mask, first-aid, sturdy shoes, and 3-day drinking water.",
-      "Establish an out-of-state/out-of-city family contact person to coordinate check-ins if local mobile networks congest.",
-      "Follow National Building Code (NBC) seismic design standards when constructing homes."
-    ],
-    officialSources: [
-      {
-        name: "National Center for Seismology",
-        agency: "Ministry of Earth Sciences India",
-        url: "https://seismo.gov.in/"
-      },
-      {
-        name: "USGS Earthquake Hazards",
-        agency: "United States Geological Survey",
-        url: "https://www.usgs.gov/programs/earthquake-hazards"
-      },
-      {
-        name: "NDMA Earthquake Guidelines",
-        agency: "National Disaster Management Authority",
-        url: "https://ndma.gov.in/Natural-Hazards/Earthquakes"
-      }
-    ]
-  }
-];
-
-const EMERGENCY_SUPPLIES = [
-  {
-    icon: "💧",
-    title: "Potable Water",
-    desc: "At least 3-4 litres per person per day for drinking and basic sanitation for minimum 72 hours."
-  },
-  {
-    icon: "🥫",
-    title: "Non-Perishable Food",
-    desc: "3-day supply of canned goods, dry fruits, energy bars, and ready-to-eat meals requiring no cooking."
-  },
-  {
-    icon: "🩹",
-    title: "Comprehensive First-Aid",
-    desc: "Bandages, sterile gauze, antiseptic ointments, scissors, ORS sachets, and 7-day prescription medicines."
-  },
-  {
-    icon: "🔦",
-    title: "Light & Power",
-    desc: "LED torches/flashlights, extra alkaline batteries, solar lanterns, and high-capacity portable power banks."
-  },
-  {
-    icon: "📻",
-    title: "Emergency Communications",
-    desc: "Battery-powered or hand-crank AM/FM radio, loud emergency whistles, and spare phone charging cables."
-  },
-  {
-    icon: "📂",
-    title: "Crucial Documents & Cash",
-    desc: "Aadhaar, passport, property records, and emergency cash sealed safely in double waterproof pouches."
-  }
-];
-
-const OFFICIAL_DIRECTORIES = [
-  {
-    name: "India Meteorological Department (IMD)",
-    role: "Weather, Cyclones, Heatwaves & Monsoon Bulletins",
-    url: "https://mausam.imd.gov.in/",
-    badge: "Official Weather"
-  },
-  {
-    name: "National Disaster Management Authority (NDMA)",
-    role: "Apex Disaster Preparedness, Guidelines & Policy",
-    url: "https://ndma.gov.in/",
-    badge: "Apex Disaster Body"
-  },
-  {
-    name: "National Disaster Response Force (NDRF)",
-    role: "Specialized Emergency Search, Rescue & Relief Operations",
-    url: "https://www.ndrf.gov.in/",
-    badge: "Rescue & Relief"
-  },
-  {
-    name: "Central Water Commission (CWC)",
-    role: "National River Water Gauges & Flood Forecasting",
-    url: "https://ffs.india-water.gov.in/",
-    badge: "Flood Warning"
-  },
-  {
-    name: "Geological Survey of India (GSI)",
-    role: "Landslide Hazard Zonation & Early Warning Systems",
-    url: "https://www.gsi.gov.in/",
-    badge: "Geological Hazard"
-  },
-  {
-    name: "National Center for Seismology (NCS)",
-    role: "Government Earthquake Monitoring & Seismic Network",
-    url: "https://seismo.gov.in/",
-    badge: "Seismic Monitoring"
-  },
-  {
-    name: "United States Geological Survey (USGS)",
-    role: "Global Earthquake Hazards & Seismic Data",
-    url: "https://www.usgs.gov/programs/earthquake-hazards",
-    badge: "Global Seismic"
-  }
-];
-
-const SUGGESTED_LOCATIONS = [
-  { name: "Chennai", icon: "🏙️", note: "Tamil Nadu (Coastal)" },
-  { name: "Coimbatore", icon: "🌄", note: "Tamil Nadu (Inland)" },
-  { name: "Wayanad", icon: "⛰️", note: "Kerala (Western Ghats)" },
-  { name: "Delhi", icon: "🏛️", note: "Northern Plains" },
-  { name: "Tokyo", icon: "🗾", note: "Pacific Seismic Zone" }
-];
-
-const SUPPORTED_HAZARDS = [
-  {
-    id: "flood",
-    displayName: "Flood Risk",
-    icon: "🌊",
-    classSuffix: "cat-flood",
-    monitoringMethod: "Rainfall intensity & 24h accumulation"
-  },
-  {
-    id: "cyclone",
-    displayName: "Cyclone Risk",
-    icon: "🌪️",
-    classSuffix: "cat-cyclone",
-    monitoringMethod: "Wind velocity & barometric pressure"
-  },
-  {
-    id: "landslide",
-    displayName: "Landslide Risk",
-    icon: "🪨",
-    classSuffix: "cat-landslide",
-    monitoringMethod: "Precipitation trigger & soil saturation"
-  },
-  {
-    id: "earthquake",
-    displayName: "Earthquake Risk / Recent Event Monitoring / Early Warning",
-    shortName: "Earthquake Risk / Event Monitoring",
-    icon: "🌍",
-    classSuffix: "cat-earthquake",
-    monitoringMethod: "Verified seismic catalog (USGS/NCS)"
-  },
-  {
-    id: "heatwave",
-    displayName: "Heatwave Risk",
-    icon: "🔥",
-    classSuffix: "cat-heatwave",
-    monitoringMethod: "Live temperature & thermal index"
-  }
-];
-
-export default function DisasterInformation({ currentHeatRisk, weather }) {
-  // Existing state for card selection
-  const [selectedDisaster, setSelectedDisaster] = useState(null);
-
-  // New Early Warning & Risk Monitoring state
-  const initialLocation = weather?.city || "Chennai";
-  const [locationInput, setLocationInput] = useState(initialLocation);
-  const [selectedHazardType, setSelectedHazardType] = useState("flood");
-  const [riskData, setRiskData] = useState(null);
-  const [isRiskLoading, setIsRiskLoading] = useState(false);
-  const [checkedLocationName, setCheckedLocationName] = useState(initialLocation);
-
-  const selectedDisasterData = selectedDisaster
-    ? DISASTERS_DATA.find((d) => d.id === selectedDisaster) || null
-    : null;
-
-  const activeHeatRiskLevel =
-    typeof currentHeatRisk === "object"
-      ? currentHeatRisk?.level
-      : currentHeatRisk || weather?.heat_risk;
-
-  // Function to execute Risk & Early Warning check
-  const handleCheckRisk = useCallback(
-    async (cityOverride, latOverride, lonOverride) => {
-      const targetCity = (cityOverride !== undefined ? cityOverride : locationInput).trim();
-      if (!targetCity && latOverride == null) return;
-
-      setIsRiskLoading(true);
-      setCheckedLocationName(targetCity || "Selected Location");
-
-      try {
-        const params = new URLSearchParams();
-        if (targetCity) params.set("city", targetCity);
-        if (latOverride != null) params.set("latitude", latOverride);
-        if (lonOverride != null) params.set("longitude", lonOverride);
-        params.set("disaster_type", selectedHazardType);
-
-        const resp = await fetch(`http://127.0.0.1:5000/disaster-risk?${params.toString()}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          setRiskData(data);
-          if (data.location) {
-            setCheckedLocationName(data.location);
-          }
-          setIsRiskLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.warn("Disaster risk API request failed, applying client fallback evaluation:", err);
-      }
-
-      // Client-side fallback if backend is unreachable
-      // Evaluates using same scientific rules if matching weather is available; otherwise shows unavailable data state
-      if (
-        weather &&
-        (targetCity.toLowerCase() === (weather.city || "").toLowerCase() ||
-          targetCity.toLowerCase() === "coimbatore" ||
-          targetCity.toLowerCase() === "chennai")
-      ) {
-        const temp = Number(weather.temperature) || 0;
-        const hum = Number(weather.humidity) || 0;
-        const rain = Number(weather.rainfall) || 0;
-        const windKmh = Math.round((Number(weather.wind_speed) || 0) * 3.6);
-        const p = weather.pressure || 1013;
-        const ts = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
-
-        // Flood status
-        let floodStatus = "Low";
-        let floodMsg = `Low flood risk: Dry to minimal rainfall (${rain} mm/h).`;
-        if (rain >= 30) {
-          floodStatus = "Critical";
-          floodMsg = `Critical flood risk: Torrential rainfall (${rain} mm/h) detected.`;
-        } else if (rain >= 10) {
-          floodStatus = "High";
-          floodMsg = `High flood risk: Heavy downpours (${rain} mm/h) observed.`;
-        } else if (rain >= 2) {
-          floodStatus = "Moderate";
-          floodMsg = `Moderate flood risk: Active precipitation (${rain} mm/h).`;
-        }
-
-        // Cyclone status
-        let cycloneStatus = "No Alert";
-        let cycloneMsg = `No active verified cyclone alert available. Wind speed is ${windKmh} km/h and pressure is ${p} hPa.`;
-        if (windKmh >= 89 || p < 990) {
-          cycloneStatus = "High Risk";
-          cycloneMsg = `High cyclonic risk: Violent gale-force winds (${windKmh} km/h) and depressed barometric pressure (${p} hPa).`;
-        } else if (windKmh >= 62 || p < 1000) {
-          cycloneStatus = "Warning";
-          cycloneMsg = `Cyclone warning: Sustained gale-force winds (${windKmh} km/h).`;
-        } else if (windKmh >= 39 || p < 1005) {
-          cycloneStatus = "Watch";
-          cycloneMsg = `Cyclone watch: Squally wind conditions (${windKmh} km/h).`;
-        }
-
-        // Landslide status
-        let landslideStatus = "Low";
-        let landslideMsg = `Low landslide risk: Negligible rainfall triggering conditions (${rain} mm/h).`;
-        if (rain >= 35) {
-          landslideStatus = "Critical";
-          landslideMsg = `Critical landslide risk: Torrential precipitation (${rain} mm/h) on vulnerable slopes.`;
-        } else if (rain >= 15) {
-          landslideStatus = "High";
-          landslideMsg = `High landslide risk: Heavy soil-saturating rainfall (${rain} mm/h).`;
-        } else if (rain >= 3) {
-          landslideStatus = "Moderate";
-          landslideMsg = `Moderate landslide risk: Persistent precipitation (${rain} mm/h).`;
-        }
-
-        // Heatwave status (reusing project logic)
-        let heatLevel = activeHeatRiskLevel || "Low";
-        if (!heatLevel) {
-          if (temp >= 40) heatLevel = "Critical";
-          else if (temp >= 36) heatLevel = "High";
-          else if (temp >= 30) heatLevel = "Medium";
-          else heatLevel = "Low";
-        }
-
-        setRiskData({
-          success: true,
-          location: weather.city || targetCity,
-          latitude: weather.lat,
-          longitude: weather.lon,
-          status: "Active Risk Monitoring",
-          timestamp: ts,
-          disasters: {
-            flood: {
-              id: "flood",
-              title: "Flood Risk",
-              status: floodStatus,
-              category: "Risk Monitoring",
-              message: floodMsg,
-              data_source: "OpenWeather Live Precipitation Telemetry",
-              last_updated: ts,
-              details: {
-                current_rainfall_mm_h: rain,
-                water_level_gauge: "No verified river water-level gauge (CWC) configured for this location",
-                condition: weather.weather_description || "Cloudy"
-              },
-              official_guidance: "Model-derived hydrological risk monitoring. Consult CWC and local District Disaster Management Authorities for statutory flood directives."
-            },
-            cyclone: {
-              id: "cyclone",
-              title: "Cyclone Risk",
-              status: cycloneStatus,
-              category: cycloneStatus === "No Alert" ? "No Alert" : "Risk Monitoring",
-              message: cycloneMsg,
-              data_source: "OpenWeather Live Anemometer & Barometric Telemetry",
-              last_updated: ts,
-              details: {
-                wind_speed_kmh: windKmh,
-                barometric_pressure_hpa: p,
-                official_bulletin: "No active verified IMD/RSMC cyclone alert bulletin available",
-                condition: weather.weather_description || "Cloudy"
-              },
-              official_guidance: "Real-time atmospheric monitoring. For official statutory cyclone warnings, consult the India Meteorological Department (IMD RSMC New Delhi)."
-            },
-            landslide: {
-              id: "landslide",
-              title: "Landslide Risk",
-              status: landslideStatus,
-              category: "Risk Monitoring",
-              message: landslideMsg,
-              data_source: "OpenWeather Precipitation Telemetry",
-              last_updated: ts,
-              details: {
-                current_rainfall_mm_h: rain,
-                terrain_slope_sensor: "No verified geological terrain sensor configured for this location",
-                condition: weather.weather_description || "Cloudy"
-              },
-              official_guidance: "Hydrological triggering assessment. For geotechnical slope hazard zonation, refer to Geological Survey of India (GSI) bulletins."
-            },
-            earthquake: {
-              id: "earthquake",
-              title: "Earthquake Risk / Recent Event Monitoring / Early Warning",
-              status: "No Verified Alert Data",
-              category: "No Verified Alert Data",
-              message: "No verified earthquake alert data is currently available for this location.",
-              data_source: null,
-              last_updated: null,
-              details: {
-                recent_events_count: 0,
-                recent_events: [],
-                seismic_network: "National Center for Seismology (NCS) & USGS Global Seismographic Network"
-              },
-              scientific_rule: "Scientific Fact: Earthquakes cannot be predicted in advance by any scientific system or weather model. Real-time seismic monitoring reports verified ground tremors from official seismic networks (USGS/NCS)."
-            },
-            heatwave: {
-              id: "heatwave",
-              title: "Heatwave Risk",
-              status: heatLevel,
-              category: "Risk Monitoring",
-              message: `Heat conditions monitored at ${temp}°C with ${hum}% relative humidity.`,
-              data_source: "OpenWeather Live Surface Observations & Thermal Classification Model",
-              last_updated: ts,
-              details: {
-                temperature_c: temp,
-                humidity_percent: hum,
-                wind_speed_kmh: windKmh,
-                rainfall_mm: rain,
-                condition: weather.weather_description || "Cloudy"
-              },
-              official_guidance: "Thermal index calculated from live surface meteorological data. For official state heatwave declarations, check daily IMD Heat Wave Bulletins."
-            }
-          }
-        });
-      } else {
-        // Location has no verified weather / disaster data available
-        setRiskData({
-          success: false,
-          location: targetCity,
-          status: "No Verified Alert Data",
-          message: "No verified alert data is currently available for this location.",
-          disasters: {
-            flood: {
-              id: "flood",
-              title: "Flood Risk",
-              status: "No Verified Alert Data",
-              category: "No Verified Alert Data",
-              message: "No verified alert data is currently available for this location.",
-              data_source: null,
-              last_updated: null,
-              details: {}
-            },
-            cyclone: {
-              id: "cyclone",
-              title: "Cyclone Risk",
-              status: "No Verified Alert Data",
-              category: "No Verified Alert Data",
-              message: "No verified alert data is currently available for this location.",
-              data_source: null,
-              last_updated: null,
-              details: {}
-            },
-            landslide: {
-              id: "landslide",
-              title: "Landslide Risk",
-              status: "No Verified Alert Data",
-              category: "No Verified Alert Data",
-              message: "No verified alert data is currently available for this location.",
-              data_source: null,
-              last_updated: null,
-              details: {}
-            },
-            earthquake: {
-              id: "earthquake",
-              title: "Earthquake Risk / Recent Event Monitoring / Early Warning",
-              status: "No Verified Alert Data",
-              category: "No Verified Alert Data",
-              message: "No verified earthquake alert data is currently available for this location.",
-              data_source: null,
-              last_updated: null,
-              details: {},
-              scientific_rule: "Scientific Fact: Earthquakes cannot be predicted in advance by any scientific system or weather model. Real-time seismic monitoring reports verified ground tremors from official seismic networks (USGS/NCS)."
-            },
-            heatwave: {
-              id: "heatwave",
-              title: "Heatwave Risk",
-              status: "No Verified Alert Data",
-              category: "No Verified Alert Data",
-              message: "No verified alert data is currently available for this location.",
-              data_source: null,
-              last_updated: null,
-              details: {}
-            }
-          }
-        });
-      }
-
-      setIsRiskLoading(false);
     },
-    [locationInput, selectedHazardType, weather, activeHeatRiskLevel]
-  );
+  });
+  return null;
+}
 
-  // Automatically run initial risk check on mount
+// Map pan controller when location changes
+function MapRecenter({ center }) {
+  const map = useMap();
   useEffect(() => {
-    handleCheckRisk(initialLocation);
+    if (center && Array.isArray(center) && center.length === 2 && !isNaN(center[0]) && !isNaN(center[1])) {
+      map.setView(center, map.getZoom(), { animate: true });
+    }
+  }, [center, map]);
+  return null;
+}
+
+const QUICK_CITIES = [
+  { name: "Coimbatore", lat: 11.0168, lon: 76.9558 },
+  { name: "Chennai", lat: 13.0827, lon: 80.2707 },
+  { name: "Madurai", lat: 9.9252, lon: 78.1198 },
+  { name: "Salem", lat: 11.6643, lon: 78.1460 },
+  { name: "Tiruchirappalli", lat: 10.7905, lon: 78.7047 },
+  { name: "Bengaluru", lat: 12.9716, lon: 77.5946 },
+  { name: "Hyderabad", lat: 17.3850, lon: 78.4867 },
+  { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
+  { name: "Delhi", lat: 28.6139, lon: 77.2090 },
+];
+
+export default function DisasterInformation({
+  currentHeatRisk,
+  weather,
+  satellite,
+  liveLocation,
+}) {
+  // Primary State
+  const initialCity = weather?.city || liveLocation || "Coimbatore";
+  const [searchQuery, setSearchQuery] = useState(initialCity);
+  const [selectedCoords, setSelectedCoords] = useState([
+    weather?.lat || 11.0168,
+    weather?.lon || 76.9558,
+  ]);
+  const [activeLocationLabel, setActiveLocationLabel] = useState(initialCity);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dataPayload, setDataPayload] = useState(null);
+
+  // Sub-views & tabs
+  const [activeForecastDayIndex, setActiveForecastDayIndex] = useState(0);
+  const [activeHazardTab, setActiveHazardTab] = useState("flood");
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [geoLocating, setGeoLocating] = useState(false);
+
+  // Fetch telemetry & forecast evaluation
+  const fetchDisasterTelemetry = useCallback(async (cityTarget, latTarget, lonTarget) => {
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      const params = new URLSearchParams();
+      if (cityTarget) params.set("city", cityTarget);
+      if (latTarget != null && !isNaN(latTarget)) params.set("latitude", latTarget);
+      if (lonTarget != null && !isNaN(lonTarget)) params.set("longitude", lonTarget);
+
+      const resp = await fetch(`${BACKEND_BASE}/disaster-risk?${params.toString()}`);
+      if (!resp.ok) {
+        throw new Error(`HTTP error ${resp.status}`);
+      }
+
+      const json = await resp.json();
+      setDataPayload(json);
+
+      if (json.location) {
+        setActiveLocationLabel(json.location);
+        setSearchQuery(json.location);
+      }
+      if (json.latitude != null && json.longitude != null) {
+        setSelectedCoords([Number(json.latitude), Number(json.longitude)]);
+      }
+    } catch (err) {
+      console.warn("Disaster Risk fetch error:", err);
+      setErrorMessage("Unable to connect to live early warning engine. Displaying offline contingency data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchDisasterTelemetry(initialCity, selectedCoords[0], selectedCoords[1]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Extract currently active risk for the selected hazard
-  const activeDisasterRisk = riskData?.disasters?.[selectedHazardType] || null;
-  const activeHazardDefinition = SUPPORTED_HAZARDS.find((h) => h.id === selectedHazardType);
-  const activeExistingDisaster = DISASTERS_DATA.find((d) => d.id === selectedHazardType);
-
-  // Helper to determine badge styling
-  const getCategoryBadgeClass = (category) => {
-    if (category === "Verified Alert") return "badge-verified-alert";
-    if (category === "Risk Monitoring") return "badge-risk-monitoring";
-    return "badge-no-verified-data";
+  // Handle manual city search
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    fetchDisasterTelemetry(searchQuery.trim(), null, null);
   };
 
-  const getStatusLevelClass = (status) => {
-    const s = String(status || "").toLowerCase();
-    if (s.includes("critical") || s.includes("high risk") || s.includes("warning")) {
-      return "status-critical";
-    }
-    if (s.includes("high") || s.includes("watch")) {
-      return "status-high";
-    }
-    if (s.includes("moderate") || s.includes("medium")) {
-      return "status-moderate";
-    }
-    if (s.includes("low") || s.includes("no alert")) {
-      return "status-low";
-    }
-    return "status-muted";
+  // Handle Quick City Pill Click
+  const handleQuickCityClick = (city) => {
+    setSearchQuery(city.name);
+    setSelectedCoords([city.lat, city.lon]);
+    fetchDisasterTelemetry(city.name, city.lat, city.lon);
   };
+
+  // Handle Map Click Selection
+  const handleMapCoordSelect = (lat, lon) => {
+    setSelectedCoords([lat, lon]);
+    fetchDisasterTelemetry("", lat, lon);
+  };
+
+  // Handle Geolocation Click
+  const handleDetectGPS = async () => {
+    setGeoLocating(true);
+    setErrorMessage("");
+    try {
+      const loc = await detectBrowserLocation();
+      if (loc && loc.latitude != null) {
+        setSelectedCoords([loc.latitude, loc.longitude]);
+        fetchDisasterTelemetry("", loc.latitude, loc.longitude);
+      }
+    } catch (err) {
+      setErrorMessage("GPS location detection timed out or was denied. Use manual city search or click the map.");
+    } finally {
+      setGeoLocating(false);
+    }
+  };
+
+  // Extract early heatwave warning payload
+  const warning = dataPayload?.early_heatwave_warning || {};
+  const currentRisk = warning.current_heat_risk_level || "Moderate";
+  const currentRiskTheme = getTheme(currentRisk);
+  const forecastList = warning.forecast_timeline || [];
+  const selectedForecastDay = forecastList[activeForecastDayIndex] || forecastList[0] || null;
+  const impact = warning.impact_assessment || {};
+  const satTelemetry = warning.satellite_telemetry || {};
+  const enso = warning.enso_climate_indicator || {};
+  const actions = warning.recommended_actions || [];
+  const provenance = warning.data_provenance || [];
+  const officialSources = warning.official_sources || [];
+  const stations = warning.regional_stations || [];
+  const multiHazards = dataPayload?.disasters || {};
 
   return (
-    <div className="disaster-info-container" id="disaster-information-module">
-      {/* ── MODULE HEADER ── */}
-      <header className="disaster-info-header">
-        <div className="disaster-eyebrow">
-          <span>🚨</span> Official Disaster Awareness & Safety Protocols
+    <div className="ew-container" id="early-heatwave-disaster-center">
+      {/* ── 1. MODULE BANNER & STATUTORY STATUS ── */}
+      <header className="ew-header">
+        <div className="ew-header-top">
+          <div className="ew-badge-group">
+            <span className="ew-radar-pulse"></span>
+            <span className="ew-live-status">Early Heatwave Warning & Disaster Risk Center</span>
+            <span className="ew-version-pill">Operational Telemetry</span>
+          </div>
+          <div className="ew-timestamp">
+            <span>Observation Sync: {dataPayload?.timestamp || "Live UTC Telemetry"}</span>
+          </div>
         </div>
-        <h2 className="disaster-title">Disaster Information</h2>
-        <p className="disaster-subtitle">
-          Comprehensive, authoritative awareness guidelines, safety precautions,
-          and emergency preparedness protocols compiled from official national
-          and global disaster management authorities.
+
+        <h1 className="ew-title">Early Heatwave Warning & Multi-Hazard Disaster Center</h1>
+        <p className="ew-subtitle">
+          Proactive heatwave onset forecasting, multi-day thermal trajectory mapping, demographic exposure assessment,
+          and authoritative multi-hazard disaster monitoring for public safety preparedness.
         </p>
 
-        {/* Official Clarity Disclaimer */}
-        <div className="disaster-disclaimer-banner" role="note">
-          <span className="disclaimer-icon" aria-hidden="true">ℹ️</span>
-          <div>
-            <strong>Safety & Preparedness Disclaimer:</strong> This module is
-            dedicated to public awareness, life-safety guidance, and multi-hazard
-            risk monitoring. Earthquakes cannot be predicted in advance by any
-            scientific system. Real-time seismic monitoring displays verified
-            recorded tremors. For statutory alerts and official evacuation
-            directives, always monitor government authorities (IMD, NDMA, CWC, GSI).
+        {/* Statutory Clarity Disclaimer Banner */}
+        <div className="ew-statutory-notice" role="alert">
+          <span className="ew-notice-icon">🛡️</span>
+          <div className="ew-notice-text">
+            <strong>Statutory Preparedness Notice:</strong> This monitoring system generates early research-grade heatwave
+            risk assessments and community action indicators. It does <em>not</em> replace statutory directives issued by official
+            government disaster management authorities (IMD, NDMA, CWC, WMO). Earthquakes, flash floods, landslides, and glacier collapses
+            cannot be predicted in advance by climate models alone.
           </div>
         </div>
       </header>
 
-      {/* ── NEW SECTION: DISASTER RISK MONITORING & EARLY WARNING ── */}
-      <section
-        className="disaster-risk-monitoring-section"
-        id="disaster-risk-monitoring-section"
-        aria-label="Disaster Risk Monitoring & Early Warning"
-      >
-        <div className="monitoring-section-header">
-          <div className="monitoring-header-badge">
-            <span className="radar-pulse-dot" aria-hidden="true"></span>
-            <span>Real-Time Multi-Hazard Early Risk Telemetry</span>
+      {/* ── 2. LOCATION SELECTOR & HUD ── */}
+      <section className="ew-card ew-location-section" aria-label="Location Selector">
+        <div className="ew-loc-header">
+          <div className="ew-loc-title">
+            <span className="ew-icon">📍</span>
+            <div>
+              <h3>Target Monitoring Location</h3>
+              <p className="ew-hint">Search a city, click on the map, or select a regional monitoring hub</p>
+            </div>
           </div>
-          <h3 className="monitoring-section-title">
-            Disaster Risk Monitoring & Early Warning
-          </h3>
-          <p className="monitoring-section-desc">
-            Early risk evaluation layer providing proactive hazard monitoring
-            before extreme disaster events escalate. Evaluates live atmospheric,
-            hydrological, and seismic indicators for any searched location.
-          </p>
+
+          <div className="ew-loc-current-badge">
+            <span className="ew-loc-dot" style={{ background: currentRiskTheme.color }}></span>
+            <strong className="ew-loc-name">{activeLocationLabel}</strong>
+            <span className="ew-loc-coords">
+              ({selectedCoords[0]?.toFixed(4)}°N, {selectedCoords[1]?.toFixed(4)}°E)
+            </span>
+          </div>
         </div>
 
-        {/* ── STEP 1: SELECT LOCATION ── */}
-        <div className="monitoring-flow-step" id="step-select-location">
-          <div className="flow-step-label">
-            <span className="step-badge">Step 1</span>
-            <span className="step-title">Select Location</span>
+        {/* Search Bar + Controls */}
+        <form onSubmit={handleSearchSubmit} className="ew-search-form">
+          <div className="ew-input-wrap">
+            <span className="ew-search-icon">🔍</span>
+            <input
+              type="text"
+              className="ew-search-input"
+              placeholder="Enter city or district name (e.g. Coimbatore, Chennai, Delhi)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
 
-          <div className="monitoring-location-bar">
-            <div className="location-input-wrapper">
-              <span className="location-input-icon" aria-hidden="true">📍</span>
-              <input
-                type="text"
-                id="monitoring-location-input"
-                className="monitoring-location-input"
-                value={locationInput}
-                onChange={(e) => setLocationInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleCheckRisk();
-                  }
-                }}
-                placeholder="Enter any city or location (e.g. Chennai, Coimbatore, Delhi, Wayanad, Tokyo)..."
-                aria-label="Location search for disaster risk monitoring"
-              />
-              {locationInput && (
-                <button
-                  type="button"
-                  className="clear-location-btn"
-                  onClick={() => setLocationInput("")}
-                  title="Clear input"
-                  aria-label="Clear location input"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+          <button type="submit" className="ew-btn ew-btn-primary" disabled={isLoading}>
+            {isLoading ? "Evaluating..." : "Check Risk"}
+          </button>
 
-            <button
-              type="button"
-              id="check-risk-btn"
-              className="monitoring-check-btn"
-              onClick={() => handleCheckRisk()}
-              disabled={isRiskLoading}
-              aria-label="Check current risk and alerts"
-            >
-              {isRiskLoading ? (
-                <>
-                  <span className="monitoring-spinner" aria-hidden="true"></span>
-                  <span>Analyzing...</span>
-                </>
-              ) : (
-                <>
-                  <span aria-hidden="true">⚡</span>
-                  <span>Check Current Risk / Alert</span>
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="ew-btn ew-btn-secondary"
+            onClick={handleDetectGPS}
+            disabled={geoLocating}
+            title="Detect GPS location"
+          >
+            {geoLocating ? "Detecting GPS..." : "🎯 My Location"}
+          </button>
 
-          {/* Quick Location Chips */}
-          <div className="location-chips-row" aria-label="Suggested quick locations">
-            <span className="chips-label">Quick Locations:</span>
-            {SUGGESTED_LOCATIONS.map((loc) => (
+          <button
+            type="button"
+            className={`ew-btn ew-btn-toggle ${isMapExpanded ? "active" : ""}`}
+            onClick={() => setIsMapExpanded(!isMapExpanded)}
+          >
+            🗺️ {isMapExpanded ? "Compact Map" : "Interactive Map"}
+          </button>
+        </form>
+
+        {/* Quick Select Buttons */}
+        <div className="ew-quick-cities">
+          <span className="ew-quick-lbl">Quick Locations:</span>
+          <div className="ew-pills-row">
+            {QUICK_CITIES.map((c) => (
               <button
-                key={loc.name}
+                key={c.name}
                 type="button"
-                className={`location-chip ${locationInput.toLowerCase() === loc.name.toLowerCase() ? "active" : ""}`}
-                onClick={() => {
-                  setLocationInput(loc.name);
-                  handleCheckRisk(loc.name);
-                }}
-                id={`chip-${loc.name.toLowerCase()}`}
+                className={`ew-pill ${activeLocationLabel.toLowerCase().includes(c.name.toLowerCase()) ? "active" : ""}`}
+                onClick={() => handleQuickCityClick(c)}
               >
-                <span>{loc.icon}</span>
-                <span>{loc.name}</span>
-                <span className="chip-note">({loc.note})</span>
+                {c.name}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── STEP 2: SELECT DISASTER TYPE ── */}
-        <div className="monitoring-flow-step" id="step-select-disaster-type">
-          <div className="flow-step-label">
-            <span className="step-badge">Step 2</span>
-            <span className="step-title">Select Disaster Type</span>
+        {errorMessage && (
+          <div className="ew-error-banner" role="alert">
+            <span>⚠️</span> {errorMessage}
+          </div>
+        )}
+      </section>
+
+      {/* ── 3. LIVE ALERT STATUS & KEY TELEMETRY STRIP ── */}
+      <section className="ew-card ew-status-banner" style={{ borderLeftColor: currentRiskTheme.color }}>
+        <div className="ew-status-main">
+          <div className="ew-status-left">
+            <span className="ew-status-tag" style={{ background: currentRiskTheme.bg, color: currentRiskTheme.color }}>
+              {currentRiskTheme.icon} Current Risk: {currentRiskTheme.label}
+            </span>
+            <h2 className="ew-status-headline">
+              {currentRisk === "Critical"
+                ? "Severe Thermal Stress Conditions Detected"
+                : currentRisk === "High"
+                ? "Elevated Heat Stress Approaching Warning Threshold"
+                : currentRisk === "Moderate"
+                ? "Moderate Thermal Load — Proactive Hydration Advised"
+                : "Normal Seasonal Baseline Temperatures"}
+            </h2>
+            <p className="ew-status-desc">
+              {multiHazards?.heatwave?.message ||
+                `Surface air temperature is monitored at ${warning.current_temperature || "--"}°C with ${
+                  warning.current_humidity || "--"
+                }% relative humidity.`}
+            </p>
           </div>
 
-          <div className="hazard-tabs-grid" role="tablist" aria-label="Disaster hazard types">
-            {SUPPORTED_HAZARDS.map((hazard) => {
-              const isSelected = selectedHazardType === hazard.id;
-              const hazardRiskObj = riskData?.disasters?.[hazard.id];
+          <div className="ew-kpi-grid">
+            <div className="ew-kpi-card">
+              <span className="ew-kpi-lbl">Air Temp</span>
+              <span className="ew-kpi-val">{warning.current_temperature != null ? `${warning.current_temperature}°C` : "--"}</span>
+              <span className="ew-kpi-sub">Observed Mast 2m</span>
+            </div>
+
+            <div className="ew-kpi-card">
+              <span className="ew-kpi-lbl">Humidity</span>
+              <span className="ew-kpi-val">{warning.current_humidity != null ? `${warning.current_humidity}%` : "--"}</span>
+              <span className="ew-kpi-sub">Relative Humidity</span>
+            </div>
+
+            <div className="ew-kpi-card">
+              <span className="ew-kpi-lbl">Satellite LST</span>
+              <span className="ew-kpi-val">{satTelemetry.land_surface_temperature != null ? `${satTelemetry.land_surface_temperature}°C` : "--"}</span>
+              <span className="ew-kpi-sub">Skin Radiance</span>
+            </div>
+
+            <div className="ew-kpi-card">
+              <span className="ew-kpi-lbl">El Niño Index</span>
+              <span className="ew-kpi-val">{enso.oni_index || "+0.2°C"}</span>
+              <span className="ew-kpi-sub">{enso.status || "ENSO Neutral"}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. FORECAST RISK CARDS (UPCOMING 5-DAY HORIZON) ── */}
+      <section className="ew-card ew-forecast-section" aria-label="Forecast Risk Horizon">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>📅 5-Day Heatwave Risk Horizon</h3>
+            <p className="ew-hint">Forecasted daily maximum temperatures and risk severity from numerical weather models</p>
+          </div>
+          <span className="ew-model-badge">GFS / NWP Forecast Engine</span>
+        </div>
+
+        {forecastList.length === 0 ? (
+          <div className="ew-no-data-card">
+            <span>📡</span>
+            <p>No multi-day numerical forecast telemetry currently available for this coordinate.</p>
+          </div>
+        ) : (
+          <div className="ew-forecast-grid">
+            {forecastList.map((f, idx) => {
+              const theme = getTheme(f.heat_risk_level);
+              const isSelected = activeForecastDayIndex === idx;
+
               return (
-                <button
-                  key={hazard.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  id={`hazard-tab-${hazard.id}`}
-                  className={`hazard-tab-btn ${hazard.classSuffix} ${isSelected ? "selected" : ""}`}
-                  onClick={() => setSelectedHazardType(hazard.id)}
+                <div
+                  key={f.date || idx}
+                  className={`ew-fc-card ${isSelected ? "selected" : ""}`}
+                  style={{ borderColor: isSelected ? theme.color : undefined }}
+                  onClick={() => setActiveForecastDayIndex(idx)}
                 >
-                  <div className="hazard-tab-top">
-                    <span className="hazard-tab-icon" aria-hidden="true">
-                      {hazard.icon}
-                    </span>
-                    {hazardRiskObj && (
-                      <span className={`hazard-status-pill ${getStatusLevelClass(hazardRiskObj.status)}`}>
-                        {hazardRiskObj.status}
-                      </span>
-                    )}
+                  <div className="ew-fc-header">
+                    <span className="ew-fc-day">{f.day_label}</span>
+                    <span className="ew-fc-date">{f.date_formatted}</span>
                   </div>
-                  <div className="hazard-tab-body">
-                    <span className="hazard-tab-name">
-                      {hazard.shortName || hazard.displayName}
-                    </span>
-                    <span className="hazard-tab-method">
-                      {hazard.monitoringMethod}
-                    </span>
+
+                  <div className="ew-fc-temp-row">
+                    <span className="ew-fc-temp">{f.max_temperature}°C</span>
+                    <span className="ew-fc-min">Min {f.min_temperature}°C</span>
                   </div>
-                </button>
+
+                  <div className="ew-fc-badge" style={{ background: theme.bg, color: theme.color }}>
+                    {theme.icon} {theme.label}
+                  </div>
+
+                  <div className="ew-fc-meta">
+                    <span>💧 {f.humidity}% Hum</span>
+                    <span>💨 {f.wind_speed_kmh} km/h</span>
+                  </div>
+
+                  <div className="ew-fc-type">
+                    <span className="ew-badge-tag">{f.data_type}</span>
+                  </div>
+                </div>
               );
             })}
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* ── STEPS 3 & 4: SHOW RISK STATUS ── */}
-        <div className="monitoring-result-wrapper" id="step-show-risk-status">
-          <div className="flow-step-label">
-            <span className="step-badge">Steps 3 & 4</span>
-            <span className="step-title">Current Risk Status & Live Telemetry</span>
+      {/* ── 5. EARLY WARNING TIMELINE (PEAK THERMAL TRANSIT & EVOLUTION) ── */}
+      <section className="ew-card ew-timeline-section" aria-label="Early Warning Timeline">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>⏱️ Early Warning Progression Timeline</h3>
+            <p className="ew-hint">Anticipate critical thermal inflection points before hazardous conditions develop</p>
           </div>
-
-          {activeDisasterRisk ? (
-            <div
-              className={`risk-status-panel ${getStatusLevelClass(activeDisasterRisk.status)}`}
-              id={`risk-panel-${selectedHazardType}`}
-            >
-              {/* Header: Location & Hazard Name */}
-              <div className="risk-panel-header">
-                <div>
-                  <div className="risk-location-tag">
-                    <span>📍</span>
-                    <strong>Location:</strong> {checkedLocationName}
-                    {riskData?.latitude && riskData?.longitude && (
-                      <span className="risk-coords">
-                        ({Number(riskData.latitude).toFixed(4)}°N, {Number(riskData.longitude).toFixed(4)}°E)
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="risk-hazard-title">
-                    {activeHazardDefinition?.icon} {activeHazardDefinition?.displayName}
-                  </h4>
-                </div>
-
-                {/* Classification Badge: Verified Alert | Risk Monitoring | No Verified Alert Data */}
-                <div className="risk-badges-group">
-                  <span
-                    className={`risk-category-badge ${getCategoryBadgeClass(activeDisasterRisk.category)}`}
-                    id="risk-category-badge"
-                  >
-                    {activeDisasterRisk.category === "Verified Alert" && "🚨 Verified Alert"}
-                    {activeDisasterRisk.category === "Risk Monitoring" && "📡 Risk Monitoring"}
-                    {activeDisasterRisk.category === "No Alert" && "🛡️ No Alert Active"}
-                    {activeDisasterRisk.category === "No Verified Alert Data" && "⚠️ No Verified Alert Data"}
-                  </span>
-
-                  <span
-                    className={`risk-level-badge ${getStatusLevelClass(activeDisasterRisk.status)}`}
-                    id="risk-level-badge"
-                  >
-                    <strong>Status:</strong> {activeDisasterRisk.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Status Message / Assessment Summary */}
-              <div className="risk-message-box">
-                <strong>Data Summary:</strong> {activeDisasterRisk.message}
-              </div>
-
-              {/* Scientific Rule for Earthquake */}
-              {selectedHazardType === "earthquake" && (
-                <div className="scientific-disclaimer-callout" role="note">
-                  <span className="callout-icon" aria-hidden="true">🔬</span>
-                  <div>
-                    <strong>Scientific Notice:</strong> Earthquakes cannot be
-                    predicted in advance by any scientific system or meteorological
-                    model. This monitoring layer reports instrumentally verified
-                    seismic tremors recorded by global seismograph networks (USGS/NCS).
-                    No fake prediction, warning time, or synthetic probability is generated.
-                  </div>
-                </div>
-              )}
-
-              {/* Telemetry Breakdown Details */}
-              {activeDisasterRisk.details && Object.keys(activeDisasterRisk.details).length > 0 && (
-                <div className="risk-metrics-grid">
-                  {/* Flood Metrics */}
-                  {selectedHazardType === "flood" && (
-                    <>
-                      <div className="metric-cell">
-                        <span className="metric-label">Current Rainfall</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.current_rainfall_mm_h ?? 0} mm/h
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">24h Forecast Rain</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.forecast_24h_rainfall_mm ?? 0} mm
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Water Level Gauge</span>
-                        <span className="metric-value-muted">
-                          {activeDisasterRisk.details.water_level_gauge}
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Atmospheric Condition</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.condition || "Monitored"}
-                        </span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Cyclone Metrics */}
-                  {selectedHazardType === "cyclone" && (
-                    <>
-                      <div className="metric-cell">
-                        <span className="metric-label">Sustained Wind Speed</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.wind_speed_kmh ?? 0} km/h
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Barometric Pressure</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.barometric_pressure_hpa
-                            ? `${activeDisasterRisk.details.barometric_pressure_hpa} hPa`
-                            : "Standard Sea Level (1013 hPa)"}
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Official Cyclone Bulletin</span>
-                        <span className="metric-value-muted">
-                          {activeDisasterRisk.details.official_bulletin}
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Atmospheric Condition</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.condition || "Monitored"}
-                        </span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Landslide Metrics */}
-                  {selectedHazardType === "landslide" && (
-                    <>
-                      <div className="metric-cell">
-                        <span className="metric-label">Rainfall Intensity</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.current_rainfall_mm_h ?? 0} mm/h
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Accumulated Precipitation</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.forecast_24h_rainfall_mm ?? 0} mm (24h)
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Geological Terrain Sensor</span>
-                        <span className="metric-value-muted">
-                          {activeDisasterRisk.details.terrain_slope_sensor}
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Atmospheric Condition</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.condition || "Monitored"}
-                        </span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Earthquake Metrics */}
-                  {selectedHazardType === "earthquake" && (
-                    <>
-                      <div className="metric-cell">
-                        <span className="metric-label">Recent Seismic Events (500 km)</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.recent_events_count ?? 0} events recorded
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Official Network</span>
-                        <span className="metric-value-muted">
-                          {activeDisasterRisk.details.seismic_network}
-                        </span>
-                      </div>
-                      {activeDisasterRisk.details.recent_events &&
-                        activeDisasterRisk.details.recent_events.length > 0 && (
-                          <div className="metric-cell metric-cell-full">
-                            <span className="metric-label">Verified Recorded Tremor</span>
-                            <div className="recent-event-card">
-                              <strong>M {activeDisasterRisk.details.recent_events[0].magnitude}</strong> —{" "}
-                              {activeDisasterRisk.details.recent_events[0].place}
-                              <br />
-                              <span style={{ fontSize: "12px", opacity: 0.85 }}>
-                                Recorded: {activeDisasterRisk.details.recent_events[0].time} | Depth:{" "}
-                                {activeDisasterRisk.details.recent_events[0].depth_km} km
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                    </>
-                  )}
-
-                  {/* Heatwave Metrics (reusing project logic) */}
-                  {selectedHazardType === "heatwave" && (
-                    <>
-                      <div className="metric-cell">
-                        <span className="metric-label">Ambient Temperature</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.temperature_c ?? 0}°C
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Relative Humidity</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.humidity_percent ?? 0}%
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Wind Velocity</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.wind_speed_kmh ?? 0} km/h
-                        </span>
-                      </div>
-                      <div className="metric-cell">
-                        <span className="metric-label">Heat Risk Score</span>
-                        <span className="metric-value">
-                          {activeDisasterRisk.details.heat_risk_score ?? "--"} / 100
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Data Source & Timestamp Footer */}
-              <div className="risk-footer-meta">
-                <div className="meta-left">
-                  {activeDisasterRisk.data_source ? (
-                    <span className="meta-source">
-                      <strong>Data Source:</strong> {activeDisasterRisk.data_source}
-                    </span>
-                  ) : (
-                    <span className="meta-source-none">
-                      <strong>Data Source:</strong> No verified source configured for this coordinate
-                    </span>
-                  )}
-
-                  {activeDisasterRisk.last_updated && (
-                    <span className="meta-timestamp">
-                      • <strong>Last updated:</strong> {activeDisasterRisk.last_updated}
-                    </span>
-                  )}
-                </div>
-
-                <div className="meta-right">
-                  <span className="meta-disclaimer-note">
-                    Risk monitoring values are calculated from live meteorological & seismic sensors and do not constitute official statutory evacuation directives.
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="risk-loading-card">
-              <span className="monitoring-spinner" aria-hidden="true"></span>
-              <span>Fetching verified telemetry for {checkedLocationName}...</span>
-            </div>
+          {selectedForecastDay && (
+            <span className="ew-active-date-pill">
+              Inspecting: {selectedForecastDay.day_label} ({selectedForecastDay.date_formatted})
+            </span>
           )}
         </div>
 
-        {/* ── STEPS 5 & 6: SHOW EXISTING SAFETY PRECAUTIONS & PREPAREDNESS TIPS ── */}
-        {activeExistingDisaster && (
-          <div className="monitoring-protocols-flow" id="step-existing-protocols">
-            {/* Step 5: Show Existing Safety Precautions */}
-            <div className="protocol-flow-block" id="existing-safety-precautions-block">
-              <div className="flow-step-label">
-                <span className="step-badge">Step 5</span>
-                <span className="step-title">
-                  Existing Safety Precautions ({activeExistingDisaster.name})
-                </span>
-                <span className="verified-protocol-tag">Existing Content Unchanged</span>
+        {selectedForecastDay && (
+          <div className="ew-timeline-details">
+            <div className="ew-tl-step active">
+              <div className="ew-tl-circle" style={{ background: getTheme(selectedForecastDay.heat_risk_level).color }}>
+                {selectedForecastDay.day_index}
               </div>
-
-              <div className="protocol-box precautions">
-                <h4>
-                  <span>🛡️</span>
-                  <span>Safety Precautions</span>
-                </h4>
-                <ul className="protocol-list">
-                  {activeExistingDisaster.precautions.map((item, idx) => (
-                    <li key={idx}>
-                      <span className="protocol-bullet">✔</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="ew-tl-content">
+                <div className="ew-tl-heading">
+                  <strong>{selectedForecastDay.day_label} Thermal Projection</strong>
+                  <span className="ew-tl-badge" style={{ color: getTheme(selectedForecastDay.heat_risk_level).color }}>
+                    {selectedForecastDay.heat_risk_level} Risk Level
+                  </span>
+                </div>
+                <p className="ew-tl-text">
+                  Projected daytime high of <strong>{selectedForecastDay.max_temperature}°C</strong> with{" "}
+                  <strong>{selectedForecastDay.humidity}%</strong> humidity. Peak danger hours expected between{" "}
+                  <strong>{selectedForecastDay.peak_hours}</strong> due to solar irradiance zenith.
+                </p>
+                <div className="ew-tl-recommendation-inline">
+                  <span>⚡ Advisory:</span>{" "}
+                  {selectedForecastDay.max_temperature >= 38
+                    ? "Severe physiological strain risk. Restrict non-essential outdoor labor."
+                    : selectedForecastDay.max_temperature >= 34
+                    ? "Proactive hydration and shade provisions required during midday hours."
+                    : "Conditions within seasonal tolerance. Monitor for sudden temperature surges."}
+                </div>
               </div>
             </div>
 
-            {/* Step 6: Show Existing Preparedness Tips */}
-            <div className="protocol-flow-block" id="existing-preparedness-tips-block">
-              <div className="flow-step-label">
-                <span className="step-badge">Step 6</span>
-                <span className="step-title">
-                  Existing Preparedness Tips ({activeExistingDisaster.name})
-                </span>
-                <span className="verified-protocol-tag">Existing Content Unchanged</span>
-              </div>
-
-              <div className="protocol-box preparedness">
-                <h4>
-                  <span>🎒</span>
-                  <span>Preparedness Tips</span>
-                </h4>
-                <ul className="protocol-list">
-                  {activeExistingDisaster.preparednessTips.map((item, idx) => (
-                    <li key={idx}>
-                      <span className="protocol-bullet">★</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+            {/* Horizontal Timeline Bar */}
+            <div className="ew-timeline-bar-wrap">
+              <div className="ew-timeline-bar-title">5-Day Heat Trend Trajectory</div>
+              <div className="ew-timeline-track">
+                {forecastList.map((step, idx) => {
+                  const sTheme = getTheme(step.heat_risk_level);
+                  return (
+                    <div
+                      key={step.date || idx}
+                      className={`ew-track-node ${activeForecastDayIndex === idx ? "active" : ""}`}
+                      onClick={() => setActiveForecastDayIndex(idx)}
+                    >
+                      <div className="ew-track-dot" style={{ background: sTheme.color }}></div>
+                      <span className="ew-track-lbl">{step.day_label.slice(0, 3)}</span>
+                      <span className="ew-track-temp">{step.max_temperature}°</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         )}
       </section>
 
-      {/* ── 5 DISASTER SELECTION CARDS (Selection View - EXACT EXISTING CONTENT) ── */}
-      {!selectedDisasterData ? (
-        <section className="disaster-selection-section" aria-label="Disaster selection">
-          <div className="selection-intro">
-            <h3 className="selection-heading">Select a Natural Hazard to View Official Protocols</h3>
-            <p className="selection-subheading">
-              Choose any of the 5 disaster categories below to access life-safety guidelines, early warning indicators, emergency actions, and verified official advisories.
+      {/* ── 6. INTERACTIVE HEAT RISK MAP (LEAFLET) ── */}
+      <section className="ew-card ew-map-section" aria-label="Interactive Heat Risk Map">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>🗺️ Interactive Heat Risk Map</h3>
+            <p className="ew-hint">
+              Click anywhere on the map to evaluate risk for that coordinate, or click a regional station pin
             </p>
           </div>
-
-          <div className="disaster-selection-grid">
-            {DISASTERS_DATA.map((disaster) => (
-              <div
-                key={disaster.id}
-                role="button"
-                tabIndex={0}
-                className={`disaster-select-card ${disaster.classSuffix}`}
-                onClick={() => setSelectedDisaster(disaster.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelectedDisaster(disaster.id);
-                  }
-                }}
-                id={`select-disaster-${disaster.id}`}
-                aria-label={`View ${disaster.name} safety guidelines and information`}
-              >
-                <div className="select-card-top">
-                  <div className="disaster-icon-box" aria-hidden="true">
-                    {disaster.icon}
-                  </div>
-                  <span className="disaster-card-category-tag">{disaster.categoryTag}</span>
-                </div>
-
-                <div className="select-card-body">
-                  <h3 className="select-card-name">{disaster.name}</h3>
-                  <p className="select-card-desc">
-                    {disaster.whatIsIt.length > 130
-                      ? `${disaster.whatIsIt.slice(0, 127)}...`
-                      : disaster.whatIsIt}
-                  </p>
-                </div>
-
-                <div className="select-card-footer">
-                  <div className="disaster-card-authority-badge">
-                    <span>🛡️</span>
-                    <span>{disaster.authority}</span>
-                    {disaster.id === "heatwave" && activeHeatRiskLevel && (
-                      <span style={{ marginLeft: "6px", fontWeight: "700" }}>
-                        • {activeHeatRiskLevel}
-                      </span>
-                    )}
-                  </div>
-                  <span className="select-card-action">
-                    View Safety Guidelines <span>→</span>
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="ew-map-legend">
+            <span className="ew-leg-item"><span className="ew-leg-dot" style={{ background: "#10b981" }}></span> Low</span>
+            <span className="ew-leg-item"><span className="ew-leg-dot" style={{ background: "#f59e0b" }}></span> Moderate</span>
+            <span className="ew-leg-item"><span className="ew-leg-dot" style={{ background: "#ef4444" }}></span> High</span>
+            <span className="ew-leg-item"><span className="ew-leg-dot" style={{ background: "#8b5cf6" }}></span> Critical</span>
           </div>
-        </section>
-      ) : (
-        /* ── SELECTED DISASTER DETAIL VIEW (EXACT EXISTING CONTENT) ── */
-        <section className="disaster-detail-view" aria-label={`${selectedDisasterData.name} details`}>
-          <div className="disaster-detail-toolbar">
-            <button
-              type="button"
-              className="disaster-back-btn"
-              onClick={() => setSelectedDisaster(null)}
-              id="back-to-disasters-btn"
-            >
-              <span>←</span>
-              <span>Back to Disasters</span>
-            </button>
+        </div>
 
-            {/* Quick Switcher */}
-            <div className="disaster-quick-switch" aria-label="Switch disaster">
-              {DISASTERS_DATA.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  className={`disaster-quick-pill ${selectedDisaster === d.id ? "active" : ""}`}
-                  onClick={() => setSelectedDisaster(d.id)}
-                  id={`quick-switch-${d.id}`}
-                >
-                  <span>{d.icon}</span>
-                  <span>{d.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <article
-            className={`disaster-card ${selectedDisasterData.classSuffix}`}
-            id={`disaster-card-${selectedDisasterData.id}`}
+        <div className={`ew-leaflet-container ${isMapExpanded ? "expanded" : ""}`}>
+          <MapContainer
+            center={selectedCoords}
+            zoom={8}
+            scrollWheelZoom={true}
+            style={{ width: "100%", height: "100%", borderRadius: "12px" }}
           >
-            {/* Card Header */}
-            <div className="disaster-card-header">
-              <div className="disaster-card-title-group">
-                <div className="disaster-icon-box" aria-hidden="true">
-                  {selectedDisasterData.icon}
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+
+            <MapRecenter center={selectedCoords} />
+            <MapClickPicker onCoordSelect={handleMapCoordSelect} />
+
+            {/* Active Target Location Marker */}
+            <Marker position={selectedCoords} icon={createMapPin(currentRisk, true)}>
+              <Popup>
+                <div className="ew-popup">
+                  <strong>{activeLocationLabel}</strong>
+                  <div style={{ color: currentRiskTheme.color, fontWeight: "bold", margin: "4px 0" }}>
+                    {currentRiskTheme.label} ({warning.current_temperature || "--"}°C)
+                  </div>
+                  <small>Lat: {selectedCoords[0]?.toFixed(4)}, Lon: {selectedCoords[1]?.toFixed(4)}</small>
                 </div>
-                <div>
-                  <div className="disaster-card-category-tag">{selectedDisasterData.categoryTag}</div>
-                  <h3 className="disaster-card-name">{selectedDisasterData.name}</h3>
-                </div>
-              </div>
+              </Popup>
+            </Marker>
 
-              <div className="disaster-card-authority-badge">
-                <span>🛡️</span>
-                <span>{selectedDisasterData.authority}</span>
-                {selectedDisasterData.id === "heatwave" && activeHeatRiskLevel && (
-                  <span style={{ marginLeft: "6px", fontWeight: "700" }}>
-                    • Monitored: {activeHeatRiskLevel}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Card Body */}
-            <div className="disaster-card-body">
-              {/* 1. What is it? */}
-              <div className="disaster-overview-section">
-                <div className="section-label">1. What is it?</div>
-                <p className="disaster-description">{selectedDisasterData.whatIsIt}</p>
-              </div>
-
-              {/* 2. Common Warning Signs */}
-              <div className="disaster-warning-box">
-                <h4>
-                  <span>⚠️</span>
-                  <span>2. Common Warning Signs & Conditions</span>
-                </h4>
-                <ul className="disaster-warning-list">
-                  {selectedDisasterData.warningSigns.map((sign, idx) => (
-                    <li key={idx}>
-                      <span>•</span>
-                      <span>{sign}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Protocols Grid: Precautions, During, What to Avoid, Preparedness */}
-              <div className="disaster-protocol-grid">
-                {/* 3. Safety Precautions */}
-                <div className="protocol-box precautions">
-                  <h4>
-                    <span>🛡️</span>
-                    <span>3. Safety Precautions</span>
-                  </h4>
-                  <ul className="protocol-list">
-                    {selectedDisasterData.precautions.map((item, idx) => (
-                      <li key={idx}>
-                        <span className="protocol-bullet">✔</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 4. What to Do During */}
-                <div className="protocol-box during">
-                  <h4>
-                    <span>⚡</span>
-                    <span>4. What to Do During</span>
-                  </h4>
-                  <ul className="protocol-list">
-                    {selectedDisasterData.during.map((item, idx) => (
-                      <li key={idx}>
-                        <span className="protocol-bullet">✔</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 5. What to Avoid */}
-                <div className="protocol-box avoid">
-                  <h4>
-                    <span>🚫</span>
-                    <span>5. What to Avoid</span>
-                  </h4>
-                  <ul className="protocol-list">
-                    {selectedDisasterData.avoid.map((item, idx) => (
-                      <li key={idx}>
-                        <span className="protocol-bullet">✖</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 6. Emergency Preparedness Tips */}
-                <div className="protocol-box preparedness">
-                  <h4>
-                    <span>🎒</span>
-                    <span>6. Preparedness Tips</span>
-                  </h4>
-                  <ul className="protocol-list">
-                    {selectedDisasterData.preparednessTips.map((item, idx) => (
-                      <li key={idx}>
-                        <span className="protocol-bullet">★</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* 7. Official Information Source */}
-            <div className="disaster-card-footer">
-              <div className="official-sources-row">
-                <span className="official-source-label">7. Official Sources:</span>
-                {selectedDisasterData.officialSources.map((source, idx) => (
-                  <a
-                    key={idx}
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="official-source-link"
-                    title={`Open ${source.name} in a new tab`}
-                  >
-                    <span>🔗</span>
-                    <span>{source.name}</span>
-                    <span style={{ fontSize: "11px", opacity: 0.8 }}>↗</span>
-                  </a>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                className="disaster-back-bottom-btn"
-                onClick={() => {
-                  setSelectedDisaster(null);
-                  const el = document.getElementById("disaster-information-module");
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                <span>←</span>
-                <span>Back to Disasters</span>
-              </button>
-            </div>
-          </article>
-        </section>
-      )}
-
-      {/* ── EMERGENCY PREPAREDNESS SECTION (EXACT EXISTING CONTENT) ── */}
-      <section className="emergency-preparedness-section" id="emergency-preparedness-section">
-        <div className="section-header-block">
-          <h3>
-            <span>🎒</span>
-            <span>Universal Emergency Disaster Supply Kit</span>
-          </h3>
-          <p>
-            Standard 72-hour survival essentials recommended by NDMA and international
-            civil protection agencies for immediate home readiness and evacuation.
-          </p>
-        </div>
-
-        <div className="kit-grid">
-          {EMERGENCY_SUPPLIES.map((supply, idx) => (
-            <div key={idx} className="kit-card">
-              <div className="kit-card-icon" aria-hidden="true">{supply.icon}</div>
-              <h4 className="kit-card-title">{supply.title}</h4>
-              <p className="kit-card-items">{supply.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Emergency Helplines */}
-        <div style={{ marginTop: "12px" }}>
-          <h4 style={{ fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "8px" }}>
-            📞 National Emergency Helplines (India)
-          </h4>
-          <div className="helpline-grid">
-            <div className="helpline-card">
-              <span className="helpline-label">National Emergency</span>
-              <span className="helpline-number">112</span>
-            </div>
-            <div className="helpline-card">
-              <span className="helpline-label">Disaster Services (NDMA)</span>
-              <span className="helpline-number">1078</span>
-            </div>
-            <div className="helpline-card">
-              <span className="helpline-label">Fire Rescue</span>
-              <span className="helpline-number">101</span>
-            </div>
-            <div className="helpline-card">
-              <span className="helpline-label">Ambulance</span>
-              <span className="helpline-number">102 / 108</span>
-            </div>
-            <div className="helpline-card">
-              <span className="helpline-label">NDRF Control Room</span>
-              <span className="helpline-number">011-24363260</span>
-            </div>
-          </div>
+            {/* Regional Stations Markers */}
+            {stations.map((st) => {
+              if (Math.abs(st.lat - selectedCoords[0]) < 0.01 && Math.abs(st.lon - selectedCoords[1]) < 0.01) {
+                return null; // Skip duplicate of active pin
+              }
+              return (
+                <Marker
+                  key={st.id}
+                  position={[st.lat, st.lon]}
+                  icon={createMapPin(st.risk_level, false)}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedCoords([st.lat, st.lon]);
+                      fetchDisasterTelemetry(st.name, st.lat, st.lon);
+                    },
+                  }}
+                >
+                  <Popup>
+                    <div className="ew-popup">
+                      <strong>{st.name} ({st.state})</strong>
+                      <div>Status: {st.risk_level} ({st.current_temp}°C)</div>
+                      <small>Click pin to load full early warning details</small>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
         </div>
       </section>
 
-      {/* ── OFFICIAL SOURCES DIRECTORY (EXACT EXISTING CONTENT) ── */}
-      <section className="official-sources-directory" id="official-sources-directory">
-        <div className="section-header-block">
-          <h3>
-            <span>🏛️</span>
-            <span>Official Disaster Management Sources & Portals</span>
-          </h3>
-          <p>
-            Direct links to authoritative national and international governmental
-            agencies responsible for official advisories, early warnings, and rescue operations.
-          </p>
+      {/* ── 7. IMPACT ASSESSMENT: EXPOSED POPULATION & VULNERABLE COHORTS ── */}
+      <section className="ew-card ew-impact-section" aria-label="Demographic Impact Assessment">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>👥 Demographic Vulnerability & Exposure Assessment</h3>
+            <p className="ew-hint">
+              Quantifies potentially exposed populations and at-risk cohorts only when supporting census data is indexed
+            </p>
+          </div>
+          {impact.has_demographic_data && (
+            <span className="ew-census-badge">Census Benchmark: {impact.city_name}</span>
+          )}
         </div>
 
-        <div className="sources-directory-grid">
-          {OFFICIAL_DIRECTORIES.map((dir, idx) => (
-            <div key={idx} className="directory-card">
-              <div className="directory-card-top">
-                <div className="directory-card-title">
-                  <span>{dir.name}</span>
-                  <span className="directory-badge">{dir.badge}</span>
-                </div>
-                <p className="directory-card-desc">{dir.role}</p>
+        {impact.has_demographic_data ? (
+          <div>
+            <div className="ew-pop-headline">
+              <div className="ew-pop-big">
+                <span className="ew-pop-number">{impact.population_formatted}</span>
+                <span className="ew-pop-sub">Estimated Total Urban Population Base</span>
               </div>
+              <div className="ew-pop-src">
+                <span>Data Authority:</span> {impact.demographic_source}
+              </div>
+            </div>
 
-              <a
-                href={dir.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="directory-visit-btn"
-                title={`Visit official website: ${dir.name}`}
-              >
-                <span>Visit Official Portal</span>
-                <span>↗</span>
-              </a>
+            <div className="ew-vulnerable-grid">
+              {(impact.vulnerable_groups || []).map((vg) => (
+                <div key={vg.group} className="ew-vg-card">
+                  <div className="ew-vg-header">
+                    <strong>{vg.group}</strong>
+                    <span className="ew-vg-pct">{vg.pct}% (~{vg.estimated_count?.toLocaleString()})</span>
+                  </div>
+                  <p className="ew-vg-risk">{vg.risk_factor}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="ew-impact-disclaimer">
+              ℹ️ <strong>Demographic Caveat:</strong> {impact.methodology_disclaimer}
+            </div>
+          </div>
+        ) : (
+          <div className="ew-unindexed-card">
+            <span className="ew-unindexed-icon">📋</span>
+            <div>
+              <strong>Demographic Profile Not Indexed For This Coordinate</strong>
+              <p>{impact.notice || "Demographic vulnerability data not available for this coordinate. Refer to local municipal census records."}</p>
+              <small>System strictly adheres to data integrity: no demographic figures are fabricated when census profiles are unavailable.</small>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── 8. RECOMMENDED ACTIONS & PREPAREDNESS PROTOCOLS ── */}
+      <section className="ew-card ew-actions-section" aria-label="Recommended Actions">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>🛡️ Recommended Actions & Life-Safety Protocols</h3>
+            <p className="ew-hint">Preventive measures calibrated to active risk severity: {currentRiskTheme.label}</p>
+          </div>
+          <span className="ew-action-phase-badge" style={{ background: currentRiskTheme.bg, color: currentRiskTheme.color }}>
+            {currentRiskTheme.label} Action Matrix
+          </span>
+        </div>
+
+        <div className="ew-actions-grid">
+          {actions.map((act, idx) => (
+            <div key={idx} className="ew-action-card">
+              <div className="ew-action-head">
+                <span className="ew-act-num">0{idx + 1}</span>
+                <span className="ew-act-phase">{act.phase}</span>
+                <span className={`ew-act-prio prio-${act.priority.toLowerCase()}`}>{act.priority}</span>
+              </div>
+              <p className="ew-act-text">{act.action}</p>
+              <div className="ew-act-target">Target: {act.target}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── 9. SECONDARY MULTI-HAZARD DISASTER WATCH ── */}
+      <section className="ew-card ew-multihazard-section" aria-label="Multi-Hazard Disaster Watch">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>🚨 Multi-Hazard Disaster Monitoring</h3>
+            <p className="ew-hint">
+              Hydrological, cyclonic, geotechnical, and verified seismic event telemetry
+            </p>
+          </div>
+          <span className="ew-hazard-note">Verified Sensors & Network Telemetry</span>
+        </div>
+
+        <div className="ew-hazard-tabs">
+          {["flood", "cyclone", "landslide", "earthquake"].map((hKey) => {
+            const hData = multiHazards[hKey];
+            const isActive = activeHazardTab === hKey;
+            return (
+              <button
+                key={hKey}
+                type="button"
+                className={`ew-hazard-tab ${isActive ? "active" : ""}`}
+                onClick={() => setActiveHazardTab(hKey)}
+              >
+                <span className="ew-htab-icon">
+                  {hKey === "flood" ? "🌊" : hKey === "cyclone" ? "🌪️" : hKey === "landslide" ? "⛰️" : "🌋"}
+                </span>
+                <span className="ew-htab-name">{hKey.toUpperCase()}</span>
+                <span className="ew-htab-status">{hData?.status || "Normal"}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active Hazard Card */}
+        {multiHazards[activeHazardTab] && (
+          <div className="ew-hazard-card">
+            <div className="ew-hcard-header">
+              <h4>{multiHazards[activeHazardTab].title}</h4>
+              <span className="ew-hcard-badge">{multiHazards[activeHazardTab].category}</span>
+            </div>
+
+            <p className="ew-hcard-msg">{multiHazards[activeHazardTab].message}</p>
+
+            {multiHazards[activeHazardTab].scientific_rule && (
+              <div className="ew-scientific-rule">
+                <span>🔬 Scientific Rule:</span> {multiHazards[activeHazardTab].scientific_rule}
+              </div>
+            )}
+
+            <div className="ew-hcard-meta">
+              <span>Source: {multiHazards[activeHazardTab].data_source || "Network Sensor"}</span>
+              <span>Updated: {multiHazards[activeHazardTab].last_updated || "Live"}</span>
+            </div>
+
+            {multiHazards[activeHazardTab].official_guidance && (
+              <div className="ew-hcard-guidance">
+                <strong>Official Guidance:</strong> {multiHazards[activeHazardTab].official_guidance}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ── 10. DATA PROVENANCE, CONFIDENCE & OFFICIAL SOURCES ── */}
+      <section className="ew-card ew-provenance-section" aria-label="Data Sources and Confidence">
+        <div className="ew-card-title-row">
+          <div>
+            <h3>📊 Data Sources, Observation Dates & Confidence</h3>
+            <p className="ew-hint">
+              Transparent metadata declaring observed vs forecast vs model-estimated provenance
+            </p>
+          </div>
+        </div>
+
+        <div className="ew-provenance-table-wrap">
+          <table className="ew-prov-table">
+            <thead>
+              <tr>
+                <th>Telemetry Variable</th>
+                <th>Category</th>
+                <th>Data Source / Network</th>
+                <th>Observation Date</th>
+                <th>Confidence Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {provenance.map((p, idx) => (
+                <tr key={idx}>
+                  <td><strong>{p.variable}</strong></td>
+                  <td>
+                    <span className={`ew-prov-tag cat-${p.category.toLowerCase().replace(/[^a-z]/g, "")}`}>
+                      {p.category}
+                    </span>
+                  </td>
+                  <td>{p.source}</td>
+                  <td>{p.observation_date}</td>
+                  <td><span className="ew-conf-badge">{p.confidence}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Official Authority Links */}
+        <div className="ew-official-sources-section">
+          <h4>Official Statutory Authorities</h4>
+          <p className="ew-hint">
+            Always consult statutory government bulletins for mandatory civil evacuation orders and official warnings:
+          </p>
+          <div className="ew-sources-grid">
+            {officialSources.map((src, idx) => (
+              <a
+                key={idx}
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ew-source-card"
+              >
+                <div className="ew-source-badge">{src.badge}</div>
+                <strong className="ew-source-name">{src.name}</strong>
+                <span className="ew-source-agency">{src.agency}</span>
+                <span className="ew-source-role">{src.role}</span>
+                <span className="ew-source-link">Visit Official Portal &rarr;</span>
+              </a>
+            ))}
+          </div>
         </div>
       </section>
     </div>

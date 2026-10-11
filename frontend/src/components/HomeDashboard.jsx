@@ -50,7 +50,7 @@ export default function HomeDashboard({
               ? formatTemperature(weather.temperature)
               : (loading ? "..." : formatTemperature(34.2))}
           </div>
-          <span className="home-kpi-status">{weather?.city || "Coimbatore"} • Live</span>
+          <span className="home-kpi-status">{weather?.city || "Selected Location"} • Live</span>
         </div>
 
         <div className="home-kpi-card">

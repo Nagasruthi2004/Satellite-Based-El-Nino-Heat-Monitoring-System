@@ -244,25 +244,53 @@ KNOWN_CITY_COORDINATES = {
 
 @app.route("/satellite/history", methods=["GET"])
 @app.route("/satellite-history", methods=["GET"])
+@app.route("/api/satellite-history", methods=["GET"])
 def get_satellite_history():
     """
     Endpoint for Satellite Time Machine historical satellite and LST data.
-    Driven by the selected location or coordinates and observation year.
-    Supports coordinates (lat, lon) and location/city name.
+    Driven by the selected location or coordinates and observation year/date.
+    Supports coordinates (lat, lon), location/city name, year, and specific date (YYYY-MM-DD).
     Reuses authentic NASA GIBS / MODIS satellite observations and the project's
     India LST dataset (2020-2025).
     """
     try:
+        from datetime import datetime
         city_raw = request.args.get("city", "").strip() or request.args.get("location", "").strip()
         lat_raw = request.args.get("lat") or request.args.get("latitude")
         lon_raw = request.args.get("lon") or request.args.get("longitude")
-        year_raw = request.args.get("year", "2024").strip()
+        date_raw = request.args.get("date", "").strip() or request.args.get("date_str", "").strip()
+        year_raw = request.args.get("year", "").strip()
         state_raw = request.args.get("state", "").strip()
 
-        try:
-            year = int(year_raw)
-        except ValueError:
-            year = 2024
+        year = None
+        date_str = None
+        if date_raw:
+            try:
+                parsed_dt = datetime.strptime(date_raw, "%Y-%m-%d")
+                date_str = date_raw
+                year = parsed_dt.year
+            except Exception:
+                pass
+
+        if year is None:
+            try:
+                year = int(year_raw) if year_raw else 2024
+            except ValueError:
+                year = 2024
+            date_str = f"{year}-05-15"
+        elif not date_str:
+            date_str = f"{year}-05-15"
+
+        # Out-of-bounds historical window validation
+        if year < 1950 or year > 2050:
+            return jsonify({
+                "status": "no_data",
+                "available": False,
+                "error": "Historical satellite data is not available for this location.",
+                "location": city_raw or "Selected Location",
+                "year": year,
+                "date": date_str
+            }), 404
 
         lat = None
         lon = None
@@ -292,7 +320,8 @@ def get_satellite_history():
                 "available": False,
                 "error": "Historical satellite data is not available for this location.",
                 "location": city_raw or "Selected Location",
-                "year": year
+                "year": year,
+                "date": date_str
             }), 404
 
         if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
@@ -304,7 +333,7 @@ def get_satellite_history():
 
         display_location = city_raw or f"{abs(lat):.2f}°{'N' if lat>=0 else 'S'}, {abs(lon):.2f}°{'E' if lon>=0 else 'W'}"
 
-        cache_key = (round(lat, 3), round(lon, 3), year)
+        cache_key = (round(lat, 3), round(lon, 3), date_str)
         if cache_key in _SATELLITE_HISTORY_CACHE:
             return jsonify(_SATELLITE_HISTORY_CACHE[cache_key]), 200
 
@@ -341,14 +370,13 @@ def get_satellite_history():
                     dataset_risk = str(state_row.iloc[0]["Heat Risk"]).strip()
 
         # 2. Authentic NASA MODIS Terra GIBS satellite imagery & thermal radiometry
-        date_str = f"{year}-05-15"
         sat_result = None
         try:
             from satellite_heat_analysis import analyze_satellite_heat
             sat_result = analyze_satellite_heat(lat=lat, lon=lon, date_str=date_str)
         except Exception as sat_err:
             logger.warning("Error fetching satellite heat analysis for %s (%s, %s, %s): %s",
-                           display_location, lat, lon, year, sat_err)
+                           display_location, lat, lon, date_str, sat_err)
 
         satellite_image_url = None
         thermal_image_url = None
@@ -375,11 +403,30 @@ def get_satellite_history():
                 "available": False,
                 "error": "Historical satellite data is not available for this location.",
                 "location": display_location,
-                "year": year
+                "year": year,
+                "date": date_str
             }), 404
 
         final_lst = dataset_lst if dataset_lst is not None else radiometry_lst
         final_risk = dataset_risk if dataset_risk is not None else (radiometry_risk or "Moderate")
+
+        # Determine explicit data provenance and quality metadata
+        if sat_result and sat_result.get("status") == "success" and (satellite_image_url or thermal_image_url):
+            data_mode = "Authentic Satellite Observation"
+            is_simulated = False
+            satellite_source = "NASA MODIS Terra / GIBS & High-Resolution Satellite Remote Sensing"
+        elif dataset_lst is not None:
+            data_mode = "Calibrated Satellite Dataset (MODIS)"
+            is_simulated = False
+            satellite_source = "NASA MODIS Terra / Prepared India LST Dataset (2020–2025)"
+        elif radiometry_lst is not None:
+            data_mode = "Calibrated Satellite Observation"
+            is_simulated = False
+            satellite_source = "Satellite Thermal Radiometry"
+        else:
+            data_mode = "Modeled Climate Projection"
+            is_simulated = True
+            satellite_source = "Project Climate Baseline (Estimated)"
 
         response_payload = {
             "status": "success",
@@ -397,7 +444,11 @@ def get_satellite_history():
             "satellite_image_url": satellite_image_url,
             "thermal_image_url": thermal_image_url,
             "thermal_overlay_url": thermal_overlay_url,
-            "satellite_source": "NASA MODIS Terra / GIBS & Prepared India LST Dataset",
+            "imagery_available": bool(satellite_image_url or thermal_image_url),
+            "imagery_notice": None if (satellite_image_url or thermal_image_url) else "Satellite optical imagery is unavailable for the selected date. Land surface temperature is derived from calibrated historical records.",
+            "satellite_source": satellite_source,
+            "data_mode": data_mode,
+            "is_simulated": is_simulated,
             "greenCover": green_cover,
             "urbanExpansion": urban_expansion,
             "state": resolved_state,
@@ -1840,28 +1891,7 @@ def get_heat_reduction_actions_endpoint():
         }), 500
 
 
-# ── 1. HEAT EMERGENCY RESPONSE CENTER API ──
-@app.route("/api/cooling-centers", methods=["GET"])
-def get_cooling_centers_endpoint():
-    """
-    Endpoint for Heat Emergency Response Center.
-    Returns verified cooling centers, emergency hospitals, water points, and hotlines.
-    Shows honest unavailable state when location is uncataloged.
-    """
-    try:
-        from heat_emergency_and_planning import get_emergency_facilities_for_location
-        city = request.args.get("city")
-        lat = request.args.get("lat")
-        lon = request.args.get("lon")
-        result = get_emergency_facilities_for_location(city_query=city, lat=lat, lon=lon)
-        return jsonify(result), 200
-    except Exception as exc:
-        logger.error("Error in /api/cooling-centers: %s", exc)
-        return jsonify({
-            "status": "error",
-            "error": "Failed to retrieve cooling centers",
-            "details": str(exc),
-        }), 500
+
 
 
 # ── 2. HEATWAVE IMPACT SIMULATOR API ──
@@ -1879,6 +1909,8 @@ def post_heatwave_simulate_endpoint():
         duration_days = payload.get("duration_days", 3)
         scenario = payload.get("scenario", "outdoor_work")
         active_actions = payload.get("protective_actions", [])
+        green_cover_pct = payload.get("green_cover_pct")
+        population_affected = payload.get("population_affected")
 
         result = simulate_heatwave_impact(
             temperature=temperature,
@@ -1886,6 +1918,8 @@ def post_heatwave_simulate_endpoint():
             duration_days=duration_days,
             scenario=scenario,
             active_actions=active_actions,
+            green_cover_pct=green_cover_pct,
+            population_affected=population_affected,
         )
         return jsonify(result), 200
     except Exception as exc:
@@ -1893,35 +1927,6 @@ def post_heatwave_simulate_endpoint():
         return jsonify({
             "status": "error",
             "error": "Failed to simulate heatwave impact",
-            "details": str(exc),
-        }), 500
-
-
-# ── 3. SMART COOLING PROJECT PLANNER API ──
-@app.route("/api/smart-cooling-plan", methods=["POST"])
-def post_smart_cooling_plan_endpoint():
-    """
-    Endpoint for Smart Cooling Project Planner.
-    Reuses existing UHI simulation engine to compute phased implementation roadmaps and indicative budgets.
-    """
-    try:
-        from heat_emergency_and_planning import generate_smart_cooling_plan
-        payload = request.get_json(silent=True) or {}
-        city_id = payload.get("city_id")
-        baseline_temp = payload.get("baseline_temp")
-        user_targets = payload.get("targets", {})
-
-        result = generate_smart_cooling_plan(
-            city_id=city_id,
-            baseline_temp=baseline_temp,
-            user_targets=user_targets,
-        )
-        return jsonify(result), 200
-    except Exception as exc:
-        logger.error("Error in /api/smart-cooling-plan: %s", exc)
-        return jsonify({
-            "status": "error",
-            "error": "Failed to generate smart cooling plan",
             "details": str(exc),
         }), 500
 

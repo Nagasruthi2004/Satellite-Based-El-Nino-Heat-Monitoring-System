@@ -85,6 +85,36 @@ class SatelliteHistoryTests(unittest.TestCase):
         self.assertEqual(data.get("location"), "Visakhapatnam")
         self.assertIsNotNone(data.get("land_surface_temperature"))
 
+    def test_historical_with_specific_date(self):
+        """Verify /satellite/history accepts date parameter and parses year correctly."""
+        response = self.client.get("/satellite/history?city=Visakhapatnam&lat=17.6868&lon=83.2185&date=2024-04-15")
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data.get("year"), 2024)
+        self.assertEqual(data.get("date"), "2024-04-15")
+        self.assertIn("land_surface_temperature", data)
+        self.assertIn("heat_risk", data)
+        self.assertIn("data_mode", data)
+        self.assertIn("satellite_source", data)
+        self.assertIn("is_simulated", data)
+
+    def test_api_satellite_history_alias_endpoint(self):
+        """Verify /api/satellite-history alias endpoint works identically."""
+        response = self.client.get("/api/satellite-history?city=Chennai&year=2023")
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data.get("location"), "Chennai")
+        self.assertEqual(data.get("year"), 2023)
+        self.assertTrue(data.get("available"))
+
+    def test_out_of_bounds_year_returns_404(self):
+        """Verify out-of-bounds year query returns clean 404 with unavailable flag."""
+        response = self.client.get("/satellite/history?city=Coimbatore&year=1820")
+        self.assertEqual(response.status_code, 404)
+        data = response.get_json()
+        self.assertFalse(data.get("available"))
+        self.assertIn("Historical satellite", data.get("error"))
+
 
 if __name__ == "__main__":
     unittest.main()

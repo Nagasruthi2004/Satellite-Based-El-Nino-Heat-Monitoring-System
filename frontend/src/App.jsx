@@ -5,9 +5,7 @@ import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
 import SatelliteImageHeatAnalysis from "./components/SatelliteImageHeatAnalysis";
-import HeatEmergencyResponse from "./components/HeatEmergencyResponse";
 import HeatwaveImpactSimulator from "./components/HeatwaveImpactSimulator";
-import SmartCoolingProjectPlanner from "./components/SmartCoolingProjectPlanner";
 import HeatSafetyChallenge from "./components/HeatSafetyChallenge";
 import EmailHeatAlerts from "./components/EmailHeatAlerts";
 import "./App.css";
@@ -44,6 +42,14 @@ import { getDeterministicSatelliteFallback } from "./data/satelliteData";
 import { formatWindSpeedKmh } from "./utils/wind";
 import { formatTemperature } from "./utils/temperature";
 import { getHeatRiskExplanation } from "./utils/heatRisk";
+import {
+  detectBrowserLocation,
+  reverseGeocodeCoords,
+  searchWorldwideLocations,
+  setCachedLocation,
+  formatLocationAge,
+  fetchWithTimeout,
+} from "./utils/locationService";
 
 const getSystemTheme = () => window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 const getStoredTheme = () => localStorage.getItem("el-nino-theme");
@@ -72,7 +78,6 @@ const NAVIGATION_GROUPS = [
       { id: "analytics", label: "Heat Risk Prediction", icon: "🎯" },
       { id: "assistant", label: "AI Heatwave Assistant", icon: "🤖" },
       { id: "heatwave-simulator", label: "Heatwave Impact Simulator", icon: "⚡" },
-      { id: "cooling-planner", label: "Smart Cooling Project Planner", icon: "📐" },
       { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
       { id: "preparedness", label: "Heat Preparedness Score", icon: "🛡️" },
       { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
@@ -85,10 +90,9 @@ const NAVIGATION_GROUPS = [
     title: "SAFETY",
     items: [
       { id: "email-alerts", label: "Heat Alerts", icon: "🔔" },
-      { id: "emergency-response", label: "Heat Emergency Response Center", icon: "🏥" },
       { id: "safety-challenge", label: "Heat Safety Challenge & Awareness", icon: "🏆" },
       { id: "smart-awareness", label: "Smart Awareness", icon: "💡" },
-      { id: "disaster-info", label: "Disaster Information", icon: "🚨" },
+      { id: "disaster-info", label: "Early Heatwave Warning & Disaster Risk", icon: "🚨" },
     ],
   },
   {
@@ -122,7 +126,18 @@ function App() {
   const [satelliteCity, setSatelliteCity] = useState("");
   const [mapLocation, setMapLocation] = useState(null);
   const [liveMapSelection, setLiveMapSelection] = useState(null);
-  const [liveLocation, setLiveLocation] = useState("Coimbatore, Tamil Nadu, India");
+  const [liveLocation, setLiveLocation] = useState("");
+  const [locationSource, setLocationSource] = useState("");
+  const [locationCachedTimestamp, setLocationCachedTimestamp] = useState(null);
+  const [isLocating, setIsLocating] = useState(true);
+  const [locationError, setLocationError] = useState("");
+  const [locationStatus, setLocationStatus] = useState("Detecting your live location via GPS...");
+  const [manualSearchQuery, setManualSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const locatingRef = useRef(false);
+  const searchDebounceRef = useRef(null);
   const [satellite, setSatellite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [weatherError, setWeatherError] = useState("");
@@ -156,8 +171,7 @@ function App() {
 
     try {
       setLoading(true);
-      setWeather(null);
-      setSatellite(null);
+      // Non-blocking: Keep previous weather in state so cards do not flash blank or disappear
       setSatelliteError("");
       const params = new URLSearchParams();
       if (normalizedCity) {
@@ -167,17 +181,24 @@ function App() {
       if (locationDetails.latitude != null) params.set("latitude", locationDetails.latitude);
       if (locationDetails.longitude != null) params.set("longitude", locationDetails.longitude);
       if (locationDetails.detailedLocation) params.set("detailed_location", locationDetails.detailedLocation);
-      const response = await fetch(`http://127.0.0.1:5000/weather?${params}`);
+      
+      const response = await fetchWithTimeout(`http://127.0.0.1:5000/weather?${params}`, {}, 8000);
+      if (response.status === 429) {
+        throw new Error("Weather service rate limit reached. Please wait a moment.");
+      }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to fetch weather data");
       setWeather(data);
       setWeatherError("");
+
       return data;
     } catch (error) {
-      setWeather(null);
-      setSatellite(null);
-      setSatelliteError("");
-      setWeatherError("Unable to fetch weather data for this location.");
+      console.warn("Weather fetch error:", error);
+      const isAbort = error.name === "TimeoutError" || error.name === "AbortError";
+      const message = isAbort
+        ? "Weather request timed out. Please check your connection."
+        : (error.message || "Unable to fetch weather data for this location.");
+      setWeatherError(message);
       throw error;
     } finally {
       setLoading(false);
@@ -218,40 +239,6 @@ function App() {
     return () => mediaQuery.removeEventListener("change", syncTheme);
   }, [hasSelectedTheme]);
 
-  const reverseGeocodeLocation = useCallback(async (latitude, longitude) => {
-    console.info("Reverse geocoding location", { latitude, longitude });
-    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
-      headers: { "Accept-Language": "en" },
-    });
-    if (!response.ok) throw new Error("Reverse geocoding failed");
-    const data = await response.json();
-    return data.address || {};
-  }, []);
-
-  const determineLocationLabel = useCallback((address) => {
-    const locality = address.neighbourhood || address.suburb || address.locality || address.quarter || address.hamlet;
-    const cityCandidates = [
-      address.city,
-      address.town,
-      address.municipality,
-      address.city_district,
-      address.state_district,
-      address.county,
-      address.village,
-    ].filter((name, index, names) => (
-      name && !/^ward\b/i.test(name.trim()) && names.indexOf(name) === index
-    ));
-    const displayCity = cityCandidates[0] || "";
-    const region = address.state || address.state_district || address.region;
-    const country = address.country;
-    const location = [...new Set([locality, displayCity, region, country].filter(Boolean))].join(", ");
-
-    return {
-      location,
-      cityCandidates,
-    };
-  }, []);
-
   const weatherRequestIdRef = useRef(0);
 
   const handleHoverLocationChange = useCallback(async (latitude, longitude) => {
@@ -260,13 +247,12 @@ function App() {
     try {
       setWeatherError("");
       let locationLabel = "";
-      let cityCandidates = [];
+      let primaryCity = "";
 
       try {
-        const address = await reverseGeocodeLocation(latitude, longitude);
-        const resolved = determineLocationLabel(address);
-        locationLabel = resolved.location;
-        cityCandidates = resolved.cityCandidates;
+        const geo = await reverseGeocodeCoords(latitude, longitude, 5000);
+        locationLabel = geo.displayName || "";
+        primaryCity = geo.city || geo.name || "";
       } catch (geoErr) {
         console.warn("Reverse geocoding failed or rate limited:", geoErr);
       }
@@ -274,17 +260,17 @@ function App() {
       // Check if a newer hover event was already triggered
       if (reqId !== weatherRequestIdRef.current) return;
 
-      const primaryCity = cityCandidates[0] || "";
       const displayLocation = locationLabel || (primaryCity ? `${primaryCity} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)` : `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`);
 
       if (primaryCity) {
         setSatelliteCity(primaryCity);
       }
 
-      const weatherData = await fetchWeatherForCity(primaryCity, cityCandidates, {
+      const weatherData = await fetchWeatherForCity(primaryCity, [], {
         latitude,
         longitude,
         detailedLocation: displayLocation,
+        source: "hover",
       });
 
       // Discard stale responses if mouse moved again
@@ -296,7 +282,7 @@ function App() {
     } catch (err) {
       console.error("Failed to fetch weather for hover location:", err);
     }
-  }, [fetchWeatherForCity, reverseGeocodeLocation, determineLocationLabel]);
+  }, [fetchWeatherForCity]);
 
   const handleMapClickLocation = useCallback(async (latitude, longitude) => {
     const reqId = ++weatherRequestIdRef.current;
@@ -305,13 +291,31 @@ function App() {
     setWeatherError("");
 
     try {
-      const weatherData = await fetchWeatherForCity("", [], {
+      let resolvedLabel = detailedLocation;
+      let resolvedCity = "";
+      try {
+        const geo = await reverseGeocodeCoords(latitude, longitude, 5000);
+        resolvedLabel = geo.displayName || detailedLocation;
+        resolvedCity = geo.city || geo.name || "";
+      } catch (e) {
+        console.warn("Reverse geocode on map click:", e);
+      }
+
+      setLiveLocation(resolvedLabel);
+      setLocationSource("map");
+      setLocationCachedTimestamp(Date.now());
+      setLocationStatus(`Selected map coordinates: ${resolvedLabel}`);
+
+      const weatherData = await fetchWeatherForCity(resolvedCity, [], {
         latitude,
         longitude,
-        detailedLocation,
+        detailedLocation: resolvedLabel,
+        source: "map",
       });
       if (reqId !== weatherRequestIdRef.current) return;
-      if (weatherData?.city) setSatelliteCity(weatherData.city);
+      if (weatherData?.city) {
+        setSatelliteCity(weatherData.city);
+      }
     } catch (err) {
       if (reqId === weatherRequestIdRef.current) {
         console.error("Failed to fetch weather for clicked map location:", err);
@@ -319,25 +323,165 @@ function App() {
     }
   }, [fetchWeatherForCity]);
 
-  const recenterToUserLocation = useCallback(() => {
-    setLiveLocation("Coimbatore, Tamil Nadu, India");
-    setMapLocation({ lat: 11.0168, lon: 76.9558, label: "Coimbatore" });
-    fetchWeatherForCity("Coimbatore").catch(() => {});
+  const recenterToUserLocation = useCallback(async () => {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    setIsLocating(true);
+    setLocationError("");
+    setLocationStatus("Detecting live location via GPS...");
+
+    try {
+      const pos = await detectBrowserLocation({ timeout: 8000, enableHighAccuracy: false, maximumAge: 300000 });
+      const { latitude, longitude } = pos;
+
+      const geo = await reverseGeocodeCoords(latitude, longitude, 6000);
+      const displayCity = geo.city || geo.name || "";
+      const displayLabel = geo.displayName || (displayCity ? `${displayCity} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)` : `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`);
+
+      setLiveLocation(displayLabel);
+      setMapLocation({ lat: latitude, lon: longitude, label: displayCity || "Current Location" });
+      if (displayCity) setSatelliteCity(displayCity);
+      setLocationSource("gps");
+      setLocationCachedTimestamp(Date.now());
+      setLocationStatus("Location updated via GPS");
+
+      setCachedLocation({
+        city: displayCity,
+        label: displayLabel,
+        lat: latitude,
+        lon: longitude,
+        source: "gps",
+        timestamp: Date.now(),
+      });
+
+      await fetchWeatherForCity(displayCity, [], {
+        latitude,
+        longitude,
+        detailedLocation: displayLabel,
+        source: "gps",
+      });
+    } catch (err) {
+      console.warn("Location detection failed:", err);
+      const errMsg = err?.message || "Location detection timed out or failed. Please search your city manually below.";
+      setLocationError(errMsg);
+      setLocationStatus("");
+      setLoading(false);
+    } finally {
+      locatingRef.current = false;
+      setIsLocating(false);
+    }
   }, [fetchWeatherForCity]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const initLocation = async () => {
-      await Promise.resolve();
-      if (isMounted) {
-        recenterToUserLocation();
+  const handleSearchInputChange = (e) => {
+    const val = e.target.value;
+    setManualSearchQuery(val);
+    setLocationError("");
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    if (!val.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        setIsSearchingLocation(true);
+        const results = await searchWorldwideLocations(val.trim(), 6, 5000);
+        setSearchResults(results);
+        setShowSearchDropdown(results.length > 0);
+      } catch (err) {
+        console.warn("City search failed:", err);
+      } finally {
+        setIsSearchingLocation(false);
       }
-    };
-    initLocation();
-    return () => {
-      isMounted = false;
-    };
+    }, 300);
+  };
+
+  const handleSelectCitySuggestion = async (item) => {
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    const cityName = item.name || item.display_name;
+    const label = item.display_name || cityName;
+    setManualSearchQuery(cityName);
+    setLocationError("");
+    setLocationStatus(`Selected ${cityName}`);
+
+    const lat = item.lat != null ? Number(item.lat) : null;
+    const lon = item.lon != null ? Number(item.lon) : null;
+
+    setLiveLocation(label);
+    if (lat != null && lon != null) {
+      setMapLocation({ lat, lon, label: cityName });
+    }
+    setSatelliteCity(cityName);
+    setLocationSource("manual");
+    setLocationCachedTimestamp(Date.now());
+
+    try {
+      await fetchWeatherForCity(cityName, [], {
+        latitude: lat,
+        longitude: lon,
+        detailedLocation: label,
+        source: "manual",
+      });
+    } catch (err) {
+      setLocationError(err.message || `Unable to load weather for ${cityName}.`);
+    }
+  };
+
+  const executeCitySearch = async (query) => {
+    const trimmed = (query || "").trim();
+    if (!trimmed) return;
+    setShowSearchDropdown(false);
+    setIsSearchingLocation(true);
+    setLocationError("");
+
+    try {
+      const results = await searchWorldwideLocations(trimmed, 1, 5000);
+      if (results && results.length > 0) {
+        await handleSelectCitySuggestion(results[0]);
+      } else {
+        setLiveLocation(trimmed);
+        setSatelliteCity(trimmed);
+        setLocationSource("manual");
+        setLocationCachedTimestamp(Date.now());
+        await fetchWeatherForCity(trimmed, [], { source: "manual" });
+        setLocationStatus(`Selected ${trimmed}`);
+      }
+    } catch (err) {
+      setLocationError(err.message || `Unable to find weather for "${trimmed}".`);
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      executeCitySearch(manualSearchQuery);
+    }
+  };
+
+  const hasInitializedLocationRef = useRef(false);
+
+  useEffect(() => {
+    if (hasInitializedLocationRef.current) return;
+    hasInitializedLocationRef.current = true;
+
+    // Automatically detect current location and load its weather first on initial load / refresh
+    recenterToUserLocation();
   }, [recenterToUserLocation]);
+
+  useEffect(() => {
+    // When Live Weather opens, if location was never initialized, auto-detect
+    if (activePage === "live" && !weather && !isLocating && !locatingRef.current && !locationError && !manualSearchQuery) {
+      recenterToUserLocation();
+    }
+  }, [activePage, weather, isLocating, locationError, manualSearchQuery, recenterToUserLocation]);
 
   useEffect(() => {
     let isMounted = true;
@@ -728,20 +872,78 @@ function App() {
           </div>
           <div className="hero-search">
             <div className="card" style={{ marginTop: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                 <h2 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span>🎯</span> Live Selected Location
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span className="live-dot" style={{ display: "inline-block" }} />
-                  <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.5px" }}>Live Map</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {isLocating && (
+                    <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span className="live-dot" style={{ display: "inline-block" }} /> Detecting GPS...
+                    </span>
+                  )}
+                  {!isLocating && locationSource === "cached" && locationCachedTimestamp && (
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: "10px" }} title="Location loaded from browser cache">
+                      💾 Saved ({formatLocationAge(locationCachedTimestamp)})
+                    </span>
+                  )}
+                  {!isLocating && locationSource === "gps" && (
+                    <span style={{ fontSize: "11px", color: "#16a34a", background: "rgba(22, 163, 74, 0.1)", border: "1px solid rgba(22, 163, 74, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                      ● GPS Verified
+                    </span>
+                  )}
+                  {!isLocating && locationSource === "manual" && (
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: "10px" }}>
+                      🔍 Manual
+                    </span>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span className="live-dot" style={{ display: "inline-block" }} />
+                    <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.5px" }}>Live Map</span>
+                  </div>
                 </div>
               </div>
+
+              {locationError && (
+                <div
+                  className="prediction-error"
+                  style={{
+                    marginTop: 0,
+                    marginBottom: "12px",
+                    padding: "8px 12px",
+                    fontSize: "12px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>⚠️ {locationError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setLocationError("")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "inherit",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      padding: "0 4px",
+                    }}
+                    title="Dismiss"
+                    aria-label="Dismiss error"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               <div className="search-result" style={{ marginTop: 0 }}>
                 <div className="search-result-item">
                   <div className="sr-label">Place / City</div>
-                  <div className="sr-value">{weather?.city || "Detecting location..."}</div>
+                  <div className="sr-value">{weather?.city || liveLocation || (isLocating ? "Detecting location..." : "No location selected")}</div>
                 </div>
                 <div className="search-result-item">
                   <div className="sr-label">Coordinates</div>
@@ -750,6 +952,8 @@ function App() {
                       ? `${liveMapSelection.lat.toFixed(4)}°, ${liveMapSelection.lon.toFixed(4)}°`
                       : weather?.lat != null && weather?.lon != null
                       ? `${weather.lat.toFixed(4)}°, ${weather.lon.toFixed(4)}°`
+                      : mapLocation?.lat != null && mapLocation?.lon != null
+                      ? `${mapLocation.lat.toFixed(4)}°, ${mapLocation.lon.toFixed(4)}°`
                       : "Center of map"}
                   </div>
                 </div>
@@ -760,7 +964,7 @@ function App() {
                 <div className="search-result-item">
                   <div className="sr-label">Heat Risk</div>
                   <div className="sr-value" style={{ color: currentHeatRisk?.level === "High" || currentHeatRisk?.level === "Critical" ? "var(--danger)" : "inherit" }}>
-                    {currentHeatRisk?.level || "Calculating..."}
+                    {loading ? "Calculating..." : (currentHeatRisk?.level || "—")}
                   </div>
                 </div>
                 <div className="search-result-item">
@@ -769,26 +973,134 @@ function App() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: "14px", flexWrap: "wrap", gap: "8px" }}>
+              {/* Manual City Search Bar with debounced autocomplete */}
+              <div style={{ marginTop: "14px", display: "flex", gap: "8px", position: "relative" }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <input
+                    type="text"
+                    value={manualSearchQuery}
+                    onChange={handleSearchInputChange}
+                    onKeyDown={handleSearchKeyDown}
+                    onFocus={() => { if (searchResults.length > 0) setShowSearchDropdown(true); }}
+                    placeholder="Search city manually (e.g. Pune, Chennai, Tokyo)..."
+                    disabled={isLocating}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg)",
+                      color: "var(--text)",
+                      fontSize: "13px",
+                      boxSizing: "border-box",
+                      outline: "none",
+                    }}
+                  />
+                  {showSearchDropdown && searchResults.length > 0 && (
+                    <ul
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 4px)",
+                        left: 0,
+                        right: 0,
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
+                        listStyle: "none",
+                        padding: "4px 0",
+                        margin: 0,
+                        zIndex: 1000,
+                        maxHeight: "220px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      {searchResults.map((item, idx) => (
+                        <li
+                          key={idx}
+                          onClick={() => handleSelectCitySuggestion(item)}
+                          style={{
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            borderBottom: idx < searchResults.length - 1 ? "1px solid var(--border)" : "none",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-alt)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <span style={{ fontWeight: "500" }}>📍 {item.name || item.display_name}</span>
+                          {(item.country || item.state) && (
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                              {[item.state, item.country].filter(Boolean).join(", ")}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <button
                   type="button"
-                  onClick={recenterToUserLocation}
+                  onClick={() => executeCitySearch(manualSearchQuery)}
+                  disabled={isSearchingLocation || !manualSearchQuery.trim()}
+                  style={{
+                    background: "var(--primary)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "8px 14px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    cursor: isSearchingLocation || !manualSearchQuery.trim() ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap",
+                    opacity: isSearchingLocation || !manualSearchQuery.trim() ? 0.6 : 1,
+                  }}
+                >
+                  {isSearchingLocation ? "Searching..." : "Search"}
+                </button>
+              </div>
+
+              {/* Status footer with non-blocking Locate Me button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", flexWrap: "wrap", gap: "8px" }}>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  {isLocating
+                    ? "Detecting location via GPS (timeout 8s)..."
+                    : locationStatus || (locationError ? "Detection failed. Try searching your city above." : "Click Locate Me or search city above")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => recenterToUserLocation()}
+                  disabled={isLocating}
                   style={{
                     background: "var(--surface-alt)",
                     border: "1px solid var(--border)",
                     borderRadius: "20px",
                     color: "var(--text)",
-                    cursor: "pointer",
+                    cursor: isLocating ? "not-allowed" : "pointer",
                     fontSize: "12px",
                     fontWeight: "600",
                     padding: "6px 14px",
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
+                    opacity: isLocating ? 0.7 : 1,
                   }}
                   title="Recenter map to my GPS location"
                 >
-                  <span>📍</span> Locate Me
+                  {isLocating ? (
+                    <>
+                      <span className="live-dot" style={{ display: "inline-block" }} />
+                      <span>Detecting location...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>📍</span>
+                      <span>Locate Me</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -816,9 +1128,9 @@ function App() {
         {/* ── DASHBOARD ── */}
         <section className="section">
           <h2 className="section-title">📊 Live Weather Dashboard</h2>
-          {(weatherError || satelliteError) && (
+          {(locationError || weatherError || satelliteError) && (
             <div className="prediction-error" style={{ marginBottom: "16px" }}>
-              {weatherError || satelliteError}
+              {locationError || weatherError || satelliteError}
             </div>
           )}
           <div className="dashboard">
@@ -864,31 +1176,24 @@ function App() {
               currentHeatRisk={currentHeatRisk}
               predictionResult={predictionResult}
               loading={loading}
-              onRefresh={() => fetchWeatherForCity(weather?.city || "Coimbatore")}
+              onRefresh={() => (weather?.city || liveLocation) && fetchWeatherForCity(weather?.city || liveLocation)}
             />
           </section>
         )}
 
-        {/* ── DISASTER INFORMATION ── */}
+        {/* ── EARLY HEATWAVE WARNING & DISASTER RISK CENTER ── */}
         {activePage === "disaster-info" && (
           <section className="section">
             <DisasterInformation
               currentHeatRisk={currentHeatRisk}
               weather={weather}
+              satellite={satellite}
+              liveLocation={liveLocation}
             />
           </section>
         )}
 
-        {/* ── HEAT EMERGENCY RESPONSE CENTER ── */}
-        {activePage === "emergency-response" && (
-          <section className="section">
-            <HeatEmergencyResponse
-              initialCity={weather?.city || "Coimbatore"}
-              initialLat={weather?.lat}
-              initialLon={weather?.lon}
-            />
-          </section>
-        )}
+
 
         {/* ── HEAT SAFETY CHALLENGE & AWARENESS ── */}
         {activePage === "safety-challenge" && (
@@ -952,16 +1257,6 @@ function App() {
           <section className="section">
             <HeatwaveImpactSimulator
               initialTemperature={weather?.temperature}
-            />
-          </section>
-        )}
-
-        {/* ── SMART COOLING PROJECT PLANNER ── */}
-        {activePage === "cooling-planner" && (
-          <section className="section">
-            <SmartCoolingProjectPlanner
-              initialCity={weather?.city || "Coimbatore"}
-              initialBaselineTemp={satellite?.land_surface_temperature || weather?.temperature}
             />
           </section>
         )}
@@ -1033,14 +1328,6 @@ function App() {
                   onClick={() => navigateToPage("satellite-image-heat-analysis")}
                 >
                   📡 Satellite Image Heat Analysis
-                </button>
-                <button
-                  type="button"
-                  className="predict-button"
-                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
-                  onClick={() => navigateToPage("india-lst")}
-                >
-                  🗺️ India LST Heat Map (2020–2025)
                 </button>
               </div>
             </div>

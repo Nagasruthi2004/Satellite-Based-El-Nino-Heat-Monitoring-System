@@ -12,40 +12,7 @@ class HeatEmergencyAndPlanningTests(unittest.TestCase):
     def setUp(self):
         self.client = app.test_client()
 
-    def test_cooling_centers_verified_location(self):
-        """Test GET /api/cooling-centers returns verified facilities and contacts for cataloged cities."""
-        for city in ["Coimbatore", "Chennai", "Delhi"]:
-            res = self.client.get(f"/api/cooling-centers?city={city}")
-            self.assertEqual(res.status_code, 200)
-            data = res.get_json()
-            self.assertEqual(data["status"], "success")
-            self.assertEqual(data["coverage_status"], "verified_available")
-            self.assertGreater(len(data["cooling_centers"]), 0)
-            self.assertGreater(len(data["hospitals"]), 0)
-            self.assertGreater(len(data["water_points"]), 0)
-            self.assertGreater(len(data["emergency_contacts"]), 0)
 
-            # Check 112 and 108 are present in emergency contacts
-            numbers = [c["number"] for c in data["emergency_contacts"]]
-            self.assertTrue(any("112" in n for n in numbers))
-            self.assertTrue(any("108" in n for n in numbers))
-
-            # Verify mandatory disclaimer
-            self.assertIn("disclaimer", data)
-            self.assertIn("does NOT replace official 112 / 108", data["disclaimer"])
-
-    def test_cooling_centers_uncataloged_location_honest_unavailable(self):
-        """Test GET /api/cooling-centers returns honest unavailable state with zero fabricated data."""
-        res = self.client.get("/api/cooling-centers?city=NonExistentRemoteOutpost&lat=55.123&lon=44.123")
-        self.assertEqual(res.status_code, 200)
-        data = res.get_json()
-        self.assertEqual(data["coverage_status"], "unavailable")
-        # Cooling centers and water points must be empty rather than fabricated
-        self.assertEqual(len(data["cooling_centers"]), 0)
-        self.assertEqual(len(data["water_points"]), 0)
-        # National emergency helplines must still be provided
-        self.assertGreater(len(data["emergency_contacts"]), 0)
-        self.assertIn("No verified municipal cooling centers", data["message"])
 
     def test_heatwave_impact_simulator_bounds_and_mitigation(self):
         """Test POST /api/heatwave-simulate validates input bounds and calculates strain reduction."""
@@ -88,41 +55,6 @@ class HeatEmergencyAndPlanningTests(unittest.TestCase):
         self.assertEqual(data["inputs"]["duration_days"], 30)
         self.assertEqual(data["inputs"]["scenario"], "outdoor_work")
 
-    def test_smart_cooling_project_plan(self):
-        """Test POST /api/smart-cooling-plan computes phased roadmap and separates data categories."""
-        payload = {
-            "city_id": "coimbatore",
-            "baseline_temp": 33.2,
-            "targets": {
-                "tree_count": 4000,
-                "cool_roof_sqm": 50000,
-                "parks_hectares": 6.0,
-                "shaded_bus_stops": 30,
-                "permeable_pavement_sqm": 20000
-            }
-        }
-        res = self.client.post("/api/smart-cooling-plan", json=payload)
-        self.assertEqual(res.status_code, 200)
-        data = res.get_json()
-        self.assertEqual(data["status"], "success")
-
-        # Verify strict separation between measured data, user assumptions, and proposed estimates
-        self.assertIn("measured_ground_truth", data)
-        self.assertIn("user_planning_assumptions", data)
-        self.assertIn("proposed_simulation_estimates", data)
-
-        # Verify 3 phased rollout phases
-        phases = data["phased_implementation_roadmap"]
-        self.assertEqual(len(phases), 3)
-        self.assertIn("Phase 1", phases[0]["phase"])
-        self.assertIn("Phase 2", phases[1]["phase"])
-        self.assertIn("Phase 3", phases[2]["phase"])
-
-        # Check budget values and caveat disclaimer
-        self.assertGreater(data["total_budget_inr_raw"], 0)
-        self.assertIn("₹", data["total_indicative_investment"])
-        self.assertIn("BUDGET CAVEAT NOTICE", data["budget_caveat_disclaimer"])
-
     def test_heat_safety_challenge_data(self):
         """Test GET /api/heat-safety-quizzes returns evidence-based quizzes, myths/facts, and citations."""
         res = self.client.get("/api/heat-safety-quizzes")
@@ -130,23 +62,83 @@ class HeatEmergencyAndPlanningTests(unittest.TestCase):
         data = res.get_json()
         self.assertEqual(data["status"], "success")
 
-        self.assertGreaterEqual(len(data["quizzes"]), 5)
-        self.assertGreaterEqual(len(data["myths_and_facts"]), 5)
-        self.assertGreaterEqual(len(data["scenario_challenges"]), 2)
+        # Check both legacy and canonical frontend keys
+        self.assertIn("quiz_questions", data)
+        self.assertIn("myths_vs_facts", data)
+        self.assertIn("scenario_challenges", data)
+        self.assertIn("evidence_sources", data)
 
-        # Check authoritative sources are cited
-        source_names = [s["name"] for s in data["authoritative_sources"]]
+        self.assertGreaterEqual(len(data["quiz_questions"]), 5)
+        self.assertGreaterEqual(len(data["myths_vs_facts"]), 5)
+        self.assertGreaterEqual(len(data["scenario_challenges"]), 2)
+        self.assertGreaterEqual(len(data["evidence_sources"]), 4)
+
+        # Check authoritative sources are cited from WHO, NDMA, CDC
+        source_names = [s["name"] for s in data["evidence_sources"]]
         self.assertTrue(any("WHO" in s or "World Health" in s for s in source_names))
         self.assertTrue(any("NDMA" in s for s in source_names))
         self.assertTrue(any("CDC" in s for s in source_names))
 
-        # Check each quiz has a valid correct_index and explanation
-        for q in data["quizzes"]:
+        # Check each quiz question structure, options, scoring integrity, and citations
+        for q in data["quiz_questions"]:
+            self.assertIn("id", q)
             self.assertIn("question", q)
             self.assertIn("options", q)
+            self.assertGreaterEqual(len(q["options"]), 4)
             self.assertIn("correct_index", q)
+            self.assertIsInstance(q["correct_index"], int)
+            self.assertTrue(0 <= q["correct_index"] < len(q["options"]))
             self.assertIn("explanation", q)
+            self.assertGreater(len(q["explanation"]), 20)
             self.assertIn("source", q)
+            self.assertIn("source_citation", q)
+            self.assertIn("category", q)
+
+        # Check myth vs fact structure
+        for m in data["myths_vs_facts"]:
+            self.assertIn("id", m)
+            self.assertIn("myth", m)
+            self.assertIn("fact", m)
+            self.assertIn("science_detail", m)
+            self.assertIn("source", m)
+            self.assertIn("authority", m)
+            self.assertIn("icon", m)
+
+        # Check scenario challenges structure with options and guidance
+        for sc in data["scenario_challenges"]:
+            self.assertIn("id", sc)
+            self.assertIn("title", sc)
+            self.assertIn("scenario", sc)
+            self.assertIn("options", sc)
+            self.assertGreaterEqual(len(sc["options"]), 2)
+            self.assertIn("guidance", sc)
+            # Exactly one option should be marked correct
+            correct_opts = [opt for opt in sc["options"] if opt.get("is_correct") is True]
+            self.assertEqual(len(correct_opts), 1)
+            for opt in sc["options"]:
+                self.assertIn("text", opt)
+                self.assertIn("outcome", opt)
+                self.assertIn("explanation", opt)
+
+        # Check evidence sources structure
+        for src in data["evidence_sources"]:
+            self.assertIn("name", src)
+            self.assertIn("organization", src)
+            self.assertIn("publication", src)
+            self.assertIn("year", src)
+            self.assertIn("description", src)
+            self.assertIn("url", src)
+            self.assertTrue(src["url"].startswith("http://") or src["url"].startswith("https://"))
+
+    def test_heat_safety_quizzes_endpoint_error_handling(self):
+        """Test GET /api/heat-safety-quizzes handles unexpected backend failure gracefully with 500 status."""
+        from unittest.mock import patch
+        with patch("heat_emergency_and_planning.get_heat_safety_challenge_data", side_effect=RuntimeError("Data repository error")):
+            res = self.client.get("/api/heat-safety-quizzes")
+            self.assertEqual(res.status_code, 500)
+            data = res.get_json()
+            self.assertEqual(data["status"], "error")
+            self.assertIn("Failed to retrieve", data["error"])
 
 
 if __name__ == "__main__":

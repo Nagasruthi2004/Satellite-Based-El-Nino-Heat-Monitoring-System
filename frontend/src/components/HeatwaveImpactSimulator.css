@@ -1,451 +1,687 @@
 /* ==========================================================================
-   Heatwave Impact Simulator Styles
+   Heatwave Impact Simulator - Clean, Compact, College Demo Styles
    ========================================================================== */
 
-.hwsim-container {
+.hwsim-card-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Header */
-.hwsim-header {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: var(--shadow);
-}
-
-.hwsim-header h2 {
-  font-size: 24px;
-  font-weight: var(--weight-heading);
-  color: var(--text);
-  margin-bottom: 6px;
+.hwsim-compact-header {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  padding: 18px 24px;
+  box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.06));
   display: flex;
+  justifyContent: space-between;
   align-items: center;
-  gap: 10px;
-}
-
-.hwsim-subtitle {
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-  max-width: 800px;
-}
-
-/* Disclaimer Banner */
-.hwsim-disclaimer {
-  background: var(--warning-surface);
-  border: 1px solid rgba(217, 119, 6, 0.35);
-  border-left: 4px solid var(--warning);
-  border-radius: var(--radius-sm);
-  padding: 12px 18px;
-  margin-top: 16px;
-  display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.hwsim-disclaimer-text {
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.5;
-}
-
-.hwsim-disclaimer-text strong {
-  color: var(--warning);
-}
-
-/* Scenarios Grid */
-.hwsim-scenarios-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hwsim-section-label {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
+.hwsim-title-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.hwsim-scenarios-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
 }
 
-.hwsim-scenario-card {
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-align: left;
-}
-
-.hwsim-scenario-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary-light);
-  box-shadow: var(--shadow-hover);
-}
-
-.hwsim-scenario-card.active {
-  border-color: var(--primary);
-  background: linear-gradient(135deg, var(--card) 0%, rgba(21, 101, 192, 0.05) 100%);
-  box-shadow: 0 4px 14px rgba(21, 101, 192, 0.15);
-}
-
-.hwsim-card-icon {
+.hwsim-icon-badge {
   font-size: 28px;
+  background: var(--surface-alt, #f1f5f9);
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e2e8f0);
 }
 
-.hwsim-card-title {
-  font-size: 15px;
+.hwsim-heading {
+  font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text, #0f172a);
+  margin: 0 0 4px 0;
 }
 
-.hwsim-card-desc {
-  font-size: 12px;
-  color: var(--text-muted);
+.hwsim-tagline {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+  max-width: 650px;
   line-height: 1.4;
 }
 
-.hwsim-card-vuln {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--danger);
-  margin-top: auto;
-}
-
-/* Controls Grid */
-.hwsim-controls-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 20px;
-}
-
-@media (max-width: 900px) {
-  .hwsim-controls-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.hwsim-panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.hwsim-panel-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Sliders */
-.hwsim-slider-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hwsim-slider-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-}
-
-.hwsim-slider-label {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.hwsim-slider-value {
-  font-weight: 700;
-  color: var(--primary);
-  font-size: 14px;
-}
-
-.hwsim-range-input {
-  width: 100%;
-  accent-color: var(--primary);
-  cursor: pointer;
-}
-
-.hwsim-slider-bounds {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-/* Presets */
-.hwsim-presets {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.hwsim-preset-btn {
-  background: var(--secondary);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.hwsim-preset-btn:hover {
-  background: var(--primary-light);
-  border-color: var(--primary);
-}
-
-/* Actions Checkboxes */
-.hwsim-actions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.hwsim-action-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--secondary);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.hwsim-action-item:hover {
-  border-color: var(--primary);
-  background: var(--card);
-}
-
-.hwsim-action-item.checked {
-  border-color: var(--success);
-  background: var(--success-surface);
-}
-
-.hwsim-action-item input[type="checkbox"] {
-  margin-top: 3px;
-  accent-color: var(--success);
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.hwsim-action-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-}
-
-.hwsim-action-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.hwsim-action-eff {
-  font-size: 11px;
-  color: var(--success);
-  font-weight: 700;
-}
-
-/* Side-by-Side Comparison Panels */
-.hwsim-comparison-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-@media (max-width: 820px) {
-  .hwsim-comparison-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.hwsim-comp-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 22px;
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-.hwsim-comp-card.baseline {
-  border-top: 5px solid var(--danger);
-}
-
-.hwsim-comp-card.preparedness {
-  border-top: 5px solid var(--success);
-}
-
-.hwsim-comp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.hwsim-comp-tag {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-
-.hwsim-comp-tag.base {
-  background: var(--danger-surface);
-  color: var(--danger);
-}
-
-.hwsim-comp-tag.prep {
-  background: var(--success-surface);
-  color: var(--success);
-}
-
-.hwsim-comp-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-/* Big Metrics */
-.hwsim-metric-block {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.hwsim-metric-val {
-  font-size: 38px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.hwsim-metric-unit {
-  font-size: 14px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.hwsim-risk-badge {
+.hwsim-meta-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  background: var(--surface-alt, #f8fafc);
+  padding: 4px 12px;
   border-radius: 20px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.hwsim-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary, #0284c7);
+}
+
+/* Validation Alert */
+.hwsim-validation-alert {
+  background: #fef2f2;
+  border: 1px solid #f87171;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
+}
+
+.hwsim-validation-alert button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Controls Grid */
+.hwsim-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.hwsim-control-box {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  padding: 14px 16px;
+  box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hwsim-control-label-row {
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
+}
+
+.hwsim-label-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+
+.hwsim-value-pill {
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text, #0f172a);
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.hwsim-value-pill.temp-pill {
+  background: rgba(234, 88, 12, 0.1);
+  color: #c2410c;
+  border-color: rgba(234, 88, 12, 0.3);
+}
+
+.hwsim-value-pill.green-pill {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+.hwsim-range {
+  width: 100%;
+  accent-color: var(--primary, #0284c7);
+  cursor: pointer;
+  margin: 4px 0;
+}
+
+.hwsim-range-markers {
+  display: flex;
+  justifyContent: space-between;
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.hwsim-number-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--bg, #f8fafc);
+  color: var(--text, #0f172a);
+  font-size: 14px;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+.hwsim-preset-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hwsim-chip {
+  background: var(--surface-alt, #f1f5f9);
+  border: 1px solid var(--border, #e2e8f0);
+  color: var(--text, #0f172a);
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hwsim-chip:hover {
+  background: var(--border, #e2e8f0);
+}
+
+.hwsim-chip.active {
+  background: var(--primary, #0284c7);
+  color: #ffffff;
+  border-color: var(--primary, #0284c7);
+}
+
+/* Secondary Controls */
+.hwsim-secondary-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.hwsim-subpanel {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hwsim-subpanel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #fff;
 }
 
-/* Thermometer / Strain Bar */
-.hwsim-strain-bar-track {
+.hwsim-scenario-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.hwsim-scenario-btn {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.hwsim-scenario-btn:hover {
+  background: var(--border, #e2e8f0);
+}
+
+.hwsim-scenario-btn.active {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: var(--primary, #0284c7);
+  color: var(--primary, #0284c7);
+  box-shadow: 0 0 0 1px var(--primary, #0284c7);
+}
+
+.hwsim-measures-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.hwsim-measure-btn {
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.hwsim-measure-btn:hover {
+  background: var(--border, #e2e8f0);
+}
+
+.hwsim-measure-btn.checked {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: #16a34a;
+  color: #15803d;
+  font-weight: 700;
+}
+
+.hwsim-check {
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* Action Buttons Bar */
+.hwsim-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.hwsim-btn-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3);
+  transition: all 0.2s ease;
+}
+
+.hwsim-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(2, 132, 199, 0.4);
+}
+
+.hwsim-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.hwsim-btn-secondary {
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text, #0f172a);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.hwsim-btn-secondary:hover:not(:disabled) {
+  background: var(--border, #e2e8f0);
+}
+
+.hwsim-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: hwsim-spin 0.7s linear infinite;
+}
+
+@keyframes hwsim-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Results Dashboard */
+.hwsim-results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 6px;
+}
+
+.hwsim-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.hwsim-kpi-card {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  padding: 14px 16px;
+  box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hwsim-kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hwsim-kpi-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  line-height: 1.2;
+}
+
+.hwsim-kpi-max {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted, #94a3b8);
+}
+
+.hwsim-kpi-sub {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  margin-top: 4px;
+}
+
+/* Comparison Box */
+.hwsim-comparison-wrap {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  padding: 16px 20px;
+  box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.04));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hwsim-comp-box {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hwsim-comp-arrow {
+  font-size: 20px;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 700;
+}
+
+.hwsim-comp-header-row {
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
+}
+
+.hwsim-comp-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.hwsim-comp-badge.base-badge {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.hwsim-comp-badge.mit-badge {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.hwsim-badge-score {
+  font-size: 12px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.hwsim-badge-score.green {
+  color: #16a34a;
+}
+
+.hwsim-progress-bar-track {
   width: 100%;
-  height: 12px;
-  background: var(--secondary);
+  height: 10px;
+  background: var(--surface-alt, #f1f5f9);
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid var(--border);
 }
 
-.hwsim-strain-bar-fill {
+.hwsim-progress-bar-fill {
   height: 100%;
   border-radius: 6px;
   transition: width 0.4s ease;
 }
 
-/* Impacts List */
-.hwsim-impacts-list {
-  list-style: none;
+.hwsim-progress-bar-fill.base-fill {
+  background: linear-gradient(90deg, #f87171, #dc2626);
+}
+
+.hwsim-progress-bar-fill.mit-fill {
+  background: linear-gradient(90deg, #4ade80, #16a34a);
+}
+
+.hwsim-comp-stats {
+  display: flex;
+  justifyContent: space-between;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hwsim-comp-stats strong {
+  color: var(--text, #0f172a);
+}
+
+/* Simple Comparison Chart */
+.hwsim-chart-card {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  padding: 16px 20px;
+  box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.04));
+}
+
+.hwsim-chart-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+  margin: 0 0 14px 0;
+}
+
+.hwsim-chart-bars-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.hwsim-chart-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.hwsim-chart-metric-name {
   font-size: 12px;
-  color: var(--text);
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
 }
 
-.hwsim-impacts-list li {
+.hwsim-chart-dual-bar {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  line-height: 1.4;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.hwsim-impacts-list li.negative::before {
-  content: "⚠️";
-  font-size: 13px;
-}
-
-.hwsim-impacts-list li.positive::before {
-  content: "🛡️";
-  font-size: 13px;
-}
-
-/* Transition banner */
-.hwsim-transition-banner {
-  background: var(--secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
+.hwsim-chart-bar-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
+}
+
+.hwsim-bar-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  width: 32px;
+}
+
+.hwsim-bar-track {
+  flex: 1;
+  height: 22px;
+  background: var(--surface-alt, #f1f5f9);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.hwsim-bar-val {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+  transition: width 0.4s ease;
+  min-width: 28px;
+  box-sizing: border-box;
+}
+
+.hwsim-bar-val.red {
+  background: #dc2626;
+}
+
+.hwsim-bar-val.green {
+  background: #16a34a;
+}
+
+/* Practical Recommendation Box */
+.hwsim-recommendation-box {
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  border-radius: var(--radius, 12px);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hwsim-rec-header {
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary, #0284c7);
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 6px;
 }
 
-.hwsim-transition-text {
+.hwsim-rec-badge {
+  font-size: 11px;
+  background: #ffffff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.hwsim-rec-text {
+  font-size: 13px;
+  color: var(--text, #0f172a);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Expandable Details */
+.hwsim-details-accordion {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  overflow: hidden;
+}
+
+.hwsim-summary-toggle {
+  padding: 12px 18px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.hwsim-summary-toggle:hover {
+  color: var(--text, #0f172a);
+  background: var(--surface-alt, #f8fafc);
+}
+
+.hwsim-summary-arrow {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
 }
 
-.hwsim-reduction-pill {
-  background: var(--success);
-  color: #fff;
-  padding: 5px 12px;
-  border-radius: 14px;
+.hwsim-accordion-content {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border, #e2e8f0);
+  background: var(--surface-alt, #fafafa);
+}
+
+.hwsim-methodology-list {
+  margin: 0;
+  padding-left: 18px;
   font-size: 12px;
-  font-weight: 700;
+  color: var(--text-muted, #475569);
+  line-height: 1.6;
+}
+
+.hwsim-methodology-list li {
+  margin-bottom: 6px;
+}
+
+.hwsim-methodology-list strong {
+  color: var(--text, #0f172a);
 }

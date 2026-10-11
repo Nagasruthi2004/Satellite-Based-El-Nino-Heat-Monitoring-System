@@ -159,13 +159,19 @@ export function getHistoricalSatelliteData(city, year, locationDetails = {}) {
 
   let temperature = null;
   let heatRisk = null;
+  let dataMode = "Modeled Climate Projection";
+  let isSimulated = true;
 
   if (yearRecord) {
     temperature = round(yearRecord.lst);
     heatRisk = yearRecord.risk;
+    dataMode = "Calibrated Satellite Dataset (MODIS)";
+    isSimulated = false;
   } else if (profile) {
     temperature = round(profile.temperature[0] + offset * profile.temperature[1]);
     heatRisk = getHistoricalHeatTrend(temperature);
+    dataMode = "Modeled Climate Projection";
+    isSimulated = true;
   }
 
   if (temperature == null) return null;
@@ -178,13 +184,16 @@ export function getHistoricalSatelliteData(city, year, locationDetails = {}) {
     : 38.0;
 
   const displayLocation = city || (locationDetails.latitude != null ? `${locationDetails.latitude.toFixed(2)}°, ${locationDetails.longitude.toFixed(2)}°` : "Selected Location");
+  const dateStr = locationDetails.date || `${year}-05-15`;
 
   return {
     city: displayLocation,
     location: displayLocation,
     year,
+    date: dateStr,
     temperature,
     land_surface_temperature: temperature,
+    heat_risk: heatRisk,
     heatRisk,
     heatTrend: heatRisk,
     greenCover,
@@ -192,6 +201,13 @@ export function getHistoricalSatelliteData(city, year, locationDetails = {}) {
     areaKm2: profile?.areaKm2 || 150,
     state: state || null,
     available: true,
+    data_mode: dataMode,
+    is_simulated: isSimulated,
+    satellite_source: isSimulated
+      ? "Project Climate Baseline (Estimated)"
+      : "NASA MODIS Terra / Prepared India LST Dataset (2020–2025)",
+    imagery_available: false,
+    imagery_notice: "Optical imagery not captured in offline dataset mode. Thermal LST telemetry is based on calibrated historical records.",
   };
 }
 
@@ -199,19 +215,22 @@ export function getHistoricalHeatTrend(temperature) {
   return temperature < 30 ? "Low" : temperature < 36 ? "Medium" : "High";
 }
 
+const BACKEND_BASE = import.meta.env?.VITE_BACKEND_URL || "http://127.0.0.1:5000";
+
 /**
  * Asynchronously fetch location-driven historical satellite / LST data from the backend.
  * Reuses the authentic NASA GIBS / MODIS satellite observation endpoint.
  */
-export async function fetchHistoricalSatellite({ city, year, latitude, longitude, signal }) {
+export async function fetchHistoricalSatellite({ city, year, date, latitude, longitude, signal }) {
   const params = new URLSearchParams();
   if (city) params.set("city", city);
   if (year != null) params.set("year", year);
+  if (date) params.set("date", date);
   if (latitude != null) params.set("lat", latitude);
   if (longitude != null) params.set("lon", longitude);
 
   try {
-    const response = await fetch(`http://127.0.0.1:5000/satellite/history?${params}`, { signal });
+    const response = await fetch(`${BACKEND_BASE}/satellite/history?${params}`, { signal });
     if (response.ok) {
       const data = await response.json();
       if (data && data.available) {
@@ -219,12 +238,20 @@ export async function fetchHistoricalSatellite({ city, year, latitude, longitude
       }
     }
     if (response.status === 404) {
-      return null;
+      const errData = await response.json().catch(() => null);
+      return {
+        available: false,
+        status: "no_data",
+        error: errData?.error || "Historical satellite data is not available for this location and date.",
+        location: city || "Selected Location",
+        year: year || 2024,
+        date: date || (year ? `${year}-05-15` : "2024-05-15"),
+      };
     }
   } catch (error) {
     if (error.name === "AbortError") throw error;
   }
 
   // Graceful offline fallback using project-calibrated dataset
-  return getHistoricalSatelliteData(city, year, { latitude, longitude });
+  return getHistoricalSatelliteData(city, year, { latitude, longitude, date });
 }
