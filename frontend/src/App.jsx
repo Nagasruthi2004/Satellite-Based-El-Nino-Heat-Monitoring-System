@@ -42,6 +42,7 @@ import {
   detectBrowserLocation,
   reverseGeocodeCoords,
   searchWorldwideLocations,
+  getCachedLocation,
   setCachedLocation,
   formatLocationAge,
   fetchWithTimeout,
@@ -118,7 +119,14 @@ function App() {
   const [satelliteCity, setSatelliteCity] = useState("");
   const [mapLocation, setMapLocation] = useState(null);
   const [liveMapSelection, setLiveMapSelection] = useState(null);
-  const [liveLocation, setLiveLocation] = useState("");
+  const [userLiveLocation, setUserLiveLocation] = useState(() => {
+    const cached = getCachedLocation();
+    return cached?.label || cached?.city || "";
+  });
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState(() => {
+    const cached = getCachedLocation();
+    return cached?.label || cached?.city || "";
+  });
   const [locationSource, setLocationSource] = useState("");
   const [locationCachedTimestamp, setLocationCachedTimestamp] = useState(null);
   const [isLocating, setIsLocating] = useState(true);
@@ -293,7 +301,7 @@ function App() {
         console.warn("Reverse geocode on map click:", e);
       }
 
-      setLiveLocation(resolvedLabel);
+      setSelectedLocationLabel(resolvedLabel);
       setLocationSource("map");
       setLocationCachedTimestamp(Date.now());
       setLocationStatus(`Selected map coordinates: ${resolvedLabel}`);
@@ -330,7 +338,9 @@ function App() {
       const displayCity = geo.city || ipCity || geo.name || "Coimbatore";
       const displayLabel = geo.displayName || (ipCity ? `${ipCity}, ${ipState || ""}`.trim() : `${displayCity} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)`);
 
-      setLiveLocation(displayLabel);
+      setUserLiveLocation(displayLabel);
+      setSelectedLocationLabel(displayLabel);
+      setManualSearchQuery("");
       setMapLocation({ lat: latitude, lon: longitude, label: displayCity });
       setSatelliteCity(displayCity);
       setLocationSource(source);
@@ -405,7 +415,7 @@ function App() {
     const lat = item.lat != null ? Number(item.lat) : null;
     const lon = item.lon != null ? Number(item.lon) : null;
 
-    setLiveLocation(label);
+    setSelectedLocationLabel(label);
     if (lat != null && lon != null) {
       setMapLocation({ lat, lon, label: cityName });
     }
@@ -441,12 +451,12 @@ function App() {
         ) || results[0];
         await handleSelectCitySuggestion(exact);
       } else {
-        setLiveLocation(trimmed);
+        setSelectedLocationLabel(trimmed);
         setSatelliteCity(trimmed);
         setLocationSource("manual");
         setLocationCachedTimestamp(Date.now());
         await fetchWeatherForCity(trimmed, [], { source: "manual" });
-        setLocationStatus(`Selected ${trimmed}`);
+        setLocationStatus(`Viewing searched city: ${trimmed}`);
       }
     } catch (err) {
       setLocationError(err.message || `Unable to find weather for "${trimmed}".`);
@@ -838,7 +848,9 @@ function App() {
     <>
       <Navbar
         theme={theme}
-        liveLocation={liveLocation}
+        liveLocation={userLiveLocation}
+        isLocating={isLocating}
+        onLocateMe={recenterToUserLocation}
         onToggleTheme={() => {
           setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark");
           setHasSelectedTheme(true);
@@ -870,9 +882,10 @@ function App() {
             <div className="card" style={{ marginTop: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                 <h2 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>🎯</span> Live Selected Location
+                  <span>{locationSource === "manual" ? "🔍" : locationSource === "map" ? "🗺️" : "🎯"}</span>
+                  {locationSource === "manual" ? "Searched Location" : locationSource === "map" ? "Map Selected Location" : "Live Location"}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   {isLocating && (
                     <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                       <span className="live-dot" style={{ display: "inline-block" }} /> Detecting GPS...
@@ -885,18 +898,45 @@ function App() {
                   )}
                   {!isLocating && locationSource === "gps" && (
                     <span style={{ fontSize: "11px", color: "#16a34a", background: "rgba(22, 163, 74, 0.1)", border: "1px solid rgba(22, 163, 74, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
-                      ● GPS Verified
+                      ● GPS Verified Live Location
                     </span>
                   )}
                   {!isLocating && (locationSource === "ip" || locationSource === "detected") && (
                     <span style={{ fontSize: "11px", color: "#0284c7", background: "rgba(2, 132, 199, 0.1)", border: "1px solid rgba(2, 132, 199, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
-                      ● Live Detected
+                      ● Live Detected Location
                     </span>
                   )}
                   {!isLocating && locationSource === "manual" && (
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
-                      🔍 Searched Location
+                    <span style={{ fontSize: "11px", color: "var(--primary)", background: "rgba(37, 99, 235, 0.1)", border: "1px solid rgba(37, 99, 235, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                      🔍 Searched City Target
                     </span>
+                  )}
+                  {!isLocating && locationSource === "map" && (
+                    <span style={{ fontSize: "11px", color: "#8b5cf6", background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                      🗺️ Map Target
+                    </span>
+                  )}
+                  {userLiveLocation && (locationSource === "manual" || locationSource === "map") && (
+                    <button
+                      type="button"
+                      onClick={() => recenterToUserLocation()}
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--primary)",
+                        background: "var(--surface-alt)",
+                        border: "1px solid var(--border)",
+                        padding: "2px 10px",
+                        borderRadius: "12px",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                      title={`Return to your live detected location (${userLiveLocation})`}
+                    >
+                      <span>📍</span> Return to Live Location
+                    </button>
                   )}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span className="live-dot" style={{ display: "inline-block" }} />
@@ -943,11 +983,11 @@ function App() {
 
               <div className="search-result" style={{ marginTop: 0 }}>
                 <div className="search-result-item">
-                  <div className="sr-label">Place / City</div>
-                  <div className="sr-value" title={liveLocation || weather?.city}>
-                    {weather?.city || liveLocation || (isLocating ? "Detecting location..." : "No location selected")}
+                  <div className="sr-label">{locationSource === "manual" ? "Searched Place" : locationSource === "map" ? "Selected Map Place" : "Place / City"}</div>
+                  <div className="sr-value" title={selectedLocationLabel || weather?.city}>
+                    {weather?.city || selectedLocationLabel || (isLocating ? "Detecting location..." : "No location selected")}
                   </div>
-                  {liveLocation && liveLocation !== weather?.city && (
+                  {selectedLocationLabel && selectedLocationLabel !== weather?.city && (
                     <div
                       style={{
                         fontSize: "11px",
@@ -958,9 +998,9 @@ function App() {
                         textOverflow: "ellipsis",
                         maxWidth: "180px",
                       }}
-                      title={liveLocation}
+                      title={selectedLocationLabel}
                     >
-                      {liveLocation}
+                      {selectedLocationLabel}
                     </div>
                   )}
                 </div>
@@ -1195,7 +1235,7 @@ function App() {
               currentHeatRisk={currentHeatRisk}
               predictionResult={predictionResult}
               loading={loading}
-              onRefresh={() => (weather?.city || liveLocation) && fetchWeatherForCity(weather?.city || liveLocation)}
+              onRefresh={() => (weather?.city || selectedLocationLabel) && fetchWeatherForCity(weather?.city || selectedLocationLabel)}
             />
           </section>
         )}
@@ -1207,7 +1247,7 @@ function App() {
               currentHeatRisk={currentHeatRisk}
               weather={weather}
               satellite={satellite}
-              liveLocation={liveLocation}
+              liveLocation={userLiveLocation}
             />
           </section>
         )}

@@ -315,7 +315,7 @@ export function getCachedLocation() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     // Never restore manual searches or invalid entries
-    if (parsed && parsed.source && parsed.source !== "gps" && parsed.source !== "detected") {
+    if (parsed && parsed.source && parsed.source !== "gps" && parsed.source !== "detected" && parsed.source !== "ip") {
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }
@@ -335,7 +335,7 @@ export function getCachedLocation() {
 export function setCachedLocation(data) {
   if (typeof window === "undefined" || !data) return;
   // Never persist manual searches as cached location
-  if (data.source && data.source !== "gps" && data.source !== "detected") {
+  if (data.source && data.source !== "gps" && data.source !== "detected" && data.source !== "ip") {
     return;
   }
   try {
