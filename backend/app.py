@@ -138,10 +138,21 @@ def get_weather():
     if current_heat_risk is None:
         return jsonify({"error": "Current heat risk unavailable"}), 503
 
+    raw_rain = weather_data.get("rainfall_numeric", weather_data.get("rainfall"))
+    if isinstance(raw_rain, str):
+        import re
+        match = re.search(r"[-+]?\d*\.?\d+", raw_rain)
+        numeric_rain = float(match.group(0)) if match else 0.0
+    else:
+        try:
+            numeric_rain = float(raw_rain or 0.0)
+        except (ValueError, TypeError):
+            numeric_rain = 0.0
+
     ml_result = predict_heat_risk(
         temperature=weather_data["temperature"],
         humidity=weather_data["humidity"],
-        rainfall=weather_data["rainfall"],
+        rainfall=numeric_rain,
         wind_speed=weather_data["wind_speed"] * 3.6
     )
     explanation = get_prediction_explanation({

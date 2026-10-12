@@ -72,6 +72,48 @@ KNOWN_CITY_COORDINATES = {
 }
 
 
+def fetch_live_rainfall_open_meteo(lat: float, lon: float, timeout: int = 5) -> dict | None:
+    """
+    Fetch live rainfall from Open-Meteo API (current + daily forecast).
+    Endpoint: https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation,rain,showers&daily=precipitation_sum,rain_sum&timezone=auto&forecast_days=1
+    """
+    try:
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "current": "precipitation,rain,showers",
+            "daily": "precipitation_sum,rain_sum",
+            "timezone": "auto",
+            "forecast_days": 1,
+        }
+        res = requests.get(url, params=params, timeout=timeout)
+        if res.status_code == 200:
+            payload = res.json()
+            if "current" not in payload and "daily" not in payload:
+                return None
+            current_rain = float(payload.get("current", {}).get("precipitation", 0.0) or 0.0)
+            daily_list = payload.get("daily", {}).get("precipitation_sum", [0.0])
+            daily_rain = float(daily_list[0] if daily_list and daily_list[0] is not None else 0.0)
+
+            if current_rain > 0:
+                text = f"{current_rain} mm - Live rain now"
+            elif daily_rain > 0:
+                text = f"{daily_rain} mm - Today total, 0 mm now"
+            else:
+                text = "0 mm - No rain today"
+
+            return {
+                "text": text,
+                "current": current_rain,
+                "today": daily_rain,
+                "value": current_rain if current_rain > 0 else daily_rain,
+            }
+    except Exception as exc:
+        logger.warning("Open-Meteo live rainfall fetch error for lat=%s, lon=%s: %s", lat, lon, exc)
+    return None
+
+
 def fetch_weather(city=None, lat=None, lon=None, retries=3):
     """
     Fetch current weather data for a given city or (lat, lon) coordinates using OpenWeather API.
@@ -138,6 +180,15 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
                             rainfall = 0
                             if isinstance(rain_data, dict):
                                 rainfall = rain_data.get("1h", rain_data.get("3h", 0))
+                            coord_lat = data.get("coord", {}).get("lat", resolved_lat)
+                            coord_lon = data.get("coord", {}).get("lon", resolved_lon)
+                            if coord_lat is not None and coord_lon is not None:
+                                try:
+                                    live_rain = fetch_live_rainfall_open_meteo(float(coord_lat), float(coord_lon))
+                                    if live_rain is not None:
+                                        rainfall = live_rain["text"]
+                                except Exception:
+                                    pass
                             return {
                                 "city": (clean_city.split(",")[0].strip().title() if "," in clean_city else clean_city) or data.get("name") or "Selected Location",
                                 "country": data.get("sys", {}).get("country", ""),
@@ -167,6 +218,18 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
             rainfall = 0
             if isinstance(rain_data, dict):
                 rainfall = rain_data.get("1h", rain_data.get("3h", 0))
+
+            coord_lat = data.get("coord", {}).get("lat", resolved_lat)
+            coord_lon = data.get("coord", {}).get("lon", resolved_lon)
+            rainfall_numeric = float(rainfall) if isinstance(rainfall, (int, float)) else 0.0
+            if coord_lat is not None and coord_lon is not None:
+                try:
+                    live_rain = fetch_live_rainfall_open_meteo(float(coord_lat), float(coord_lon))
+                    if live_rain is not None:
+                        rainfall = live_rain["text"]
+                        rainfall_numeric = float(live_rain["value"])
+                except Exception:
+                    pass
 
             if clean_city:
                 resolved_name = clean_city.split(",")[0].strip().title() if "," in clean_city else clean_city

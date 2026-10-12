@@ -192,8 +192,6 @@ export default function DisasterInformation({
   const forecastList = warning.forecast_timeline || [];
   const selectedForecastDay = forecastList[activeForecastDayIndex] || forecastList[0] || null;
   const actions = warning.recommended_actions || [];
-  const provenance = warning.data_provenance || [];
-  const officialSources = warning.official_sources || [];
   const stations = warning.regional_stations || [];
   const multiHazards = dataPayload?.disasters || {};
 
@@ -544,71 +542,6 @@ export default function DisasterInformation({
         )}
       </section>
 
-      {/* ── 10. DATA PROVENANCE, CONFIDENCE & OFFICIAL SOURCES ── */}
-      <section className="ew-card ew-provenance-section" aria-label="Data Sources and Confidence">
-        <div className="ew-card-title-row">
-          <div>
-            <h3>📊 Data Sources, Observation Dates & Confidence</h3>
-            <p className="ew-hint">
-              Transparent metadata declaring observed vs forecast vs model-estimated provenance
-            </p>
-          </div>
-        </div>
-
-        <div className="ew-provenance-table-wrap">
-          <table className="ew-prov-table">
-            <thead>
-              <tr>
-                <th>Telemetry Variable</th>
-                <th>Category</th>
-                <th>Data Source / Network</th>
-                <th>Observation Date</th>
-                <th>Confidence Rating</th>
-              </tr>
-            </thead>
-            <tbody>
-              {provenance.map((p, idx) => (
-                <tr key={idx}>
-                  <td><strong>{p.variable}</strong></td>
-                  <td>
-                    <span className={`ew-prov-tag cat-${p.category.toLowerCase().replace(/[^a-z]/g, "")}`}>
-                      {p.category}
-                    </span>
-                  </td>
-                  <td>{p.source}</td>
-                  <td>{p.observation_date}</td>
-                  <td><span className="ew-conf-badge">{p.confidence}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Official Authority Links */}
-        <div className="ew-official-sources-section">
-          <h4>Official Statutory Authorities</h4>
-          <p className="ew-hint">
-            Always consult statutory government bulletins for mandatory civil evacuation orders and official warnings:
-          </p>
-          <div className="ew-sources-grid">
-            {officialSources.map((src, idx) => (
-              <a
-                key={idx}
-                href={src.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ew-source-card"
-              >
-                <div className="ew-source-badge">{src.badge}</div>
-                <strong className="ew-source-name">{src.name}</strong>
-                <span className="ew-source-agency">{src.agency}</span>
-                <span className="ew-source-role">{src.role}</span>
-                <span className="ew-source-link">Visit Official Portal &rarr;</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

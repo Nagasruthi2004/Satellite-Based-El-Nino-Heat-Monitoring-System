@@ -4,7 +4,6 @@ import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
 import SatelliteImageHeatAnalysis from "./components/SatelliteImageHeatAnalysis";
-import HeatwaveImpactSimulator from "./components/HeatwaveImpactSimulator";
 import HeatSafetyChallenge from "./components/HeatSafetyChallenge";
 import EmailHeatAlerts from "./components/EmailHeatAlerts";
 import "./App.css";
@@ -18,7 +17,6 @@ import HeatRiskCard from "./components/HeatRiskCard";
 import ElNinoCard from "./components/ElNinoCard";
 import LSTCard from "./components/LSTCard";
 import HeatMap from "./components/HeatMap";
-import CompareCities from "./components/CompareCities";
 import HeatAlert from "./components/HeatAlert";
 import AIClimateReport from "./components/AIClimateReport";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
@@ -28,7 +26,6 @@ import AIChatbot from "./components/AIChatbot";
 import SmartAwareness from "./components/SmartAwareness";
 import DisasterInformation from "./components/DisasterInformation";
 import IndiaLSTMap from "./components/IndiaLSTMap";
-import HeatAnalysis from "./components/HeatAnalysis";
 import Heat2026Prediction from "./components/Heat2026Prediction";
 import HomeDashboard from "./components/HomeDashboard";
 import Footer from "./components/Footer";
@@ -63,7 +60,6 @@ const NAVIGATION_GROUPS = [
   {
     title: "ANALYSIS",
     items: [
-      { id: "heat-analysis", label: "Heat Analysis", icon: "📈" },
       { id: "elnino", label: "Historical El Niño Cycle", icon: "🔄" },
       { id: "heat-2026", label: "2026 Heat Prediction", icon: "🔮" },
       { id: "elnino-news", label: "El Niño News Monitor", icon: "📰" },
@@ -74,11 +70,9 @@ const NAVIGATION_GROUPS = [
     items: [
       { id: "analytics", label: "Heat Risk Prediction", icon: "🎯" },
       { id: "assistant", label: "AI Heatwave Assistant", icon: "🤖" },
-      { id: "heatwave-simulator", label: "Heatwave Impact Simulator", icon: "⚡" },
       { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
       { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
       { id: "climate-report", label: "AI Climate Report", icon: "📄" },
-      { id: "compare", label: "Compare Cities", icon: "⚖️" },
       { id: "favourites", label: "Favourite Cities", icon: "⭐" },
     ],
   },
@@ -182,12 +176,99 @@ function App() {
       if (locationDetails.longitude != null) params.set("longitude", locationDetails.longitude);
       if (locationDetails.detailedLocation) params.set("detailed_location", locationDetails.detailedLocation);
       
-      const response = await fetchWithTimeout(`http://127.0.0.1:5000/weather?${params}`, {}, 8000);
+      // Keep existing OpenWeather call for other cards
+      const weatherPromise = fetchWithTimeout(`http://127.0.0.1:5000/weather?${params}`, {}, 8000);
+
+      // In parallel, call Open-Meteo API with same lat/lon if coordinates are available upfront (e.g. from map click)
+      let openMeteoPromise = null;
+      const initialLat = locationDetails.latitude;
+      const initialLon = locationDetails.longitude;
+      if (initialLat != null && initialLon != null) {
+        openMeteoPromise = fetchWithTimeout(
+          `https://api.open-meteo.com/v1/forecast?latitude=${initialLat}&longitude=${initialLon}&current=precipitation,rain,showers&daily=precipitation_sum,rain_sum&timezone=auto&forecast_days=1`,
+          {},
+          6000
+        )
+          .then((res) => (res.ok ? res.json() : null))
+          .catch((err) => {
+            console.warn("Open-Meteo parallel fetch failed:", err);
+            return null;
+          });
+      }
+
+      const response = await weatherPromise;
       if (response.status === 429) {
         throw new Error("Weather service rate limit reached. Please wait a moment.");
       }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to fetch weather data");
+
+      // Resolve Open-Meteo response (either from parallel promise, or fetched using resolved coords from data)
+      let openMeteoData = null;
+      if (openMeteoPromise) {
+        openMeteoData = await openMeteoPromise;
+      } else {
+        const targetLat = data.lat != null ? data.lat : locationDetails.latitude;
+        const targetLon = data.lon != null ? data.lon : locationDetails.longitude;
+        if (targetLat != null && targetLon != null) {
+          try {
+            const res = await fetchWithTimeout(
+              `https://api.open-meteo.com/v1/forecast?latitude=${targetLat}&longitude=${targetLon}&current=precipitation,rain,showers&daily=precipitation_sum,rain_sum&timezone=auto&forecast_days=1`,
+              {},
+              6000
+            );
+            if (res.ok) {
+              openMeteoData = await res.json();
+            }
+          } catch (e) {
+            console.warn("Open-Meteo fetch for resolved coords failed:", e);
+          }
+        }
+      }
+
+      // Requirement: Extract both current and daily precipitation
+      const currentRain = Number(openMeteoData?.current?.precipitation ?? 0);
+      const todayRain = Number(openMeteoData?.daily?.precipitation_sum?.[0] ?? 0);
+
+      // Console log both values and full response
+      console.log("Live Rainfall from Open-Meteo current:", currentRain, "today total:", todayRain);
+      console.log("Live Rainfall from Open-Meteo:", openMeteoData);
+
+      if (currentRain > 0) {
+        data.rainfall = `${currentRain} mm - Live rain now`;
+      } else if (todayRain > 0) {
+        data.rainfall = `${todayRain} mm - Today total, 0 mm now`;
+      } else {
+        data.rainfall = `0 mm - No rain today`;
+      }
+
+      const effectiveRain = currentRain > 0 ? currentRain : todayRain;
+      data.rainfall_numeric = effectiveRain;
+
+      // Requirement: If rainfall > 5mm, reduce heat risk score slightly, because rain reduces heat
+      if (data.current_heat_risk && Number(effectiveRain) > 5) {
+        const rainReduction = Math.min(12, 4 + (Number(effectiveRain) - 5) * 0.5);
+        const originalScore = Number(data.current_heat_risk.score ?? 50);
+        const adjustedScore = Math.round(Math.max(0, originalScore - rainReduction) * 10) / 10;
+        let adjustedLevel = data.current_heat_risk.level;
+        const temp = Number(data.temperature ?? 30);
+        if (adjustedScore < 45 || temp < 30) {
+          adjustedLevel = "Low";
+        } else if (adjustedScore < 65 || temp < 36) {
+          adjustedLevel = "Medium";
+        } else if (adjustedScore < 85 || temp < 40) {
+          adjustedLevel = "High";
+        } else {
+          adjustedLevel = "Critical";
+        }
+        data.current_heat_risk = {
+          ...data.current_heat_risk,
+          score: adjustedScore,
+          level: adjustedLevel,
+          rain_cooled: true,
+        };
+      }
+
       setWeather(data);
       setWeatherError("");
 
@@ -548,10 +629,13 @@ function App() {
   };
 
   const getPredictionPayload = (weatherData) => {
+    const rainVal = weatherData?.rainfall_numeric != null
+      ? weatherData.rainfall_numeric
+      : parseFloat(weatherData?.rainfall ?? 0);
     const values = [
       weatherData?.temperature,
       weatherData?.humidity,
-      weatherData?.rainfall,
+      rainVal,
       weatherData?.wind_speed,
     ];
     if (values.some((value) => value == null || value === "" || !Number.isFinite(Number(value)))) return null;
@@ -559,7 +643,7 @@ function App() {
     return {
       temperature: Number(weatherData.temperature),
       humidity: Number(weatherData.humidity),
-      rainfall: Number(weatherData.rainfall),
+      rainfall: Number(rainVal),
       wind_speed: Number(formatWindSpeedKmh(weatherData.wind_speed)),
     };
   };
@@ -1268,12 +1352,6 @@ function App() {
           </section>
         )}
 
-        {/* ── HEAT ANALYSIS MODULE ── */}
-        {activePage === "heat-analysis" && (
-          <section className="section">
-            <HeatAnalysis />
-          </section>
-        )}
 
         {/* ── 2026 HEAT PREDICTION MODULE ── */}
         {activePage === "heat-2026" && (
@@ -1311,14 +1389,6 @@ function App() {
         </section>
         </>}
 
-        {/* ── HEATWAVE IMPACT SIMULATOR ── */}
-        {activePage === "heatwave-simulator" && (
-          <section className="section">
-            <HeatwaveImpactSimulator
-              initialTemperature={weather?.temperature}
-            />
-          </section>
-        )}
 
         {activePage === "simulator" && <section className="section">
           <FutureCitySimulator currentTemperature={weather?.temperature} onValuesChange={setSimulatorValues} />
@@ -1364,11 +1434,6 @@ function App() {
           <AIChatbot weather={weather} currentHeatRisk={currentHeatRisk} />
         </section>}
 
-        {/* ── COMPARE CITIES ── */}
-        {activePage === "compare" && <section className="section">
-          <h2 className="section-title">🏙️ Compare Cities</h2>
-          <CompareCities />
-        </section>}
 
         {/* ── FAVOURITE CITIES ── */}
 {activePage === "favourites" && <section className="section">

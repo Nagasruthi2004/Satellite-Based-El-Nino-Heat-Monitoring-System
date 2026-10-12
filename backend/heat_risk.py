@@ -6,20 +6,36 @@ import math
 def classify_current_heat_risk(temperature, humidity, rainfall, wind_speed):
     """Return the current risk level and score for one weather observation."""
     values = (temperature, humidity, rainfall, wind_speed)
-    try:
-        temperature, humidity, rainfall, wind_speed = (float(value) for value in values)
-    except (TypeError, ValueError):
-        return None
+    parsed_values = []
+    for val in values:
+        if isinstance(val, (int, float)):
+            parsed_values.append(float(val))
+        elif isinstance(val, str):
+            import re
+            m = re.search(r"[-+]?\d*\.?\d+", val)
+            if m:
+                parsed_values.append(float(m.group(0)))
+            else:
+                return None
+        else:
+            return None
+
+    temperature, humidity, rainfall, wind_speed = parsed_values
 
     if not all(math.isfinite(value) for value in (temperature, humidity, rainfall, wind_speed)):
         return None
 
     score = round(max(0.0, min(100.0, temperature / 45.0 * 100.0)), 1)
-    if temperature < 30:
+    # Requirement: If rainfall > 5mm, reduce heat risk score slightly, because rain reduces heat.
+    if rainfall > 5.0:
+        reduction = min(15.0, 5.0 + (rainfall - 5.0) * 0.5)
+        score = round(max(0.0, score - reduction), 1)
+
+    if score < 45 or temperature < 30:
         level = "Low"
-    elif temperature < 36:
+    elif score < 65 or temperature < 36:
         level = "Medium"
-    elif temperature < 40:
+    elif score < 85 or temperature < 40:
         level = "High"
     else:
         level = "Critical"
