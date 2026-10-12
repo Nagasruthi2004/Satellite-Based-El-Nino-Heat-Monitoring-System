@@ -7,7 +7,7 @@ export default function HeatSafetyChallenge() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("quiz"); // "quiz", "myths", "scenarios", "checklist", "sources"
+  const [activeTab, setActiveTab] = useState("quiz"); // "quiz", "myths", "scenarios"
 
   // Quiz State
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -18,33 +18,6 @@ export default function HeatSafetyChallenge() {
 
   // Scenario state: { [scenarioId]: selectedOptionIndex }
   const [scenarioResponses, setScenarioResponses] = useState({});
-
-  // Checklist state
-  const [checklistItems, setChecklistItems] = useState({
-    water_bottles: true,
-    ors_packets: true,
-    electrolyte_powder: true,
-    instant_cold_packs: false,
-    digital_thermometer: false,
-    cooling_towel: true,
-    wide_brimmed_hat: true,
-    sunscreen_spf30: false,
-  });
-
-  const toggleChecklist = (key) => {
-    setChecklistItems((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleSelectAllChecklist = () => {
-    setChecklistItems((prev) => {
-      const allChecked = Object.values(prev).every(Boolean);
-      const updated = {};
-      Object.keys(prev).forEach((k) => {
-        updated[k] = !allChecked;
-      });
-      return updated;
-    });
-  };
 
   const loadQuizData = useCallback(async () => {
     setLoading(true);
@@ -72,7 +45,6 @@ export default function HeatSafetyChallenge() {
   const quizQuestions = data?.quiz_questions || data?.quizzes || [];
   const mythsVsFacts = data?.myths_vs_facts || data?.myths_and_facts || [];
   const scenarioChallenges = data?.scenario_challenges || [];
-  const evidenceSources = data?.evidence_sources || data?.authoritative_sources || [];
 
   const currentQ = quizQuestions[currentQuestionIndex];
   const totalQuestions = quizQuestions.length;
@@ -112,9 +84,6 @@ export default function HeatSafetyChallenge() {
     setScenarioResponses((prev) => ({ ...prev, [scenarioId]: optionIdx }));
   };
 
-  const completedChecklistCount = Object.values(checklistItems).filter(Boolean).length;
-  const totalChecklistCount = Object.keys(checklistItems).length;
-
   const correctAnswersCount = Object.values(answeredQuestions).filter((q) => q.isCorrect).length;
   const scorePercent = maxScore > 0 ? Math.round((quizScore / maxScore) * 100) : 0;
 
@@ -127,7 +96,7 @@ export default function HeatSafetyChallenge() {
             <h2>🏆 Heat Safety Challenge & Awareness Center</h2>
             <p className="hsc-subtitle">
               Interactive evidence-based heat safety training. Test your knowledge against common myths,
-              solve tactical crisis scenarios, master emergency preparedness checklists, and inspect authoritative guidelines.
+              and solve tactical crisis scenarios.
             </p>
           </div>
           <div className="hsc-score-badge">
@@ -165,20 +134,6 @@ export default function HeatSafetyChallenge() {
           onClick={() => setActiveTab("scenarios")}
         >
           🚨 Crisis Scenarios ({scenarioChallenges.length})
-        </button>
-        <button
-          type="button"
-          className={`hsc-tab-btn ${activeTab === "checklist" ? "active" : ""}`}
-          onClick={() => setActiveTab("checklist")}
-        >
-          ✅ Safety Checklist ({completedChecklistCount}/{totalChecklistCount})
-        </button>
-        <button
-          type="button"
-          className={`hsc-tab-btn ${activeTab === "sources" ? "active" : ""}`}
-          onClick={() => setActiveTab("sources")}
-        >
-          📚 Evidence Sources ({evidenceSources.length})
         </button>
       </div>
 
@@ -466,140 +421,6 @@ export default function HeatSafetyChallenge() {
             </div>
           )}
 
-          {/* ── TAB 4: SAFETY CHECKLIST ── */}
-          {activeTab === "checklist" && (
-            <div className="scpp-sliders-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-              <div className="hsc-quiz-card" style={{ gap: "14px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>
-                    🎒 Household Heat Emergency Go-Bag Kit
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={handleSelectAllChecklist}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--primary)",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    {Object.values(checklistItems).every(Boolean) ? "Deselect All" : "Select All"}
-                  </button>
-                </div>
-                <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                  Essential readiness items recommended by NDMA and WHO for high-heatwaves ({completedChecklistCount}/{totalChecklistCount} checked):
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.water_bottles}
-                      onChange={() => toggleChecklist("water_bottles")}
-                    />
-                    <span>At least 3 Liters of potable water per family member per day</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.ors_packets}
-                      onChange={() => toggleChecklist("ors_packets")}
-                    />
-                    <span>WHO-standard Oral Rehydration Salts (ORS) sachets</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.electrolyte_powder}
-                      onChange={() => toggleChecklist("electrolyte_powder")}
-                    />
-                    <span>Backup electrolyte powder / hydration replenishment packets</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.instant_cold_packs}
-                      onChange={() => toggleChecklist("instant_cold_packs")}
-                    />
-                    <span>Instant chemical cold compress packs for rapid cooling</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.digital_thermometer}
-                      onChange={() => toggleChecklist("digital_thermometer")}
-                    />
-                    <span>Digital oral/axillary thermometer for core temperature monitoring</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.cooling_towel}
-                      onChange={() => toggleChecklist("cooling_towel")}
-                    />
-                    <span>Evaporative cooling towel or damp cotton wraps</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.wide_brimmed_hat}
-                      onChange={() => toggleChecklist("wide_brimmed_hat")}
-                    />
-                    <span>Wide-brimmed cotton hat and UV400 protective sunglasses</span>
-                  </label>
-                  <label className="herc-check-item">
-                    <input
-                      type="checkbox"
-                      checked={checklistItems.sunscreen_spf30}
-                      onChange={() => toggleChecklist("sunscreen_spf30")}
-                    />
-                    <span>Broad-spectrum Sunscreen (SPF 30+ / PA+++)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="hsc-quiz-card" style={{ gap: "14px" }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>
-                  📋 Daily High-Heat Behavioral Protocol
-                </h3>
-                <ul style={{ paddingLeft: "18px", fontSize: "13px", lineHeight: "1.6", color: "var(--text)" }}>
-                  <li><strong>Peak Hours Curfew:</strong> Avoid direct outdoor exposure between 12:00 PM and 3:30 PM.</li>
-                  <li><strong>Hydration Discipline:</strong> Drink small quantities of water every 20-30 minutes, even if not thirsty.</li>
-                  <li><strong>Electrolyte Balance:</strong> Complement pure water with lemon water, buttermilk, tender coconut, or ORS.</li>
-                  <li><strong>Vulnerable Check:</strong> Visually inspect elderly relatives twice daily for cognitive changes or lethargy.</li>
-                  <li><strong>Vehicle Safety:</strong> Never leave children or pets inside parked vehicles, even for a few minutes with windows cracked.</li>
-                  <li><strong>Active Cooling:</strong> Sponge skin with cool water or take cold showers if feeling faint or overheated.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* ── TAB 5: EVIDENCE SOURCES ── */}
-          {activeTab === "sources" && (
-            <div className="hsc-sources-grid">
-              {evidenceSources.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)", gridColumn: "1 / -1" }}>
-                  No evidence sources currently available.
-                </div>
-              ) : (
-                evidenceSources.map((src, idx) => (
-                  <div key={idx} className="hsc-source-card">
-                    <span style={{ fontSize: "24px" }}>🏛️</span>
-                    <h4 className="hsc-source-name">{src.organization || src.name}</h4>
-                    <span className="hsc-source-pub">
-                      {src.publication ? `${src.publication} (${src.year || 2024})` : src.name}
-                    </span>
-                    <p className="hsc-source-desc">{src.description || "Official evidence-based heat health guidance."}</p>
-                    <a href={src.url} target="_blank" rel="noreferrer" className="hsc-source-link">
-                      Official Document Reference ➔
-                    </a>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </>
       )}
     </div>

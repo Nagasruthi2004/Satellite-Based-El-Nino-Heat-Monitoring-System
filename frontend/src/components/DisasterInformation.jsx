@@ -191,9 +191,6 @@ export default function DisasterInformation({
   const currentRiskTheme = getTheme(currentRisk);
   const forecastList = warning.forecast_timeline || [];
   const selectedForecastDay = forecastList[activeForecastDayIndex] || forecastList[0] || null;
-  const impact = warning.impact_assessment || {};
-  const satTelemetry = warning.satellite_telemetry || {};
-  const enso = warning.enso_climate_indicator || {};
   const actions = warning.recommended_actions || [];
   const provenance = warning.data_provenance || [];
   const officialSources = warning.official_sources || [];
@@ -217,7 +214,7 @@ export default function DisasterInformation({
 
         <h1 className="ew-title">Early Heatwave Warning & Multi-Hazard Disaster Center</h1>
         <p className="ew-subtitle">
-          Proactive heatwave onset forecasting, multi-day thermal trajectory mapping, demographic exposure assessment,
+          Proactive heatwave onset forecasting, multi-day thermal trajectory mapping,
           and authoritative multi-hazard disaster monitoring for public safety preparedness.
         </p>
 
@@ -309,115 +306,6 @@ export default function DisasterInformation({
         {errorMessage && (
           <div className="ew-error-banner" role="alert">
             <span>⚠️</span> {errorMessage}
-          </div>
-        )}
-      </section>
-
-      {/* ── 3. LIVE ALERT STATUS & KEY TELEMETRY STRIP ── */}
-      <section className="ew-card ew-status-banner" style={{ borderLeftColor: currentRiskTheme.color }}>
-        <div className="ew-status-main">
-          <div className="ew-status-left">
-            <span className="ew-status-tag" style={{ background: currentRiskTheme.bg, color: currentRiskTheme.color }}>
-              {currentRiskTheme.icon} Current Risk: {currentRiskTheme.label}
-            </span>
-            <h2 className="ew-status-headline">
-              {currentRisk === "Critical"
-                ? "Severe Thermal Stress Conditions Detected"
-                : currentRisk === "High"
-                ? "Elevated Heat Stress Approaching Warning Threshold"
-                : currentRisk === "Moderate"
-                ? "Moderate Thermal Load — Proactive Hydration Advised"
-                : "Normal Seasonal Baseline Temperatures"}
-            </h2>
-            <p className="ew-status-desc">
-              {multiHazards?.heatwave?.message ||
-                `Surface air temperature is monitored at ${warning.current_temperature || "--"}°C with ${
-                  warning.current_humidity || "--"
-                }% relative humidity.`}
-            </p>
-          </div>
-
-          <div className="ew-kpi-grid">
-            <div className="ew-kpi-card">
-              <span className="ew-kpi-lbl">Air Temp</span>
-              <span className="ew-kpi-val">{warning.current_temperature != null ? `${warning.current_temperature}°C` : "--"}</span>
-              <span className="ew-kpi-sub">Observed Mast 2m</span>
-            </div>
-
-            <div className="ew-kpi-card">
-              <span className="ew-kpi-lbl">Humidity</span>
-              <span className="ew-kpi-val">{warning.current_humidity != null ? `${warning.current_humidity}%` : "--"}</span>
-              <span className="ew-kpi-sub">Relative Humidity</span>
-            </div>
-
-            <div className="ew-kpi-card">
-              <span className="ew-kpi-lbl">Satellite LST</span>
-              <span className="ew-kpi-val">{satTelemetry.land_surface_temperature != null ? `${satTelemetry.land_surface_temperature}°C` : "--"}</span>
-              <span className="ew-kpi-sub">Skin Radiance</span>
-            </div>
-
-            <div className="ew-kpi-card">
-              <span className="ew-kpi-lbl">El Niño Index</span>
-              <span className="ew-kpi-val">{enso.oni_index || "+0.2°C"}</span>
-              <span className="ew-kpi-sub">{enso.status || "ENSO Neutral"}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 4. FORECAST RISK CARDS (UPCOMING 5-DAY HORIZON) ── */}
-      <section className="ew-card ew-forecast-section" aria-label="Forecast Risk Horizon">
-        <div className="ew-card-title-row">
-          <div>
-            <h3>📅 5-Day Heatwave Risk Horizon</h3>
-            <p className="ew-hint">Forecasted daily maximum temperatures and risk severity from numerical weather models</p>
-          </div>
-          <span className="ew-model-badge">GFS / NWP Forecast Engine</span>
-        </div>
-
-        {forecastList.length === 0 ? (
-          <div className="ew-no-data-card">
-            <span>📡</span>
-            <p>No multi-day numerical forecast telemetry currently available for this coordinate.</p>
-          </div>
-        ) : (
-          <div className="ew-forecast-grid">
-            {forecastList.map((f, idx) => {
-              const theme = getTheme(f.heat_risk_level);
-              const isSelected = activeForecastDayIndex === idx;
-
-              return (
-                <div
-                  key={f.date || idx}
-                  className={`ew-fc-card ${isSelected ? "selected" : ""}`}
-                  style={{ borderColor: isSelected ? theme.color : undefined }}
-                  onClick={() => setActiveForecastDayIndex(idx)}
-                >
-                  <div className="ew-fc-header">
-                    <span className="ew-fc-day">{f.day_label}</span>
-                    <span className="ew-fc-date">{f.date_formatted}</span>
-                  </div>
-
-                  <div className="ew-fc-temp-row">
-                    <span className="ew-fc-temp">{f.max_temperature}°C</span>
-                    <span className="ew-fc-min">Min {f.min_temperature}°C</span>
-                  </div>
-
-                  <div className="ew-fc-badge" style={{ background: theme.bg, color: theme.color }}>
-                    {theme.icon} {theme.label}
-                  </div>
-
-                  <div className="ew-fc-meta">
-                    <span>💧 {f.humidity}% Hum</span>
-                    <span>💨 {f.wind_speed_kmh} km/h</span>
-                  </div>
-
-                  <div className="ew-fc-type">
-                    <span className="ew-badge-tag">{f.data_type}</span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
       </section>
@@ -565,59 +453,6 @@ export default function DisasterInformation({
         </div>
       </section>
 
-      {/* ── 7. IMPACT ASSESSMENT: EXPOSED POPULATION & VULNERABLE COHORTS ── */}
-      <section className="ew-card ew-impact-section" aria-label="Demographic Impact Assessment">
-        <div className="ew-card-title-row">
-          <div>
-            <h3>👥 Demographic Vulnerability & Exposure Assessment</h3>
-            <p className="ew-hint">
-              Quantifies potentially exposed populations and at-risk cohorts only when supporting census data is indexed
-            </p>
-          </div>
-          {impact.has_demographic_data && (
-            <span className="ew-census-badge">Census Benchmark: {impact.city_name}</span>
-          )}
-        </div>
-
-        {impact.has_demographic_data ? (
-          <div>
-            <div className="ew-pop-headline">
-              <div className="ew-pop-big">
-                <span className="ew-pop-number">{impact.population_formatted}</span>
-                <span className="ew-pop-sub">Estimated Total Urban Population Base</span>
-              </div>
-              <div className="ew-pop-src">
-                <span>Data Authority:</span> {impact.demographic_source}
-              </div>
-            </div>
-
-            <div className="ew-vulnerable-grid">
-              {(impact.vulnerable_groups || []).map((vg) => (
-                <div key={vg.group} className="ew-vg-card">
-                  <div className="ew-vg-header">
-                    <strong>{vg.group}</strong>
-                    <span className="ew-vg-pct">{vg.pct}% (~{vg.estimated_count?.toLocaleString()})</span>
-                  </div>
-                  <p className="ew-vg-risk">{vg.risk_factor}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="ew-impact-disclaimer">
-              ℹ️ <strong>Demographic Caveat:</strong> {impact.methodology_disclaimer}
-            </div>
-          </div>
-        ) : (
-          <div className="ew-unindexed-card">
-            <span className="ew-unindexed-icon">📋</span>
-            <div>
-              <strong>Demographic Profile Not Indexed For This Coordinate</strong>
-              <p>{impact.notice || "Demographic vulnerability data not available for this coordinate. Refer to local municipal census records."}</p>
-              <small>System strictly adheres to data integrity: no demographic figures are fabricated when census profiles are unavailable.</small>
-            </div>
-          </div>
-        )}
-      </section>
 
       {/* ── 8. RECOMMENDED ACTIONS & PREPAREDNESS PROTOCOLS ── */}
       <section className="ew-card ew-actions-section" aria-label="Recommended Actions">

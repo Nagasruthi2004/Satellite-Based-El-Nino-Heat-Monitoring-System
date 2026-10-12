@@ -34,81 +34,144 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
 }
 
 /**
- * Detect user's location via browser Geolocation API.
- * Uses mobile-friendly settings (enableHighAccuracy: false, 8s timeout, 5min cache)
- * and an outer safety timer to avoid hanging indefinitely on slow mobile networks.
+ * IP-based geolocation fallback utility.
+ * Queries fast, reliable endpoints (ipwho.is, then ipapi.co)
+ * Returns approximate live city coordinates and place info.
  */
-export function detectBrowserLocation(options = {}) {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      reject({
-        code: "NOT_SUPPORTED",
-        message: "Geolocation is not supported by your browser. Please search your city manually below.",
-      });
-      return;
+export async function detectLocationByIP(timeoutMs = 5000) {
+  // Try ipwho.is first
+  try {
+    const res = await fetchWithTimeout("https://ipwho.is/", {}, timeoutMs);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success !== false && data.latitude != null && data.longitude != null) {
+        return {
+          latitude: Number(data.latitude),
+          longitude: Number(data.longitude),
+          accuracy: 5000,
+          city: data.city || "",
+          state: data.region || "",
+          country: data.country || "",
+          source: "ip",
+          timestamp: Date.now(),
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("ipwho.is failed, trying fallback:", e);
+  }
+
+  // Try ipapi.co fallback
+  try {
+    const res2 = await fetchWithTimeout("https://ipapi.co/json/", {}, timeoutMs);
+    if (res2.ok) {
+      const data = await res2.json();
+      if (data && data.latitude != null && data.longitude != null) {
+        return {
+          latitude: Number(data.latitude),
+          longitude: Number(data.longitude),
+          accuracy: 5000,
+          city: data.city || "",
+          state: data.region || "",
+          country: data.country_name || data.country || "",
+          source: "ip",
+          timestamp: Date.now(),
+        };
+      }
+    }
+  } catch (e2) {
+    console.warn("ipapi.co failed:", e2);
+  }
+
+  return null;
+}
+
+/**
+ * Detect user's location via browser Geolocation API with multi-tier resilience:
+ * Tier 1: Hardware High-Accuracy GPS / Wi-Fi Triangulation (enableHighAccuracy: true)
+ * Tier 2: Standard Network Geolocation (enableHighAccuracy: false)
+ * Tier 3: Instant IP-based Geolocation Fallback (ensures live detection NEVER fails)
+ */
+export async function detectBrowserLocation(options = {}) {
+  // Helper to query HTML5 geolocation with a promise and safety timer
+  const queryGeo = (geoOpts) => {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          reject(new Error("Browser geolocation timed out."));
+        }
+      }, (geoOpts.timeout || 6000) + 1000);
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            source: "gps",
+            timestamp: pos.timestamp || Date.now(),
+          });
+        },
+        (err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(err);
+        },
+        geoOpts
+      );
+    });
+  };
+
+  // Tier 1: Try High Accuracy GPS / Wi-Fi triangulation if supported
+  if (typeof window !== "undefined" && navigator.geolocation) {
+    try {
+      const highAccOpts = {
+        enableHighAccuracy: true,
+        timeout: 6000,
+        maximumAge: 0,
+        ...options,
+      };
+      const res = await queryGeo(highAccOpts);
+      return res;
+    } catch (err1) {
+      console.warn("High-accuracy location attempt failed, attempting standard accuracy:", err1);
     }
 
-    const geoOptions = {
-      enableHighAccuracy: false, // Prevents 20-30s GPS hardware delay; resolves fast via cell towers/Wi-Fi
-      timeout: 8000,             // 8 seconds maximum
-      maximumAge: 300000,        // 5 minutes cache
-      ...options,
-    };
+    // Tier 2: Try Standard Accuracy (Cell/Network)
+    try {
+      const lowAccOpts = {
+        enableHighAccuracy: false,
+        timeout: 4000,
+        maximumAge: 60000,
+      };
+      const res = await queryGeo(lowAccOpts);
+      return res;
+    } catch (err2) {
+      console.warn("Standard location attempt failed, attempting IP fallback:", err2);
+    }
+  }
 
-    let settled = false;
+  // Tier 3: IP Geolocation fallback (Fast & accurate for city/region)
+  try {
+    const ipLoc = await detectLocationByIP(5000);
+    if (ipLoc) {
+      return ipLoc;
+    }
+  } catch (ipErr) {
+    console.warn("IP location fallback failed:", ipErr);
+  }
 
-    // Outer safety timeout in case the browser hangs or drops the callback
-    const safetyTimer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        reject({
-          code: "TIMEOUT",
-          message: "Location detection timed out on mobile data. Please search your city manually below.",
-        });
-      }
-    }, geoOptions.timeout + 1000);
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(safetyTimer);
-        const { latitude, longitude, accuracy } = pos.coords;
-        resolve({
-          latitude,
-          longitude,
-          accuracy,
-          timestamp: pos.timestamp || Date.now(),
-        });
-      },
-      (err) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(safetyTimer);
-
-        let friendlyMessage = "Unable to detect your location. Please search your city manually below.";
-        let errCode = "UNKNOWN";
-
-        if (err.code === 1 /* PERMISSION_DENIED */) {
-          errCode = "PERMISSION_DENIED";
-          friendlyMessage = "Location access was denied. You can search your city manually below.";
-        } else if (err.code === 2 /* POSITION_UNAVAILABLE */) {
-          errCode = "POSITION_UNAVAILABLE";
-          friendlyMessage = "Location is unavailable on this network. Please search your city manually below.";
-        } else if (err.code === 3 /* TIMEOUT */) {
-          errCode = "TIMEOUT";
-          friendlyMessage = "Location detection timed out. Please search your city manually below.";
-        }
-
-        reject({
-          code: errCode,
-          message: friendlyMessage,
-          originalError: err,
-        });
-      },
-      geoOptions
-    );
-  });
+  // If all tiers fail
+  throw {
+    code: "UNAVAILABLE",
+    message: "Unable to detect live location. Please search your city manually below.",
+  };
 }
 
 /**
@@ -164,7 +227,8 @@ export async function reverseGeocodeCoords(latitude, longitude, timeoutMs = 6000
     if (nomRes.ok) {
       const nomData = await nomRes.json();
       const addr = nomData.address || {};
-      const locality = addr.neighbourhood || addr.suburb || addr.locality || addr.quarter;
+      const rawLocality = addr.neighbourhood || addr.suburb || addr.locality || addr.quarter;
+      const locality = (rawLocality && !rawLocality.toLowerCase().startsWith("ward ") && !rawLocality.toLowerCase().startsWith("zone ")) ? rawLocality : "";
       const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || "";
       const state = addr.state || addr.region || "";
       const country = addr.country || "";

@@ -1,6 +1,5 @@
 import SatelliteTimeMachine from "./components/SatelliteTimeMachine";
 import ElNinoAnalyzer from "./components/ElNinoAnalyzer";
-import SatelliteChangeDetector from "./components/SatelliteChangeDetector";
 import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
@@ -18,15 +17,12 @@ import WindSpeedCard from "./components/WindSpeedCard";
 import HeatRiskCard from "./components/HeatRiskCard";
 import ElNinoCard from "./components/ElNinoCard";
 import LSTCard from "./components/LSTCard";
-import HeatIntensityCard from "./components/HeatIntensityCard";
-import ThermalAnomalyCard from "./components/ThermalAnomalyCard";
 import HeatMap from "./components/HeatMap";
 import CompareCities from "./components/CompareCities";
 import HeatAlert from "./components/HeatAlert";
 import AIClimateReport from "./components/AIClimateReport";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import FutureCitySimulator from "./components/FutureCitySimulator";
-import HeatPreparednessScore from "./components/HeatPreparednessScore";
 import HeatHotspotRanking from "./components/HeatHotspotRanking";
 import AIChatbot from "./components/AIChatbot";
 import SmartAwareness from "./components/SmartAwareness";
@@ -79,7 +75,6 @@ const NAVIGATION_GROUPS = [
       { id: "assistant", label: "AI Heatwave Assistant", icon: "🤖" },
       { id: "heatwave-simulator", label: "Heatwave Impact Simulator", icon: "⚡" },
       { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
-      { id: "preparedness", label: "Heat Preparedness Score", icon: "🛡️" },
       { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
       { id: "climate-report", label: "AI Climate Report", icon: "📄" },
       { id: "compare", label: "Compare Cities", icon: "⚖️" },
@@ -98,9 +93,7 @@ const NAVIGATION_GROUPS = [
   {
     title: "SATELLITE",
     items: [
-      { id: "satellite-monitor", label: "Satellite Monitoring", icon: "🛰️" },
       { id: "satellite-image-heat-analysis", label: "Satellite Image Heat Analysis", icon: "📡" },
-      { id: "change-detector", label: "Satellite Change Detection", icon: "🪐" },
       { id: "time-machine", label: "Satellite Time Machine", icon: "⏱️" },
     ],
   },
@@ -112,7 +105,6 @@ const getPageFromHash = () => {
   const page = window.location.hash.replace(/^#/, "");
   if (!page || page === "home") return "home";
   if (page === "heat-alerts" || page === "alerts") return "email-alerts";
-  if (page === "satellite" || page === "satellite-monitor") return "satellite-monitor";
   if (page === "satellite-image-heat-analysis" || page === "satellite-image-analysis") return "satellite-image-heat-analysis";
   return DASHBOARD_PAGES.some((item) => item.id === page) ? page : "home";
 };
@@ -328,29 +320,29 @@ function App() {
     locatingRef.current = true;
     setIsLocating(true);
     setLocationError("");
-    setLocationStatus("Detecting live location via GPS...");
+    setLocationStatus("Detecting live location...");
 
     try {
-      const pos = await detectBrowserLocation({ timeout: 8000, enableHighAccuracy: false, maximumAge: 300000 });
-      const { latitude, longitude } = pos;
+      const pos = await detectBrowserLocation();
+      const { latitude, longitude, city: ipCity, state: ipState, source = "gps" } = pos;
 
       const geo = await reverseGeocodeCoords(latitude, longitude, 6000);
-      const displayCity = geo.city || geo.name || "";
-      const displayLabel = geo.displayName || (displayCity ? `${displayCity} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)` : `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`);
+      const displayCity = geo.city || ipCity || geo.name || "Coimbatore";
+      const displayLabel = geo.displayName || (ipCity ? `${ipCity}, ${ipState || ""}`.trim() : `${displayCity} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)`);
 
       setLiveLocation(displayLabel);
-      setMapLocation({ lat: latitude, lon: longitude, label: displayCity || "Current Location" });
-      if (displayCity) setSatelliteCity(displayCity);
-      setLocationSource("gps");
+      setMapLocation({ lat: latitude, lon: longitude, label: displayCity });
+      setSatelliteCity(displayCity);
+      setLocationSource(source);
       setLocationCachedTimestamp(Date.now());
-      setLocationStatus("Location updated via GPS");
+      setLocationStatus(`Live location detected: ${displayCity}`);
 
       setCachedLocation({
         city: displayCity,
         label: displayLabel,
         lat: latitude,
         lon: longitude,
-        source: "gps",
+        source: source,
         timestamp: Date.now(),
       });
 
@@ -358,11 +350,11 @@ function App() {
         latitude,
         longitude,
         detailedLocation: displayLabel,
-        source: "gps",
+        source: source,
       });
     } catch (err) {
       console.warn("Location detection failed:", err);
-      const errMsg = err?.message || "Location detection timed out or failed. Please search your city manually below.";
+      const errMsg = err?.message || "Location detection failed. Please search your city manually below.";
       setLocationError(errMsg);
       setLocationStatus("");
       setLoading(false);
@@ -441,9 +433,13 @@ function App() {
     setLocationError("");
 
     try {
-      const results = await searchWorldwideLocations(trimmed, 1, 5000);
+      const results = await searchWorldwideLocations(trimmed, 5, 5000);
       if (results && results.length > 0) {
-        await handleSelectCitySuggestion(results[0]);
+        // Find exact match or use the top prioritized result
+        const exact = results.find(
+          (r) => r.name.toLowerCase() === trimmed.toLowerCase()
+        ) || results[0];
+        await handleSelectCitySuggestion(exact);
       } else {
         setLiveLocation(trimmed);
         setSatelliteCity(trimmed);
@@ -892,9 +888,14 @@ function App() {
                       ● GPS Verified
                     </span>
                   )}
+                  {!isLocating && (locationSource === "ip" || locationSource === "detected") && (
+                    <span style={{ fontSize: "11px", color: "#0284c7", background: "rgba(2, 132, 199, 0.1)", border: "1px solid rgba(2, 132, 199, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                      ● Live Detected
+                    </span>
+                  )}
                   {!isLocating && locationSource === "manual" && (
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: "10px" }}>
-                      🔍 Manual
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                      🔍 Searched Location
                     </span>
                   )}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -943,7 +944,25 @@ function App() {
               <div className="search-result" style={{ marginTop: 0 }}>
                 <div className="search-result-item">
                   <div className="sr-label">Place / City</div>
-                  <div className="sr-value">{weather?.city || liveLocation || (isLocating ? "Detecting location..." : "No location selected")}</div>
+                  <div className="sr-value" title={liveLocation || weather?.city}>
+                    {weather?.city || liveLocation || (isLocating ? "Detecting location..." : "No location selected")}
+                  </div>
+                  {liveLocation && liveLocation !== weather?.city && (
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--text-muted)",
+                        marginTop: "2px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "180px",
+                      }}
+                      title={liveLocation}
+                    >
+                      {liveLocation}
+                    </div>
+                  )}
                 </div>
                 <div className="search-result-item">
                   <div className="sr-label">Coordinates</div>
@@ -1265,74 +1284,9 @@ function App() {
           <FutureCitySimulator currentTemperature={weather?.temperature} onValuesChange={setSimulatorValues} />
         </section>}
 
-        {activePage === "preparedness" && <section className="section">
-          <HeatPreparednessScore heatRisk={currentHeatRisk} simulatorValues={simulatorValues} />
-        </section>}
-
         {activePage === "hotspots" && <section className="section">
           <HeatHotspotRanking city={weather?.city} currentTemperature={weather?.temperature} />
         </section>}
-
-        {/* ── SATELLITE MONITORING ── */}
-        {activePage === "satellite-monitor" && (
-          <section className="section">
-            <div className="section-header-compact" style={{ marginBottom: "20px" }}>
-              <h2 className="section-title">🛰️ Satellite Thermal & LST Telemetry</h2>
-              <p className="section-subtitle" style={{ color: "var(--text-muted)", fontSize: "14px", marginTop: "4px" }}>
-                Orbital Land Surface Temperature (LST), thermal anomaly detection, and heat intensity telemetry derived from satellite observations.
-              </p>
-            </div>
-            {(weatherError || satelliteError) && (
-              <div className="prediction-error" style={{ marginBottom: "16px" }}>
-                {weatherError || satelliteError}
-              </div>
-            )}
-            <div className="dashboard" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-              <LSTCard lst={loading ? "Loading..." : satellite?.land_surface_temperature} />
-              <HeatIntensityCard heatIntensity={loading ? "Loading..." : satellite?.heat_intensity_level} />
-              <ThermalAnomalyCard thermalAnomaly={loading ? "Loading..." : satellite?.thermal_anomaly} />
-              <HeatAlert
-                heatRisk={loading ? "Loading..." : currentHeatRisk}
-                temperature={weather?.temperature}
-                landSurfaceTemperature={satellite?.land_surface_temperature}
-                thermalAnomaly={satellite?.thermal_anomaly}
-              />
-            </div>
-            <div className="card" style={{ marginTop: "24px" }}>
-              <h3 style={{ marginTop: 0 }}>🛰️ Scientific Data Telemetry</h3>
-              <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6" }}>
-                Thermal infrared channels observe radiative skin temperature (Land Surface Temperature).
-                Note that LST represents surface skin temperature and differs systematically from 2-meter ambient air temperature.
-              </p>
-              <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="predict-button"
-                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
-                  onClick={() => navigateToPage("change-detector")}
-                >
-                  🪐 Satellite Change Detection
-                </button>
-                <button
-                  type="button"
-                  className="predict-button"
-                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
-                  onClick={() => navigateToPage("time-machine")}
-                >
-                  ⏱️ Satellite Time Machine
-                </button>
-                <button
-                  type="button"
-                  className="predict-button"
-                  style={{ width: "auto", padding: "8px 18px", fontSize: "14px" }}
-                  onClick={() => navigateToPage("satellite-image-heat-analysis")}
-                >
-                  📡 Satellite Image Heat Analysis
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
 
         {activePage === "time-machine" && <section className="section">
           <h2 className="section-title">🛰 Satellite Time Machine</h2>
@@ -1342,10 +1296,6 @@ function App() {
             longitude={weather?.lon}
             currentHeatRisk={currentHeatRisk}
           />
-        </section>}
-
-        {activePage === "change-detector" && <section className="section">
-          <SatelliteChangeDetector city={satelliteCity || weather?.city} />
         </section>}
 
         {activePage === "elnino" && <section className="section">

@@ -1793,7 +1793,10 @@ class EmailAlertsTests(unittest.TestCase):
     def test_unique_cities_and_explicit_city_selection_isolation(self):
         """Verify: Unique city dropdown options, explicit city selection, and no silent Coimbatore overrides."""
         # Check backend known city coordinates dictionary has clean keys
-        from backend.weather import KNOWN_CITY_COORDINATES
+        try:
+            from weather import KNOWN_CITY_COORDINATES
+        except ImportError:
+            from backend.weather import KNOWN_CITY_COORDINATES
         self.assertIn("madurai", KNOWN_CITY_COORDINATES)
         self.assertIn("chennai", KNOWN_CITY_COORDINATES)
         self.assertIn("jaipur", KNOWN_CITY_COORDINATES)

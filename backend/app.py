@@ -154,6 +154,16 @@ def get_weather():
     weather_data["current_heat_risk"]    = current_heat_risk
     weather_data["heat_risk_confidence"] = round(ml_result["confidence"], 2)
     weather_data["heat_risk_explanation"] = explanation
+    if requested_city:
+        weather_data["city"] = requested_city
+    elif not weather_data.get("city") or weather_data.get("city") == "Selected Location":
+        weather_data["city"] = city
+
+    detailed_loc = request.args.get("detailed_location")
+    if detailed_loc:
+        weather_data["detailed_location"] = detailed_loc
+    elif weather_data.get("city"):
+        weather_data["detailed_location"] = weather_data.get("city")
 
     response = jsonify(weather_data)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"

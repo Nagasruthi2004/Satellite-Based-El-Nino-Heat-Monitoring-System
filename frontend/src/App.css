@@ -755,8 +755,6 @@ button { font-weight: var(--weight-medium); }
 .heatrisk-card       { border-top-color: #f97316; }
 .elnino-card         { border-top-color: #7c3aed; }
 .lst-card            { border-top-color: #0ea5e9; }
-.heatintensity-card  { border-top-color: #dc2626; }
-.thermalAnomaly-card { border-top-color: #ec4899; }
 .alert-recommendation-card { border-top-color: #e11d48; }
 .heat-alert-card           { border-top-color: #dc2626; }
 
@@ -1253,65 +1251,6 @@ button { font-weight: var(--weight-medium); }
 .future-city-results p { margin: 16px 0 0; }
 .future-city-results p strong { color: var(--text); }
 
-/* ==========================================
-   AI HEATWAVE PREPAREDNESS SCORE
-========================================== */
-
-.preparedness-score { border-top: 4px solid #0f766e; margin-top: 24px; }
-
-.preparedness-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.preparedness-heading .section-title { margin-bottom: 0; }
-
-.preparedness-badge {
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 7px 12px;
-  white-space: nowrap;
-}
-
-.preparedness-badge.well { background: #dcfce7; color: #166534; }
-.preparedness-badge.moderate { background: #fef3c7; color: #92400e; }
-.preparedness-badge.poor { background: #fee2e2; color: #b91c1c; }
-
-.preparedness-summary {
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 24px;
-  padding: 18px;
-  margin-bottom: 18px;
-}
-
-.preparedness-label { color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
-.preparedness-value { color: var(--text); font-size: 36px; font-weight: 800; line-height: 1.1; }
-.preparedness-value span { color: var(--text-muted); font-size: 16px; font-weight: 600; }
-.preparedness-progress { background: #e2e8f0; border-radius: 999px; height: 14px; overflow: hidden; width: 100%; }
-.preparedness-progress-fill { border-radius: inherit; height: 100%; transition: width .3s ease; }
-.preparedness-progress-fill.well { background: #22c55e; }
-.preparedness-progress-fill.moderate { background: #eab308; }
-.preparedness-progress-fill.poor { background: #ef4444; }
-
-.preparedness-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.preparedness-panel { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; }
-.preparedness-panel h3 { font-size: 15px; margin-bottom: 12px; }
-.preparedness-breakdown-row { border-bottom: 1px solid var(--border); color: var(--text-muted); display: flex; font-size: 13px; gap: 12px; justify-content: space-between; padding: 10px 0; }
-.preparedness-breakdown-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.preparedness-breakdown-row strong { white-space: nowrap; }
-.preparedness-breakdown-row .positive { color: #15803d; }
-.preparedness-breakdown-row .negative { color: #dc2626; }
-.recommendation-panel ul { color: var(--text-muted); font-size: 14px; padding-left: 20px; }
-.recommendation-panel li + li { margin-top: 8px; }
 
 /* ==========================================
    AI HEAT HOTSPOT RANKING
@@ -1332,21 +1271,6 @@ button { font-weight: var(--weight-medium); }
 .hotspot-risk.high { background: #fee2e2; color: #b91c1c; }
 .hotspot-risk.medium { background: #fef3c7; color: #b45309; }
 .hotspot-risk.low { background: #dcfce7; color: #15803d; }
-/* SATELLITE CHANGE DETECTOR */
-.satellite-change-detector { border-top: 4px solid #4f46e5; margin-top: 24px; }
-.change-detector-heading, .change-report-title { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 20px; }
-.change-detector-heading .section-title { margin-bottom: 0; }
-.change-city { background: #e0e7ff; border-radius: 999px; color: #3730a3; font-size: 13px; font-weight: 700; padding: 6px 12px; }
-.change-controls { align-items: end; display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.change-controls label { display: flex; flex-direction: column; gap: 6px; }
-.change-controls label span { color: var(--text-muted); font-size: 13px; font-weight: 700; }
-.change-controls select { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font: inherit; padding: 11px 12px; }
-.change-analyze-button { height: 43px; white-space: nowrap; }.change-analyze-button:disabled { cursor: not-allowed; opacity: .55; }.change-validation { color: #b91c1c; font-size: 13px; margin-top: 10px; }
-.change-report-title { align-items: center; margin: 22px 0 14px; }.change-report-title h3 { font-size: 17px; }.change-report-title p { color: var(--text-muted); font-size: 13px; }
-.change-risk { border-radius: 999px; font-size: 12px; font-weight: 700; padding: 5px 11px; white-space: nowrap; }.change-risk.high { background: #fee2e2; color: #b91c1c; }.change-risk.medium { background: #fef3c7; color: #b45309; }.change-risk.low { background: #dcfce7; color: #15803d; }
-.change-metrics { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }.change-metric { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; }.change-metric h3 { font-size: 14px; margin-bottom: 10px; }.change-values { color: var(--text-muted); display: flex; flex-direction: column; font-size: 14px; gap: 4px; }.change-values span:last-child { color: var(--text); font-weight: 800; }.change-difference { align-items: center; border-top: 1px solid var(--border); display: flex; font-size: 12px; justify-content: space-between; margin-top: 12px; padding-top: 10px; }.change-difference span { color: var(--text-muted); }.change-difference .negative { color: #dc2626; }.change-difference .positive { color: #15803d; }
-.change-summary, .change-recommendation { border-radius: var(--radius-sm); margin-top: 16px; padding: 15px 18px; }.change-summary { background: #f0fdf4; border: 1px solid #bbf7d0; }.change-summary h3, .change-summary p { color: #166534; }.change-summary h3, .change-recommendation h3 { font-size: 15px; margin-bottom: 6px; }.change-summary p, .change-recommendation p { font-size: 14px; }.change-recommendation { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid var(--primary); }.change-recommendation h3 { color: var(--primary-dark); }.change-recommendation p { color: #1e3a8a; }
-.satellite-timeline { align-items: center; color: #4338ca; display: flex; font-size: 15px; gap: 10px; justify-content: center; margin-top: 22px; overflow: hidden; white-space: nowrap; }.satellite-timeline span { color: #818cf8; letter-spacing: 1px; }
 
 /* AI CLIMATE REPORT */
 .ai-climate-report { border-top: 4px solid var(--primary); }
@@ -1532,11 +1456,7 @@ button { font-weight: var(--weight-medium); }
     grid-template-columns: 1fr;
   }
 
-  .preparedness-heading { flex-direction: column; }
-  .preparedness-grid { grid-template-columns: 1fr; }
   .hotspot-heading { flex-direction: column; }
-  .change-detector-heading { flex-direction: column; }
-  .change-controls, .change-metrics { grid-template-columns: 1fr; }
   .satellite-observation-heading { flex-direction: column; }
   .satellite-status { white-space: normal; }
 }
@@ -1570,7 +1490,6 @@ button { font-weight: var(--weight-medium); }
     grid-template-columns: 1fr;
   }
 
-  .preparedness-summary { grid-template-columns: 1fr; gap: 14px; }
 }
 
 /* ==========================================
@@ -1645,14 +1564,7 @@ button, input, .weather-card {
 :root[data-theme="dark"] .chatbot-bubble.user { background: var(--primary); color: #071426; }
 :root[data-theme="dark"] .analytics-stat-card,
 :root[data-theme="dark"] .analytics-chart-box,
-:root[data-theme="dark"] .future-city-results,
-:root[data-theme="dark"] .preparedness-panel,
-:root[data-theme="dark"] .change-metric { background: var(--secondary); border-color: var(--border); }
-:root[data-theme="dark"] .change-summary { background: #123527; border-color: #1d6b4d; }
-:root[data-theme="dark"] .change-summary h3,
-:root[data-theme="dark"] .change-summary p { color: #bbf7d0; }
-:root[data-theme="dark"] .change-recommendation { background: #122c4b; border-color: #285a91; }
-:root[data-theme="dark"] .change-recommendation p { color: #bfdbfe; }
+:root[data-theme="dark"] .future-city-results { background: var(--secondary); border-color: var(--border); }
 :root[data-theme="dark"] .recharts-cartesian-grid line { stroke: #29415f; }
 :root[data-theme="dark"] .recharts-text { fill: #a9bbd2; }
 :root[data-theme="dark"] .recharts-default-tooltip { background-color: var(--card) !important; border-color: var(--border) !important; color: var(--text) !important; }
@@ -1661,7 +1573,7 @@ button, input, .weather-card {
 
 .App, .card, .prediction-panel, .footer, .navbar, input, select, textarea, button,
 .analytics-stat-card, .analytics-chart-box, .chatbot-window, .future-city-results,
-.preparedness-panel, .elnino-chart-panel, .elnino-detail-panel, .elnino-summary,
+.elnino-chart-panel, .elnino-detail-panel, .elnino-summary,
 .compare-table th, .compare-table td {
   transition: background-color var(--transition), border-color var(--transition), color var(--transition);
 }
@@ -1692,20 +1604,11 @@ button, input, .weather-card {
 
 :root[data-theme="dark"] .risk-high,
 :root[data-theme="dark"] .prediction-result.high,
-:root[data-theme="dark"] .preparedness-badge.poor,
-:root[data-theme="dark"] .hotspot-risk.high,
-:root[data-theme="dark"] .change-risk.high { background: var(--danger-surface); color: var(--danger); }
+:root[data-theme="dark"] .hotspot-risk.high { background: var(--danger-surface); color: var(--danger); }
 :root[data-theme="dark"] .risk-medium,
-:root[data-theme="dark"] .preparedness-badge.moderate,
-:root[data-theme="dark"] .hotspot-risk.medium,
-:root[data-theme="dark"] .change-risk.medium { background: var(--warning-surface); color: var(--warning); }
+:root[data-theme="dark"] .hotspot-risk.medium { background: var(--warning-surface); color: var(--warning); }
 :root[data-theme="dark"] .risk-low,
-:root[data-theme="dark"] .preparedness-badge.well,
-:root[data-theme="dark"] .hotspot-risk.low,
-:root[data-theme="dark"] .change-risk.low { background: var(--success-surface); color: var(--success); }
-:root[data-theme="dark"] .change-city { background: #252552; color: #c7d2fe; }
-:root[data-theme="dark"] .satellite-timeline { color: #c7d2fe; }
-:root[data-theme="dark"] .satellite-timeline span { color: #a5b4fc; }
+:root[data-theme="dark"] .hotspot-risk.low { background: var(--success-surface); color: var(--success); }
 :root[data-theme="dark"] .heat-map-legend,
 :root[data-theme="dark"] .graph-legend { color: var(--text-muted); }
 :root[data-theme="dark"] .footer { background: #08111f; color: var(--text-muted); }
@@ -1815,7 +1718,7 @@ button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
 
 /* Shared elevated surfaces: full panels, analytic cards, and action modules. */
 .card, .prediction-panel, .analytics-stat-card, .analytics-chart-box,
-.future-city-results, .preparedness-panel, .elnino-chart-panel,
+.future-city-results, .elnino-chart-panel,
 .elnino-detail-panel, .elnino-summary, .chatbot-window,
 .satellite-time-machine-details {
   background: var(--surface);
@@ -1830,22 +1733,21 @@ button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
 .weather-card:hover, .analytics-stat-card:hover, .hotspot-row:hover { box-shadow: var(--shadow-hover); }
 
 .card h2, .prediction-panel-header h2, .analytics-heading h2,
-.future-city-heading h2, .preparedness-heading h2, .hotspot-heading h2,
-.change-detector-heading h2, .elnino-analyzer-heading h2 {
+.future-city-heading h2, .hotspot-heading h2,
+.elnino-analyzer-heading h2 {
   color: var(--text);
   font-size: var(--type-section-title);
   line-height: var(--line-tight);
 }
 
 .card h3, .analytics-chart-box h3, .future-city-results h3,
-.preparedness-panel h3, .elnino-chart-panel h3, .elnino-detail-panel h3,
-.elnino-summary h3, .change-summary h3,
-.change-recommendation h3 {
+.elnino-chart-panel h3, .elnino-detail-panel h3,
+.elnino-summary h3 {
   font-size: var(--type-card-title);
   line-height: 1.35;
 }
 
-.eyebrow, .prediction-field span, .compare-label, .preparedness-label,
+.eyebrow, .prediction-field span, .compare-label,
 .analytics-stat-label, .satellite-meta-item .meta-label, .elnino-year-select,
 .elnino-metric-grid span, .elnino-summary-grid span {
   font-size: var(--type-caption);
@@ -1855,7 +1757,7 @@ button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
 
 /* Unified controls, including every page-specific action button. */
 .predict-button, .search-btn, .download-btn, .call-btn,
-.ai-climate-report-button, .change-analyze-button {
+.ai-climate-report-button {
   border-radius: var(--radius-sm);
   font-size: var(--type-label);
   font-weight: var(--weight-heading);
@@ -1863,16 +1765,15 @@ button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
   min-height: 42px;
   padding: 11px 18px;
 }
-.predict-button, .search-btn, .ai-climate-report-button, .change-analyze-button {
+.predict-button, .search-btn, .ai-climate-report-button {
   background: var(--primary);
   color: var(--on-brand);
 }
-.predict-button:hover, .search-btn:hover, .ai-climate-report-button:hover:not(:disabled),
-.change-analyze-button:hover:not(:disabled) { background: var(--primary-dark); }
+.predict-button:hover, .search-btn:hover, .ai-climate-report-button:hover:not(:disabled) { background: var(--primary-dark); }
 .download-btn, .call-btn { border-radius: var(--radius-sm); }
 
 input:not([type="range"]), select, textarea, .prediction-field input,
-.compare-input, .change-controls select, .elnino-year-select select {
+.compare-input, .elnino-year-select select {
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1899,10 +1800,10 @@ input:not([type="range"]):focus, select:focus, textarea:focus {
 
 /* Limit vivid colours to the heat-risk signals they communicate. */
 .temperature-card, .humidity-card, .rainfall-card, .windspeed-card,
-.elnino-card, .lst-card, .thermalAnomaly-card, .alert-recommendation-card {
+.elnino-card, .lst-card, .alert-recommendation-card {
   border-top-color: var(--primary);
 }
-.heatrisk-card, .heatintensity-card, .heat-alert-card { border-top-color: var(--risk-high); }
+.heatrisk-card, .heat-alert-card { border-top-color: var(--risk-high); }
 
 @media (max-width: 768px) {
   .App { padding: var(--space-6) var(--space-4) var(--space-8); }
@@ -1914,7 +1815,7 @@ input:not([type="range"]):focus, select:focus, textarea:focus {
   .section-title, .page-title { font-size: 1.5rem; }
   .card, .prediction-panel { padding: var(--space-5); }
   .predict-button, .search-btn, .download-btn, .call-btn,
-  .ai-climate-report-button, .change-analyze-button { width: 100%; justify-content: center; }
+  .ai-climate-report-button { width: 100%; justify-content: center; }
 }
 
 /* ==========================================

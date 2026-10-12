@@ -139,7 +139,7 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
                             if isinstance(rain_data, dict):
                                 rainfall = rain_data.get("1h", rain_data.get("3h", 0))
                             return {
-                                "city": data.get("name") or clean_city,
+                                "city": (clean_city.split(",")[0].strip().title() if "," in clean_city else clean_city) or data.get("name") or "Selected Location",
                                 "country": data.get("sys", {}).get("country", ""),
                                 "temperature": temperature,
                                 "humidity": data.get("main", {}).get("humidity"),
@@ -168,7 +168,10 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
             if isinstance(rain_data, dict):
                 rainfall = rain_data.get("1h", rain_data.get("3h", 0))
 
-            resolved_name = data.get("name") or clean_city or "Selected Location"
+            if clean_city:
+                resolved_name = clean_city.split(",")[0].strip().title() if "," in clean_city else clean_city
+            else:
+                resolved_name = data.get("name") or "Selected Location"
             country = data.get("sys", {}).get("country", "")
             return {
                 "city": resolved_name,
@@ -236,12 +239,26 @@ def search_locations(query: str, limit: int = 6) -> list[dict]:
 
     results: list[dict] = []
     api_key = (os.getenv("OPENWEATHER_API_KEY") or "").strip()
+    q_lower = clean_query.lower()
+
+    # Pre-populate known Indian cities if query matches
+    for k_city, (k_lat, k_lon) in KNOWN_CITY_COORDINATES.items():
+        if q_lower == k_city or (len(q_lower) >= 3 and (q_lower in k_city or k_city in q_lower)):
+            state = "Tamil Nadu" if k_city in ["coimbatore", "chennai", "madurai", "trichy", "tiruchirappalli", "salem", "tiruppur", "erode", "vellore"] else ("Andhra Pradesh" if k_city in ["visakhapatnam", "vizag"] else ("Karnataka" if k_city in ["bengaluru", "bangalore", "mysuru", "mysore"] else "India"))
+            results.append({
+                "name": k_city.title(),
+                "display_name": f"{k_city.title()}, {state}, IN",
+                "lat": round(k_lat, 4),
+                "lon": round(k_lon, 4),
+                "country": "IN",
+                "state": state,
+            })
 
     # 2. Try OpenWeather Geocoding API if configured
     if is_weather_api_configured():
         try:
             geo_url = "http://api.openweathermap.org/geo/1.0/direct"
-            resp = requests.get(geo_url, params={"q": clean_query, "limit": limit, "appid": api_key}, timeout=6)
+            resp = requests.get(geo_url, params={"q": clean_query, "limit": limit * 2, "appid": api_key}, timeout=6)
             if resp.status_code == 200:
                 data = resp.json()
                 for item in data:
@@ -286,21 +303,23 @@ def search_locations(query: str, limit: int = 6) -> list[dict]:
         except Exception as exc:
             logger.warning("Nominatim geocoding failed for %s: %s", clean_query, exc)
 
-    # 4. Fallback: Check KNOWN_CITY_COORDINATES
-    if not results:
-        q_lower = clean_query.lower()
-        for k_city, (k_lat, k_lon) in KNOWN_CITY_COORDINATES.items():
-            if q_lower in k_city or k_city in q_lower:
-                results.append({
-                    "name": k_city.title(),
-                    "display_name": f"{k_city.title()}, India",
-                    "lat": round(k_lat, 4),
-                    "lon": round(k_lon, 4),
-                    "country": "India",
-                    "state": "",
-                })
-                if len(results) >= limit:
-                    break
+    # Sort results: exact match + India first, exact match worldwide, partial matches
+    def sort_score(r):
+        r_name = r.get("name", "").lower()
+        r_country = r.get("country", "").upper()
+        is_exact = (r_name == q_lower)
+        is_india = (r_country in ("IN", "INDIA"))
+        if is_exact and is_india:
+            return 0
+        if is_india and q_lower in r_name:
+            return 1
+        if is_exact:
+            return 2
+        if is_india:
+            return 3
+        return 4
+
+    results.sort(key=sort_score)
 
     # Deduplicate by approximate coordinates
     unique_results = []
@@ -321,30 +340,55 @@ def reverse_geocode(lat: float, lon: float) -> dict:
     try:
         nom_url = "https://nominatim.openstreetmap.org/reverse"
         headers = {"User-Agent": "ElNinoHeatMonitoringSystem/1.0", "Accept-Language": "en"}
-        resp = requests.get(nom_url, params={"lat": lat, "lon": lon, "format": "json"}, headers=headers, timeout=6)
+        resp = requests.get(nom_url, params={"lat": lat, "lon": lon, "format": "json", "addressdetails": 1}, headers=headers, timeout=6)
         if resp.status_code == 200:
             data = resp.json()
             addr = data.get("address", {})
-            name = (
+            city = (
                 addr.get("city")
                 or addr.get("town")
                 or addr.get("village")
                 or addr.get("municipality")
                 or addr.get("county")
-                or data.get("name")
-                or f"{lat:.4f}°, {lon:.4f}°"
             )
+            suburb = (
+                addr.get("suburb")
+                or addr.get("neighbourhood")
+                or addr.get("residential")
+                or addr.get("locality")
+            )
+            if suburb and (suburb.lower().startswith("ward ") or suburb.lower().startswith("zone ") or suburb.isdigit()):
+                suburb = None
+
+            state = addr.get("state", "")
+            country = addr.get("country", "")
+
+            clean_name = city or suburb or data.get("name") or f"{lat:.4f}°, {lon:.4f}°"
+
+            parts = []
+            if suburb and suburb.lower() != (city or "").lower():
+                parts.append(suburb)
+            if city:
+                parts.append(city)
+            if state and state.lower() != (city or "").lower():
+                parts.append(state)
+            if country:
+                parts.append(country)
+
+            display_name = ", ".join(parts) if parts else clean_name
             return {
-                "name": name,
-                "display_name": data.get("display_name", name),
-                "country": addr.get("country", ""),
-                "state": addr.get("state", ""),
+                "name": clean_name,
+                "city": city or clean_name,
+                "display_name": display_name,
+                "country": country,
+                "state": state,
             }
     except Exception as exc:
         logger.warning("Reverse geocoding failed for %s, %s: %s", lat, lon, exc)
 
     return {
         "name": f"{lat:.4f}°, {lon:.4f}°",
+        "city": "",
         "display_name": f"Coordinates ({lat:.4f}°, {lon:.4f}°)",
         "country": "",
         "state": "",
