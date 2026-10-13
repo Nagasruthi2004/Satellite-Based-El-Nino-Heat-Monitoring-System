@@ -1431,8 +1431,18 @@ def evaluate_and_send_heat_alert(
     raw_humidity = weather.get("humidity")
     humidity = float(raw_humidity) if raw_humidity is not None else None
 
-    raw_rainfall = weather.get("rainfall")
-    rainfall = float(raw_rainfall) if raw_rainfall is not None else None
+    raw_rainfall = weather.get("rainfall_numeric")
+    if raw_rainfall is None:
+        raw_rainfall = weather.get("rainfall")
+    try:
+        rainfall = float(raw_rainfall) if raw_rainfall is not None else None
+    except (ValueError, TypeError):
+        try:
+            import re
+            m = re.search(r"[-+]?\d*\.?\d+", str(raw_rainfall))
+            rainfall = float(m.group(0)) if m else None
+        except Exception:
+            rainfall = None
 
     raw_wind = weather.get("wind_speed")
     wind_speed_ms = float(raw_wind) if raw_wind is not None else None

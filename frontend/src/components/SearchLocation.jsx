@@ -122,7 +122,7 @@ function SearchLocation({ onCityWeather, onCitySelected, onCityError, onFillForm
           </div>
           <div className="search-result-item">
             <div className="sr-label">Rainfall</div>
-            <div className="sr-value">{weather.rainfall} mm</div>
+            <div className="sr-value">{String(weather.rainfall).includes('mm') ? weather.rainfall : `${weather.rainfall} mm`}</div>
           </div>
           <div className="search-result-item">
             <div className="sr-label">Wind Speed</div>

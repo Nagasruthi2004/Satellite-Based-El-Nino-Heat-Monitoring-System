@@ -177,77 +177,20 @@ function App() {
       if (locationDetails.detailedLocation) params.set("detailed_location", locationDetails.detailedLocation);
       
       // Keep existing OpenWeather call for other cards
-      const weatherPromise = fetchWithTimeout(`http://127.0.0.1:5000/weather?${params}`, {}, 8000);
-
-      // In parallel, call Open-Meteo API with same lat/lon if coordinates are available upfront (e.g. from map click)
-      let openMeteoPromise = null;
-      const initialLat = locationDetails.latitude;
-      const initialLon = locationDetails.longitude;
-      if (initialLat != null && initialLon != null) {
-        openMeteoPromise = fetchWithTimeout(
-          `https://api.open-meteo.com/v1/forecast?latitude=${initialLat}&longitude=${initialLon}&current=precipitation,rain,showers&daily=precipitation_sum,rain_sum&timezone=auto&forecast_days=1`,
-          {},
-          6000
-        )
-          .then((res) => (res.ok ? res.json() : null))
-          .catch((err) => {
-            console.warn("Open-Meteo parallel fetch failed:", err);
-            return null;
-          });
-      }
-
-      const response = await weatherPromise;
+      const response = await fetchWithTimeout(`http://127.0.0.1:5000/weather?${params}`, {}, 8000);
       if (response.status === 429) {
         throw new Error("Weather service rate limit reached. Please wait a moment.");
       }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to fetch weather data");
 
-      // Resolve Open-Meteo response (either from parallel promise, or fetched using resolved coords from data)
-      let openMeteoData = null;
-      if (openMeteoPromise) {
-        openMeteoData = await openMeteoPromise;
-      } else {
-        const targetLat = data.lat != null ? data.lat : locationDetails.latitude;
-        const targetLon = data.lon != null ? data.lon : locationDetails.longitude;
-        if (targetLat != null && targetLon != null) {
-          try {
-            const res = await fetchWithTimeout(
-              `https://api.open-meteo.com/v1/forecast?latitude=${targetLat}&longitude=${targetLon}&current=precipitation,rain,showers&daily=precipitation_sum,rain_sum&timezone=auto&forecast_days=1`,
-              {},
-              6000
-            );
-            if (res.ok) {
-              openMeteoData = await res.json();
-            }
-          } catch (e) {
-            console.warn("Open-Meteo fetch for resolved coords failed:", e);
-          }
-        }
-      }
+      console.log("Weather received from backend with rainfall:", data.rainfall);
 
-      // Requirement: Extract both current and daily precipitation
-      const currentRain = Number(openMeteoData?.current?.precipitation ?? 0);
-      const todayRain = Number(openMeteoData?.daily?.precipitation_sum?.[0] ?? 0);
-
-      // Console log both values and full response
-      console.log("Live Rainfall from Open-Meteo current:", currentRain, "today total:", todayRain);
-      console.log("Live Rainfall from Open-Meteo:", openMeteoData);
-
-      if (currentRain > 0) {
-        data.rainfall = `${currentRain} mm - Live rain now`;
-      } else if (todayRain > 0) {
-        data.rainfall = `${todayRain} mm - Today total, 0 mm now`;
-      } else {
-        data.rainfall = `0 mm - No rain today`;
-      }
-
-      const effectiveRain = currentRain > 0 ? currentRain : todayRain;
-      data.rainfall_numeric = effectiveRain;
+      const effectiveRain = Number(data.rainfall_numeric ?? 0);
 
       // Requirement: If rainfall > 5mm, reduce heat risk score slightly, because rain reduces heat
-      if (data.current_heat_risk && Number(effectiveRain) > 5) {
-        const rainReduction = Math.min(12, 4 + (Number(effectiveRain) - 5) * 0.5);
+      if (data.current_heat_risk && effectiveRain > 5) {
+        const rainReduction = Math.min(12, 4 + (effectiveRain - 5) * 0.5);
         const originalScore = Number(data.current_heat_risk.score ?? 50);
         const adjustedScore = Math.round(Math.max(0, originalScore - rainReduction) * 10) / 10;
         let adjustedLevel = data.current_heat_risk.level;

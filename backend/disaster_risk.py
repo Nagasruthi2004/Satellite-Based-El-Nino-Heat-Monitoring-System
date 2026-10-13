@@ -669,7 +669,18 @@ def evaluate_disaster_risk(city=None, lat=None, lon=None, disaster_type=None):
     current_humidity = weather_data.get("humidity", 0.0)
     current_wind_ms = weather_data.get("wind_speed", 0.0)
     current_wind_kmh = round(current_wind_ms * 3.6, 1)
-    current_rain_mm = float(weather_data.get("rainfall", 0.0) or 0.0)
+    raw_rain = weather_data.get("rainfall_numeric")
+    if raw_rain is None:
+        raw_rain = weather_data.get("rainfall", 0.0)
+    try:
+        current_rain_mm = float(raw_rain or 0.0)
+    except (ValueError, TypeError):
+        try:
+            import re
+            m = re.search(r"[-+]?\d*\.?\d+", str(raw_rain))
+            current_rain_mm = float(m.group(0)) if m else 0.0
+        except Exception:
+            current_rain_mm = 0.0
     current_pressure = weather_data.get("pressure")
     weather_desc = weather_data.get("weather_description", "Clear")
     current_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")

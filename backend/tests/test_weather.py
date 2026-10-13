@@ -5,10 +5,84 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from weather import fetch_weather, is_weather_api_configured
+from weather import (
+    fetch_weather,
+    is_weather_api_configured,
+    fetch_live_rainfall_open_meteo,
+    extract_observed_rainfall,
+)
 
 
 class WeatherTests(unittest.TestCase):
+    def test_extract_observed_rainfall_rain_1h(self):
+        """Test extract_observed_rainfall when rain.1h > 0."""
+        text, val = extract_observed_rainfall({"rain": {"1h": 1.2}, "weather": [{"main": "Rain"}]})
+        self.assertEqual(text, "1.2 mm - Raining now 🌧️")
+        self.assertEqual(val, 1.2)
+
+    def test_extract_observed_rainfall_rain_3h(self):
+        """Test extract_observed_rainfall when only rain.3h is present."""
+        text, val = extract_observed_rainfall({"rain": {"3h": 3.6}, "weather": [{"main": "Rain"}]})
+        self.assertEqual(text, "1.2 mm - Raining now 🌧️")
+        self.assertEqual(val, 1.2)
+
+    def test_extract_observed_rainfall_weather_main_rain(self):
+        """Test extract_observed_rainfall when weather[0].main == 'Rain' but no 1h/3h rain."""
+        text, val = extract_observed_rainfall({"weather": [{"main": "Rain", "description": "light rain"}]})
+        self.assertEqual(text, "0.5 mm - Light rain 🌧️")
+        self.assertEqual(val, 0.5)
+
+    def test_extract_observed_rainfall_no_rain(self):
+        """Test extract_observed_rainfall when no rain is present."""
+        text, val = extract_observed_rainfall({"weather": [{"main": "Clouds", "description": "overcast clouds"}]})
+        self.assertEqual(text, "0 mm - No live rain")
+        self.assertEqual(val, 0.0)
+
+    @patch.dict("os.environ", {"OPENWEATHER_API_KEY": "valid_mock_api_key"})
+    @patch("weather.requests.get")
+    def test_fetch_live_rainfall_open_meteo_raining(self, mock_get):
+        """Test fetch_live_rainfall_open_meteo helper when precipitation > 0 via OpenWeatherMap."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "name": "Boston",
+            "main": {"temp": 12.0, "humidity": 80},
+            "rain": {"1h": 2.5},
+            "weather": [{"main": "Rain", "description": "moderate rain"}],
+            "coord": {"lat": 42.36, "lon": -71.06},
+        }
+        mock_get.return_value = mock_response
+
+        res = fetch_live_rainfall_open_meteo(42.36, -71.06)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["text"], "2.5 mm - Raining now 🌧️")
+        self.assertEqual(res["current"], 2.5)
+        self.assertEqual(res["value"], 2.5)
+        self.assertNotIn("today", res)
+
+    @patch.dict("os.environ", {"OPENWEATHER_API_KEY": "valid_mock_api_key"})
+    @patch("weather.requests.get")
+    def test_fetch_live_rainfall_open_meteo_not_raining(self, mock_get):
+        """Test fetch_live_rainfall_open_meteo helper when precipitation is 0 via OpenWeatherMap."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "name": "Cherrapunji",
+            "main": {"temp": 24.0, "humidity": 60},
+            "weather": [{"main": "Clear", "description": "clear sky"}],
+            "coord": {"lat": 25.30, "lon": 91.70},
+        }
+        mock_get.return_value = mock_response
+
+        res = fetch_live_rainfall_open_meteo(25.30, 91.70)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["text"], "0 mm - No live rain")
+        self.assertEqual(res["current"], 0.0)
+        self.assertEqual(res["value"], 0.0)
+        self.assertNotIn("today", res)
+
     @patch.dict("os.environ", {"OPENWEATHER_API_KEY": "valid_mock_api_key"})
     def test_is_weather_api_configured_true(self):
         """Test is_weather_api_configured returns True when valid key is set."""
@@ -48,7 +122,8 @@ class WeatherTests(unittest.TestCase):
         self.assertEqual(result["temperature"], 31.2)
         self.assertEqual(result["humidity"], 65)
         self.assertEqual(result["wind_speed"], 5.4)
-        self.assertEqual(result["rainfall"], 0.5)
+        self.assertEqual(result["rainfall"], "0.5 mm - Raining now 🌧️")
+        self.assertEqual(result["rainfall_numeric"], 0.5)
         self.assertEqual(result["weather_description"], "broken clouds")
         self.assertEqual(result["lat"], 11.0168)
         self.assertEqual(result["lon"], 76.9558)

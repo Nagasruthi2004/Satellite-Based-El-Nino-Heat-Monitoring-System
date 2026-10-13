@@ -72,45 +72,53 @@ KNOWN_CITY_COORDINATES = {
 }
 
 
+def extract_observed_rainfall(data: dict) -> tuple[str, float]:
+    """
+    Extract real observed live rainfall from OpenWeatherMap current weather data.
+    Uses same API as temperature - DO NOT call Open-Meteo at all.
+    """
+    if not isinstance(data, dict):
+        return "0 mm - No live rain", 0.0
+
+    rain_mm = 0.0
+    if "rain" in data and isinstance(data["rain"], dict):
+        if "1h" in data["rain"] and data["rain"]["1h"] is not None:
+            rain_mm = round(float(data["rain"]["1h"]), 2)
+        elif "3h" in data["rain"] and data["rain"]["3h"] is not None:
+            rain_mm = round(float(data["rain"]["3h"]) / 3.0, 2)  # convert 3h to hourly
+
+    weather_list = data.get("weather") or []
+    weather_main = ""
+    weather_desc = ""
+    if weather_list and isinstance(weather_list[0], dict):
+        weather_main = str(weather_list[0].get("main", "")).lower()
+        weather_desc = str(weather_list[0].get("description", "")).lower()
+
+    if rain_mm > 0:
+        rainfall_text = f"{rain_mm} mm - Raining now 🌧️"
+        return rainfall_text, rain_mm
+    else:
+        # Check if weather main says Rain
+        if weather_main == "rain" or "rain" in weather_desc or weather_main == "drizzle":
+            rainfall_text = "0.5 mm - Light rain 🌧️"
+            return rainfall_text, 0.5
+        else:
+            rainfall_text = "0 mm - No live rain"
+            return rainfall_text, 0.0
+
+
 def fetch_live_rainfall_open_meteo(lat: float, lon: float, timeout: int = 5) -> dict | None:
     """
-    Fetch live rainfall from Open-Meteo API (current + daily forecast).
-    Endpoint: https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation,rain,showers&daily=precipitation_sum,rain_sum&timezone=auto&forecast_days=1
+    Legacy helper: Fetches rainfall directly from OpenWeatherMap (same as temperature).
+    Does NOT call Open-Meteo.
     """
-    try:
-        url = "https://api.open-meteo.com/v1/forecast"
-        params = {
-            "latitude": lat,
-            "longitude": lon,
-            "current": "precipitation,rain,showers",
-            "daily": "precipitation_sum,rain_sum",
-            "timezone": "auto",
-            "forecast_days": 1,
+    res = fetch_weather(lat=lat, lon=lon)
+    if res:
+        return {
+            "text": res["rainfall"],
+            "current": res["rainfall_numeric"],
+            "value": res["rainfall_numeric"],
         }
-        res = requests.get(url, params=params, timeout=timeout)
-        if res.status_code == 200:
-            payload = res.json()
-            if "current" not in payload and "daily" not in payload:
-                return None
-            current_rain = float(payload.get("current", {}).get("precipitation", 0.0) or 0.0)
-            daily_list = payload.get("daily", {}).get("precipitation_sum", [0.0])
-            daily_rain = float(daily_list[0] if daily_list and daily_list[0] is not None else 0.0)
-
-            if current_rain > 0:
-                text = f"{current_rain} mm - Live rain now"
-            elif daily_rain > 0:
-                text = f"{daily_rain} mm - Today total, 0 mm now"
-            else:
-                text = "0 mm - No rain today"
-
-            return {
-                "text": text,
-                "current": current_rain,
-                "today": daily_rain,
-                "value": current_rain if current_rain > 0 else daily_rain,
-            }
-    except Exception as exc:
-        logger.warning("Open-Meteo live rainfall fetch error for lat=%s, lon=%s: %s", lat, lon, exc)
     return None
 
 
@@ -176,19 +184,7 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
                         if fallback_resp.status_code == 200:
                             data = fallback_resp.json()
                             temperature = data.get("main", {}).get("temp")
-                            rain_data = data.get("rain")
-                            rainfall = 0
-                            if isinstance(rain_data, dict):
-                                rainfall = rain_data.get("1h", rain_data.get("3h", 0))
-                            coord_lat = data.get("coord", {}).get("lat", resolved_lat)
-                            coord_lon = data.get("coord", {}).get("lon", resolved_lon)
-                            if coord_lat is not None and coord_lon is not None:
-                                try:
-                                    live_rain = fetch_live_rainfall_open_meteo(float(coord_lat), float(coord_lon))
-                                    if live_rain is not None:
-                                        rainfall = live_rain["text"]
-                                except Exception:
-                                    pass
+                            rainfall, rainfall_numeric = extract_observed_rainfall(data)
                             return {
                                 "city": (clean_city.split(",")[0].strip().title() if "," in clean_city else clean_city) or data.get("name") or "Selected Location",
                                 "country": data.get("sys", {}).get("country", ""),
@@ -196,6 +192,7 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
                                 "humidity": data.get("main", {}).get("humidity"),
                                 "wind_speed": data.get("wind", {}).get("speed"),
                                 "rainfall": rainfall,
+                                "rainfall_numeric": rainfall_numeric,
                                 "weather_description": (
                                     data.get("weather", [{}])[0].get("description")
                                     or data.get("weather", [{}])[0].get("main")
@@ -214,22 +211,7 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
             data = response.json()
 
             temperature = data.get("main", {}).get("temp")
-            rain_data = data.get("rain")
-            rainfall = 0
-            if isinstance(rain_data, dict):
-                rainfall = rain_data.get("1h", rain_data.get("3h", 0))
-
-            coord_lat = data.get("coord", {}).get("lat", resolved_lat)
-            coord_lon = data.get("coord", {}).get("lon", resolved_lon)
-            rainfall_numeric = float(rainfall) if isinstance(rainfall, (int, float)) else 0.0
-            if coord_lat is not None and coord_lon is not None:
-                try:
-                    live_rain = fetch_live_rainfall_open_meteo(float(coord_lat), float(coord_lon))
-                    if live_rain is not None:
-                        rainfall = live_rain["text"]
-                        rainfall_numeric = float(live_rain["value"])
-                except Exception:
-                    pass
+            rainfall, rainfall_numeric = extract_observed_rainfall(data)
 
             if clean_city:
                 resolved_name = clean_city.split(",")[0].strip().title() if "," in clean_city else clean_city
@@ -243,6 +225,7 @@ def fetch_weather(city=None, lat=None, lon=None, retries=3):
                 "humidity": data.get("main", {}).get("humidity"),
                 "wind_speed": data.get("wind", {}).get("speed"),
                 "rainfall": rainfall,
+                "rainfall_numeric": rainfall_numeric,
                 "weather_description": (
                     data.get("weather", [{}])[0].get("description")
                     or data.get("weather", [{}])[0].get("main")

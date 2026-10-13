@@ -238,9 +238,11 @@ export default function SmartAwareness({
       ? `${Number(weather.wind_speed).toFixed(1)} km/h`
       : "—";
   const rainfallDisplay =
-    weather?.rainfall != null
+    weather?.rainfall_numeric != null
+      ? `${Number(weather.rainfall_numeric).toFixed(1)} mm`
+      : weather?.rainfall != null && !isNaN(Number(weather.rainfall))
       ? `${Number(weather.rainfall).toFixed(1)} mm`
-      : "0.0 mm";
+      : weather?.rainfall || "0.0 mm";
   const scoreDisplay =
     weather?.heat_risk_score != null
       ? `${weather.heat_risk_score}/100`
