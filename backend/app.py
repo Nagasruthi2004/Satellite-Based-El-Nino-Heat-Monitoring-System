@@ -354,7 +354,7 @@ def get_satellite_history():
 
         display_location = city_raw or f"{abs(lat):.2f}°{'N' if lat>=0 else 'S'}, {abs(lon):.2f}°{'E' if lon>=0 else 'W'}"
 
-        cache_key = (round(lat, 3), round(lon, 3), date_str)
+        cache_key = (round(lat, 3), round(lon, 3), year, date_str)
         if cache_key in _SATELLITE_HISTORY_CACHE:
             return jsonify(_SATELLITE_HISTORY_CACHE[cache_key]), 200
 
@@ -394,7 +394,13 @@ def get_satellite_history():
         sat_result = None
         try:
             from satellite_heat_analysis import analyze_satellite_heat
-            sat_result = analyze_satellite_heat(lat=lat, lon=lon, date_str=date_str)
+            sat_result = analyze_satellite_heat(
+                lat=lat,
+                lon=lon,
+                date_str=date_str,
+                baseline_temp=dataset_lst,
+                year=year
+            )
         except Exception as sat_err:
             logger.warning("Error fetching satellite heat analysis for %s (%s, %s, %s): %s",
                            display_location, lat, lon, date_str, sat_err)

@@ -149,9 +149,22 @@ export default function HomeDashboard({
                 <span className="hsb-label">2025 Average LST</span>
                 <strong className="hsb-value">34.8°C</strong>
               </div>
-              <div className="home-stat-box">
+              <div
+                className="home-stat-box"
+                title="28 States + 6 Union Territories = 34 Regions based on continuous MODIS LST data 2020-2025"
+              >
                 <span className="hsb-label">Monitored Regions</span>
-                <strong className="hsb-value">34 States &amp; UTs</strong>
+                <strong className="hsb-value">28 States + 6 UTs</strong>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "var(--text-muted, #64748b)",
+                    marginTop: "2px",
+                  }}
+                >
+                  Total 34 Monitored Regions
+                </span>
               </div>
             </div>
 

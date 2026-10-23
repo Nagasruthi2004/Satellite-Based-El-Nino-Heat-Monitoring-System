@@ -1,6 +1,5 @@
 import SatelliteTimeMachine from "./components/SatelliteTimeMachine";
 import ElNinoAnalyzer from "./components/ElNinoAnalyzer";
-import FavouriteCities from "./components/FavouriteCities";
 import HeatRecommendation from "./components/HeatRecommendation";
 import ElNinoNewsMonitor from "./components/ElNinoNewsMonitor";
 import SatelliteImageHeatAnalysis from "./components/SatelliteImageHeatAnalysis";
@@ -73,7 +72,6 @@ const NAVIGATION_GROUPS = [
       { id: "simulator", label: "Future City Simulator", icon: "🏙️" },
       { id: "hotspots", label: "Heat Hotspot Ranking", icon: "🔥" },
       { id: "climate-report", label: "AI Climate Report", icon: "📄" },
-      { id: "favourites", label: "Favourite Cities", icon: "⭐" },
     ],
   },
   {
@@ -1377,18 +1375,6 @@ function App() {
           <AIChatbot weather={weather} currentHeatRisk={currentHeatRisk} />
         </section>}
 
-
-        {/* ── FAVOURITE CITIES ── */}
-{activePage === "favourites" && <section className="section">
-  <h2 className="section-title">⭐ Favourite Cities</h2>
-
-  <FavouriteCities
-    currentCity={weather?.city}
-    onSelectCity={(city) => {
-      alert(`Selected City: ${city}\n\nNext step we'll make this automatically load weather.`);
-    }}
-  />
-</section>}
 
 {/* ── EL NIÑO NEWS MONITOR ── */}
 {activePage === "elnino-news" && <section className="section">

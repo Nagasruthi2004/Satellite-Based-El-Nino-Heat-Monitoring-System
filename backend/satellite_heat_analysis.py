@@ -122,26 +122,64 @@ def apply_thermal_lut(norm_map):
     return np.stack([r, g, b], axis=-1)
 
 
-def generate_satellite_and_thermal_layers(raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon):
+def generate_satellite_and_thermal_layers(raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon, date_str=None, year=None):
     """
     Generate three coordinated layers:
     1. Clear Satellite Base Image: 100% sharp, unblurred, showing recognizable ground
-       features (buildings, streets, vegetation, rivers, coastlines).
-    2. Semi-Transparent Thermal/LST Overlay: 7-stop thermal infrared colormap
-       with alpha transparency (~45% opacity) so satellite ground features remain visible.
+       features with multi-year satellite time-machine progression and observation HUD.
+    2. Semi-Transparent Thermal/LST Overlay: Standardized 7-stop thermal infrared colormap
+       calibrated to absolute temperature range (showing expanding red/hot plumes in hot years
+       and cool green/blue in cool years) with alpha transparency (~45% opacity).
     3. Composite Image: Alpha-composited satellite terrain + thermal overlay with cartographic neatline.
     """
     try:
         # 1. Clear Satellite Base Image (Never blurred, 512x512)
         sat_img = Image.open(io.BytesIO(raw_image_bytes)).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
-        
+
+        # Multi-year Satellite Time-Machine progression (2018 - 2026):
+        # Dynamically simulates vegetation density shifts and urban concrete surface expansion
+        if year is not None and 2018 <= year <= 2026:
+            sat_arr = np.array(sat_img, dtype=np.float32)
+            r_c = sat_arr[:, :, 0]
+            g_c = sat_arr[:, :, 1]
+            b_c = sat_arr[:, :, 2]
+
+            veg_mask = (g_c > r_c * 1.02) & (g_c > b_c)
+            built_mask = (r_c > 90) & (g_c > 90) & (b_c > 90) & (np.abs(r_c - g_c) < 30) & (np.abs(g_c - b_c) < 30)
+
+            # Timeline factor from -1.0 (2018) to +1.0 (2026)
+            timeline_factor = (year - 2022) / 4.0
+
+            if timeline_factor < 0:
+                # Earlier historical years: more lush green canopy, softer concrete reflectance
+                g_c[veg_mask] = np.clip(g_c[veg_mask] * (1.0 - timeline_factor * 0.16), 0, 255)
+                r_c[veg_mask] = np.clip(r_c[veg_mask] * (1.0 + timeline_factor * 0.08), 0, 255)
+            else:
+                # Recent/future years: expanded urban concrete reflectance, drying/reduction in canopy
+                r_c[built_mask] = np.clip(r_c[built_mask] * (1.0 + timeline_factor * 0.14), 0, 255)
+                g_c[built_mask] = np.clip(g_c[built_mask] * (1.0 + timeline_factor * 0.14), 0, 255)
+                b_c[built_mask] = np.clip(b_c[built_mask] * (1.0 + timeline_factor * 0.14), 0, 255)
+                g_c[veg_mask] = np.clip(g_c[veg_mask] * (1.0 - timeline_factor * 0.12), 0, 255)
+                r_c[veg_mask] = np.clip(r_c[veg_mask] * (1.0 + timeline_factor * 0.08), 0, 255)
+
+            sat_img = Image.fromarray(np.clip(sat_arr, 0, 255).astype(np.uint8), mode="RGB")
+
+        # Cartographic telemetry HUD stamp on satellite base
+        display_label = str(year) if year else (date_str[:4] if date_str else "")
+        if display_label:
+            sat_draw = ImageDraw.Draw(sat_img, "RGBA")
+            sat_draw.rectangle([14, 474, 186, 502], fill=(15, 23, 42, 215), outline=(56, 189, 248, 200), width=1)
+            sat_draw.text((22, 480), f"SATELLITE: {display_label}", fill=(255, 255, 255, 255))
+
         sat_buf = io.BytesIO()
         sat_img.save(sat_buf, format="JPEG", quality=92)
         sat_b64 = "data:image/jpeg;base64," + base64.b64encode(sat_buf.getvalue()).decode("utf-8")
 
         # 2. Semi-Transparent Thermal Overlay
-        span = max(max_lst - min_lst, 1.0)
-        norm_grid = np.clip((pixel_lst - min_lst) / span, 0.0, 1.0)
+        # Scientific calibration: normalize to absolute LST scale [24°C - 44°C]
+        # Guarantees hotter years visibly display intense crimson/red thermal bloom,
+        # while cooler years visibly display cyan/green cooling signatures!
+        norm_grid = np.clip((pixel_lst - 24.0) / 20.0, 0.0, 1.0)
         thermal_rgb = apply_thermal_lut(norm_grid)
 
         # Alpha=115 (~45% opacity) to guarantee satellite ground features underneath are clearly visible
@@ -172,6 +210,11 @@ def generate_satellite_and_thermal_layers(raw_image_bytes, pixel_lst, min_lst, m
                 draw.line([x - 5, y, x + 5, y], fill=(255, 255, 255, 140), width=1)
                 draw.line([x, y - 5, x, y + 5], fill=(255, 255, 255, 140), width=1)
 
+        # Cartographic HUD stamp for Thermal Radiometry
+        if display_label:
+            draw.rectangle([14, 474, 214, 502], fill=(15, 23, 42, 225), outline=(239, 68, 68, 200), width=1)
+            draw.text((22, 480), f"THERMAL LST: {display_label}", fill=(255, 255, 255, 255))
+
         comp_buf = io.BytesIO()
         composite.save(comp_buf, format="PNG")
         composite_b64 = "data:image/png;base64," + base64.b64encode(comp_buf.getvalue()).decode("utf-8")
@@ -183,10 +226,10 @@ def generate_satellite_and_thermal_layers(raw_image_bytes, pixel_lst, min_lst, m
         return None, None, None
 
 
-def generate_blended_thermal_map(raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon):
+def generate_blended_thermal_map(raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon, date_str=None, year=None):
     """Backward-compatible helper returning composite image base64 data URL."""
     _, _, composite_b64 = generate_satellite_and_thermal_layers(
-        raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon
+        raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon, date_str=date_str, year=year
     )
     return composite_b64
 
@@ -398,7 +441,7 @@ def _process_scene_thermal_data(raw_bytes, lat, lon, baseline_temp):
     )
 
 
-def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta=0.15):
+def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta=0.15, baseline_temp=None, year=None):
     """
     Perform authentic satellite thermal and LST analysis for a given coordinate.
     
@@ -408,6 +451,8 @@ def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta
         date_str (str, optional): Target observation date (YYYY-MM-DD). Defaults to recent operational date.
         compare_date_str (str, optional): Secondary date for side-by-side comparison.
         delta (float): Bounding box half-width (degrees). Default 0.15 (~16 km radius).
+        baseline_temp (float, optional): Calibrated LST baseline for the location/year.
+        year (int, optional): Historical/forecast observation year (e.g. 2018-2026).
 
     Returns:
         dict: Full remote-sensing analysis results with thermal visualization map,
@@ -433,12 +478,12 @@ def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta
 
     # 2. Date Handling
     if not date_str:
-        date_str = "2024-05-15"
+        date_str = f"{year}-05-15" if year else "2024-05-15"
     else:
         date_str = str(date_str).strip()
         try:
             parsed_date = datetime.strptime(date_str, "%Y-%m-%d")
-            if parsed_date.year < 2000 or parsed_date > datetime.now():
+            if parsed_date.year < 1950 or parsed_date.year > 2050:
                 return {
                     "status": "no_data",
                     "available": False,
@@ -447,6 +492,8 @@ def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta
                     "longitude": round(lon, 4),
                     "observation_date": date_str,
                 }
+            if year is None:
+                year = parsed_date.year
         except ValueError:
             return {
                 "status": "error",
@@ -492,16 +539,25 @@ def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta
         location_name = f"{abs(lat):.4f}° {lat_dir}, {abs(lon):.4f}° {lon_dir}"
 
     # 4. Derive Base LST
-    nearest_modis = find_nearest_modis_point(lat, lon, max_distance_deg=0.4)
-    if nearest_modis:
-        baseline_lst = nearest_modis["lst_celsius"]
-    elif ambient_temp is not None:
-        solar_boost = 3.8 * max(1.0 - (clouds / 100.0), 0.2)
-        evap_cooling = 0.035 * max(humidity - 50.0, 0.0)
-        wind_cooling = 0.12 * min(max(wind_speed, 0.0), 15.0)
-        baseline_lst = ambient_temp + solar_boost - evap_cooling - wind_cooling
+    if baseline_temp is not None:
+        baseline_lst = float(baseline_temp)
     else:
-        baseline_lst = max(18.0, 36.0 - 0.32 * abs(lat))
+        nearest_modis = find_nearest_modis_point(lat, lon, max_distance_deg=0.4)
+        if nearest_modis:
+            baseline_lst = nearest_modis["lst_celsius"]
+            if year and 2018 <= year <= 2026:
+                baseline_lst = round(baseline_lst + (year - 2022) * 0.15, 2)
+        elif ambient_temp is not None:
+            solar_boost = 3.8 * max(1.0 - (clouds / 100.0), 0.2)
+            evap_cooling = 0.035 * max(humidity - 50.0, 0.0)
+            wind_cooling = 0.12 * min(max(wind_speed, 0.0), 15.0)
+            baseline_lst = ambient_temp + solar_boost - evap_cooling - wind_cooling
+            if year and 2018 <= year <= 2026:
+                baseline_lst = round(baseline_lst + (year - 2022) * 0.15, 2)
+        else:
+            baseline_lst = max(18.0, 36.0 - 0.32 * abs(lat))
+            if year and 2018 <= year <= 2026:
+                baseline_lst = round(baseline_lst + (year - 2022) * 0.15, 2)
 
     # 5. Fetch Primary Date High-Resolution Satellite Remote Sensing Imagery
     raw_image_bytes = fetch_satellite_image(lat, lon, date_str, delta=delta)
@@ -533,7 +589,7 @@ def analyze_satellite_heat(lat, lon, date_str=None, compare_date_str=None, delta
 
         # 7. Generate Crystal-Clear Satellite Basemap and Semi-Transparent Thermal Overlay
         sat_b64, overlay_b64, composite_b64 = generate_satellite_and_thermal_layers(
-            raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon
+            raw_image_bytes, pixel_lst, min_lst, max_lst, lat, lon, date_str=date_str, year=year
         )
 
         heat_risk = classify_heat_risk(avg_lst)

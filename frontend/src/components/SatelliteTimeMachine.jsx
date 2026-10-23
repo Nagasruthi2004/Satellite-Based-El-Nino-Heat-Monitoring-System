@@ -432,6 +432,7 @@ export default function SatelliteTimeMachine({
                   (satelliteData.satellite_image_url || satelliteData.thermal_overlay_url) && (
                     <div style={{ textAlign: "center" }}>
                       <img
+                        key={`sat-${year}-${satelliteData.date || selectedDate}`}
                         src={satelliteData.satellite_image_url || satelliteData.thermal_overlay_url}
                         alt={`NASA MODIS satellite observation of ${satelliteData.location || displayLocation} in ${year}`}
                         style={{
@@ -440,6 +441,8 @@ export default function SatelliteTimeMachine({
                           objectFit: "cover",
                           borderRadius: "8px",
                           border: "1px solid var(--border)",
+                          opacity: loading ? 0.75 : 1,
+                          transition: "opacity 0.2s ease-in-out",
                         }}
                       />
                       <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
@@ -452,6 +455,7 @@ export default function SatelliteTimeMachine({
                   (satelliteData.thermal_image_url || satelliteData.thermal_overlay_url) && (
                     <div style={{ textAlign: "center" }}>
                       <img
+                        key={`thm-${year}-${satelliteData.date || selectedDate}`}
                         src={satelliteData.thermal_image_url || satelliteData.thermal_overlay_url}
                         alt={`Thermal LST radiometry heat map of ${satelliteData.location || displayLocation} in ${year}`}
                         style={{
@@ -460,6 +464,8 @@ export default function SatelliteTimeMachine({
                           objectFit: "cover",
                           borderRadius: "8px",
                           border: "1px solid var(--border)",
+                          opacity: loading ? 0.75 : 1,
+                          transition: "opacity 0.2s ease-in-out",
                         }}
                       />
                       <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>

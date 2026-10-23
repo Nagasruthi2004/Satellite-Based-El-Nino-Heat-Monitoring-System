@@ -272,13 +272,17 @@ export default function IndiaLSTMap() {
         </div>
 
         {/* 5. States Available */}
-        <div className="metric-card" id="metric-states-count">
+        <div
+          className="metric-card"
+          id="metric-states-count"
+          title="28 States + 6 Union Territories = 34 Regions based on continuous MODIS LST data 2020-2025"
+        >
           <div className="metric-card-top">
             <span className="metric-label">Coverage</span>
             <span className="metric-icon">🏛️</span>
           </div>
           <div className="metric-val">{loading ? "..." : count}</div>
-          <div className="metric-sub">States & Union Territories</div>
+          <div className="metric-sub">28 States &amp; 6 UTs (Total {loading ? "..." : count})</div>
         </div>
 
         {/* 6. Heat Risk Distribution */}
