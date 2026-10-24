@@ -19,13 +19,14 @@ from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate, make_msgid
+import requests
 from dotenv import load_dotenv
 
 # Ensure backend .env is loaded from absolute path
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 DOTENV_PATH = os.path.join(BACKEND_DIR, ".env")
 if os.path.exists(DOTENV_PATH):
-    load_dotenv(dotenv_path=DOTENV_PATH)
+    load_dotenv(dotenv_path=DOTENV_PATH, override=True)
 
 logger = logging.getLogger("email_service")
 
@@ -124,7 +125,7 @@ def get_smtp_config() -> dict:
     Retrieve and sanitize SMTP configuration from environment variables.
     """
     if os.path.exists(DOTENV_PATH):
-        load_dotenv(dotenv_path=DOTENV_PATH)
+        load_dotenv(dotenv_path=DOTENV_PATH, override=True)
 
     host = (os.getenv("SMTP_HOST") or os.getenv("SMTP_SERVER") or "").strip()
     port_raw = (os.getenv("SMTP_PORT") or "587").strip()
@@ -212,16 +213,176 @@ def is_smtp_configured() -> tuple[bool, list[str]]:
     return True, []
 
 
+def is_brevo_configured() -> tuple[bool, list[str]]:
+    """
+    Check if Brevo (Sendinblue) HTTPS REST API key is configured.
+    Returns (is_configured, list_of_missing_fields).
+    """
+    if os.path.exists(DOTENV_PATH):
+        load_dotenv(dotenv_path=DOTENV_PATH, override=True)
+    key = (os.getenv("BREVO_API_KEY") or "").strip()
+    if not key or key.lower() in PLACEHOLDER_STRINGS:
+        return False, ["BREVO_API_KEY"]
+    return True, []
+
+
+def is_email_delivery_configured() -> tuple[bool, str, list[str]]:
+    """
+    Check if ANY genuine email delivery method is configured (Brevo API or Central SMTP).
+    Returns (is_configured, provider_description, missing_fields).
+    """
+    if is_brevo_configured()[0]:
+        return True, "Brevo HTTPS REST API (Port 443)", []
+    smtp_ok, smtp_missing = is_smtp_configured()
+    if smtp_ok:
+        cfg = get_smtp_config()
+        return True, f"Central SMTP Server ({cfg['host']}:{cfg['port']})", []
+    return False, "Unconfigured", smtp_missing
+
+
+def send_email_brevo_api(
+    to_email: str,
+    subject: str,
+    plain_text: str,
+    html_content: str | None = None,
+    timeout: int = 15,
+) -> dict:
+    """
+    Send an email via the Brevo (Sendinblue) transactional REST API over HTTPS (Port 443).
+    Bypasses ISP/campus firewall SMTP port blocks (ports 25, 465, 587) with genuine inbox delivery.
+    """
+    is_valid, err_msg = validate_email_address(to_email)
+    if not is_valid:
+        return {
+            "success": False,
+            "error": f"Invalid recipient email: {err_msg}",
+            "error_type": "validation_error",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    configured, missing = is_brevo_configured()
+    if not configured:
+        return {
+            "success": False,
+            "error": f"Brevo email service is not configured. Missing in backend/.env: {', '.join(missing)}",
+            "error_type": "configuration_missing",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    api_key = os.getenv("BREVO_API_KEY", "").strip()
+    cfg = get_smtp_config()
+    sender_email = cfg["from_email"] or "nagasruthi158@gmail.com"
+    sender_name = cfg["from_name"] or "Smart El Niño Heat Monitoring System"
+    timestamp_iso = datetime.now(timezone.utc).isoformat()
+
+    headers = {
+        "api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    payload = {
+        "sender": {"name": sender_name, "email": sender_email},
+        "to": [{"email": to_email.strip()}],
+        "replyTo": {"name": sender_name, "email": sender_email},
+        "headers": {
+            "List-Unsubscribe": f"<mailto:{sender_email}?subject=unsubscribe>",
+            "X-Auto-Response-Suppress": "OOF, AutoReply",
+        },
+        "subject": subject,
+        "textContent": plain_text,
+    }
+    if html_content:
+        payload["htmlContent"] = html_content
+
+    try:
+        logger.info("Dispatching real email to %s via Brevo HTTPS REST API...", to_email)
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers=headers,
+            timeout=timeout,
+        )
+
+        if resp.status_code in (200, 201):
+            data = resp.json() if resp.text else {}
+            msg_id = data.get("messageId") or "accepted"
+            logger.info("Brevo API accepted email for %s (messageId: %s)", to_email, msg_id)
+            return {
+                "success": True,
+                "message": f"Email accepted by mail provider (Message ID: {msg_id}) and dispatched to {to_email}.",
+                "message_id": msg_id,
+                "provider": "Brevo HTTPS API",
+                "timestamp": timestamp_iso,
+            }
+        elif resp.status_code == 401:
+            err = "Brevo API authentication failed (401 Unauthorized). Please check that your BREVO_API_KEY in backend/.env is valid and active."
+            logger.error("Brevo Auth Error: %s", err)
+            return {
+                "success": False,
+                "error": err,
+                "error_type": "authentication_error",
+                "timestamp": timestamp_iso,
+            }
+        else:
+            try:
+                err_data = resp.json()
+                detail = err_data.get("message") or err_data.get("code") or resp.text
+            except Exception:
+                detail = resp.text
+            err = f"Brevo API rejected email dispatch (HTTP {resp.status_code}): {detail}"
+            logger.error("Brevo Provider Error: %s", err)
+            return {
+                "success": False,
+                "error": err,
+                "error_type": "provider_error",
+                "timestamp": timestamp_iso,
+            }
+
+    except requests.exceptions.Timeout:
+        err = f"Brevo API request timed out ({timeout}s limit reached)."
+        logger.error("Brevo Timeout: %s", err)
+        return {
+            "success": False,
+            "error": err,
+            "error_type": "timeout_error",
+            "timestamp": timestamp_iso,
+        }
+    except requests.exceptions.RequestException as exc:
+        err = f"Failed to connect to Brevo API over HTTPS: {exc}"
+        logger.error("Brevo Connection Error: %s", err)
+        return {
+            "success": False,
+            "error": err,
+            "error_type": "connection_error",
+            "timestamp": timestamp_iso,
+        }
+
+
 def get_public_smtp_status() -> dict:
     """
-    Return a safe, non-sensitive summary of the SMTP configuration.
+    Return a safe, non-sensitive summary of the active email delivery configuration.
     Never exposes passwords or sensitive auth tokens.
     """
     cfg = get_smtp_config()
-    configured, missing = is_smtp_configured()
+    smtp_configured, smtp_missing = is_smtp_configured()
+    brevo_configured, _ = is_brevo_configured()
+    overall_configured = brevo_configured or smtp_configured
+
+    if brevo_configured:
+        provider_name = "Brevo HTTPS REST API (Port 443)"
+    elif smtp_configured:
+        provider_name = f"Central SMTP Server ({cfg['host']}:{cfg['port']})"
+    else:
+        provider_name = "Unconfigured"
 
     return {
-        "configured": configured,
+        "configured": overall_configured,
+        "email_delivery_configured": overall_configured,
+        "provider": provider_name,
+        "delivery_provider": provider_name,
+        "is_brevo": brevo_configured,
+        "is_smtp": smtp_configured,
         "host": cfg["host"] if cfg["host"] and cfg["host"].lower() not in PLACEHOLDER_STRINGS else "",
         "port": cfg["port"],
         "from_email": cfg["from_email"] if cfg["from_email"] and cfg["from_email"].lower() not in PLACEHOLDER_STRINGS else "",
@@ -229,8 +390,38 @@ def get_public_smtp_status() -> dict:
         "use_tls": cfg["use_tls"],
         "use_ssl": cfg["use_ssl"],
         "cooldown_minutes": cfg["cooldown_minutes"],
-        "missing_fields": missing,
+        "missing_fields": [] if overall_configured else smtp_missing,
     }
+
+
+def send_email_dispatched(
+    to_email: str,
+    subject: str,
+    plain_text: str,
+    html_content: str | None = None,
+    timeout: int = 15,
+) -> dict:
+    """
+    Unified email delivery dispatcher.
+    Routes to Brevo HTTPS REST API if BREVO_API_KEY is configured.
+    Otherwise routes to central SMTP server.
+    Ensures real provider acceptance is validated and reported honestly.
+    """
+    if is_brevo_configured()[0]:
+        return send_email_brevo_api(
+            to_email=to_email,
+            subject=subject,
+            plain_text=plain_text,
+            html_content=html_content,
+            timeout=timeout,
+        )
+    return send_email_smtp(
+        to_email=to_email,
+        subject=subject,
+        plain_text=plain_text,
+        html_content=html_content,
+        timeout=timeout,
+    )
 
 
 def send_email_smtp(
@@ -285,71 +476,89 @@ def send_email_smtp(
     if html_content:
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-    # 4. Connect and deliver via SMTP
+    # 4. Connect and deliver via SMTP with automatic fallback between SSL (465) and STARTTLS (587)
+    attempts = [
+        {"host": cfg["host"], "port": cfg["port"], "use_ssl": cfg["use_ssl"], "use_tls": cfg["use_tls"]}
+    ]
+    if "gmail" in cfg["host"].lower():
+        if cfg["port"] == 465 and cfg["use_ssl"]:
+            attempts.append({"host": "smtp.gmail.com", "port": 587, "use_ssl": False, "use_tls": True})
+        elif cfg["port"] == 587 and not cfg["use_ssl"]:
+            attempts.append({"host": "smtp.gmail.com", "port": 465, "use_ssl": True, "use_tls": False})
+
     server = None
     try:
-        ssl_context = ssl.create_default_context()
+        last_conn_error = None
+        for attempt_idx, att in enumerate(attempts):
+            server = None
+            try:
+                ssl_context = ssl.create_default_context()
 
-        if cfg["use_ssl"]:
-            logger.info(
-                "Connecting via smtplib.SMTP_SSL to %s:%d (SSL=True, timeout=%ds) for recipient %s...",
-                cfg["host"], cfg["port"], timeout, to_email
-            )
-            server = smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=timeout, context=ssl_context)
-            server.ehlo()
-        else:
-            logger.info(
-                "Connecting via smtplib.SMTP to %s:%d (STARTTLS=%s, timeout=%ds) for recipient %s...",
-                cfg["host"], cfg["port"], cfg["use_tls"], timeout, to_email
-            )
-            server = smtplib.SMTP(cfg["host"], cfg["port"], timeout=timeout)
-            server.ehlo()
+                if att["use_ssl"]:
+                    logger.info(
+                        "Connecting via smtplib.SMTP_SSL to %s:%d (SSL=True, timeout=%ds) for recipient %s...",
+                        att["host"], att["port"], timeout, to_email
+                    )
+                    server = smtplib.SMTP_SSL(att["host"], att["port"], timeout=timeout, context=ssl_context)
+                    server.ehlo()
+                else:
+                    logger.info(
+                        "Connecting via smtplib.SMTP to %s:%d (STARTTLS=%s, timeout=%ds) for recipient %s...",
+                        att["host"], att["port"], att["use_tls"], timeout, to_email
+                    )
+                    server = smtplib.SMTP(att["host"], att["port"], timeout=timeout)
+                    server.ehlo()
 
-            if cfg["use_tls"]:
-                server.starttls(context=ssl_context)
-                server.ehlo()
+                    if att["use_tls"]:
+                        server.starttls(context=ssl_context)
+                        server.ehlo()
 
-        server.login(cfg["username"], cfg["password"])
-        server.sendmail(cfg["from_email"], [to_email.strip()], msg.as_string())
-        server.quit()
-        server = None
+                server.login(cfg["username"], cfg["password"])
+                server.sendmail(cfg["from_email"], [to_email.strip()], msg.as_string())
+                server.quit()
+                server = None
 
-        logger.info("Successfully dispatched email to %s (Subject: '%s')", to_email, subject)
-        return {
-            "success": True,
-            "message": f"Email successfully accepted by mail server and dispatched to {to_email}.",
-            "timestamp": timestamp_iso,
-        }
+                logger.info("Successfully dispatched email to %s (Subject: '%s') via %s:%d", to_email, subject, att["host"], att["port"])
+                return {
+                    "success": True,
+                    "message": f"Email successfully accepted by mail server and dispatched to {to_email}.",
+                    "provider": "Central SMTP",
+                    "timestamp": timestamp_iso,
+                }
 
-    except smtplib.SMTPAuthenticationError as exc:
-        err = f"SMTP Authentication Failed ({exc.smtp_code}: {exc.smtp_error.decode('utf-8', errors='ignore') if isinstance(exc.smtp_error, bytes) else exc.smtp_error}). For Gmail, ensure you are using a 16-character Google App Password with 2-Step Verification enabled."
-        logger.error("SMTP Auth Error: %s", err)
-        return {
-            "success": False,
-            "error": err,
-            "error_type": "authentication_error",
-            "timestamp": timestamp_iso,
-        }
+            except smtplib.SMTPAuthenticationError as exc:
+                err = f"SMTP Authentication Failed ({exc.smtp_code}: {exc.smtp_error.decode('utf-8', errors='ignore') if isinstance(exc.smtp_error, bytes) else exc.smtp_error}). For Gmail, ensure you are using a 16-character Google App Password with 2-Step Verification enabled."
+                logger.error("SMTP Auth Error: %s", err)
+                return {
+                    "success": False,
+                    "error": err,
+                    "error_type": "authentication_error",
+                    "timestamp": timestamp_iso,
+                }
 
-    except (smtplib.SMTPConnectError, socket.gaierror, ConnectionRefusedError, ConnectionResetError) as exc:
-        err = f"Failed to connect to SMTP host '{cfg['host']}' on port {cfg['port']}: {exc}. Please verify network connection and ensure outbound SMTP traffic is permitted by your firewall or ISP."
-        logger.error("SMTP Connection Error: %s", err)
-        return {
-            "success": False,
-            "error": err,
-            "error_type": "connection_error",
-            "timestamp": timestamp_iso,
-        }
+            except (smtplib.SMTPConnectError, socket.gaierror, ConnectionRefusedError, ConnectionResetError, socket.timeout, TimeoutError, smtplib.SMTPServerDisconnected, smtplib.SMTPException) as exc:
+                last_conn_error = exc
+                if attempt_idx < len(attempts) - 1:
+                    next_att = attempts[attempt_idx + 1]
+                    logger.warning(
+                        "SMTP connection to %s:%d failed (%s). Retrying with alternative port %d (SSL=%s)...",
+                        att["host"], att["port"], exc, next_att["port"], next_att["use_ssl"]
+                    )
+                    continue
 
-    except (socket.timeout, TimeoutError) as exc:
-        err = f"Connection to SMTP server '{cfg['host']}:{cfg['port']}' timed out ({timeout}s limit reached)."
-        logger.error("SMTP Timeout Error: %s", err)
-        return {
-            "success": False,
-            "error": err,
-            "error_type": "timeout_error",
-            "timestamp": timestamp_iso,
-        }
+                # Report real honest connection error to user without simulation
+                err = (
+                    f"Failed to connect to SMTP host '{att['host']}' on port {att['port']}: {exc}. "
+                    "Outbound SMTP traffic (ports 587/465) appears to be blocked by your network/firewall or ISP. "
+                    "To deliver real emails on this network, please configure BREVO_API_KEY in backend/.env to send via HTTPS (Port 443)."
+                )
+                logger.error("SMTP Connection Error: %s", err)
+                return {
+                    "success": False,
+                    "error": err,
+                    "error_type": "connection_error",
+                    "timestamp": timestamp_iso,
+                }
 
     except smtplib.SMTPRecipientsRefused as exc:
         err = f"Recipient address rejected by mail server: {exc}"
@@ -358,26 +567,6 @@ def send_email_smtp(
             "success": False,
             "error": err,
             "error_type": "recipient_refused",
-            "timestamp": timestamp_iso,
-        }
-
-    except smtplib.SMTPServerDisconnected as exc:
-        err = f"SMTP server unexpectedly disconnected: {exc}. Please check your TLS/SSL settings and port (587 for STARTTLS, 465 for SSL)."
-        logger.error("SMTP Disconnect Error: %s", err)
-        return {
-            "success": False,
-            "error": err,
-            "error_type": "server_disconnected",
-            "timestamp": timestamp_iso,
-        }
-
-    except smtplib.SMTPException as exc:
-        err = f"SMTP protocol error: {exc}"
-        logger.error("SMTP Protocol Error: %s", err)
-        return {
-            "success": False,
-            "error": err,
-            "error_type": "smtp_protocol_error",
             "timestamp": timestamp_iso,
         }
 
@@ -503,9 +692,9 @@ def send_test_email(to_email: str) -> dict:
     Send a separate SMTP verification test email.
     Explicitly decoupled from real heat alerts.
     """
-    logger.info("[SMTP Test] Sending SMTP verification test email to %s (Subject: '[Test Verification] Smart El Niño Heat Monitoring System Alert Service')", to_email)
+    logger.info("[Test Email] Sending verification test email to %s (Subject: '[Test Verification] Smart El Niño Heat Monitoring System Alert Service')", to_email)
     subject, plain_text, html_content = build_test_email(to_email)
-    res = send_email_smtp(
+    res = send_email_dispatched(
         to_email=to_email,
         subject=subject,
         plain_text=plain_text,
@@ -847,7 +1036,7 @@ def send_heat_alert_email(
         "[Heat Alert Email] Dispatching REAL heat alert email to %s for city='%s' (temp=%.1f°C, risk=%s, threshold=%s)",
         to_email, city, temperature, risk_level, threshold
     )
-    res = send_email_smtp(
+    res = send_email_dispatched(
         to_email=to_email,
         subject=subject,
         plain_text=plain_text,
